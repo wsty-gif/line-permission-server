@@ -57,3 +57,49 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
+// ================================
+// 🔑 管理者用：権限管理ページ
+// ================================
+
+app.get("/admin", async (req, res) => {
+  const snapshot = await db.collection("permissions").get();
+  const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  let html = `
+    <h1>権限管理ページ</h1>
+    <table border="1" cellspacing="0" cellpadding="5">
+      <tr><th>User ID</th><th>承認状態</th><th>操作</th></tr>
+  `;
+
+  for (const u of users) {
+    html += `
+      <tr>
+        <td>${u.id}</td>
+        <td>${u.approved ? "✅ 承認済み" : "❌ 未承認"}</td>
+        <td>
+          <form method="POST" action="/approve">
+            <input type="hidden" name="id" value="${u.id}">
+            <button>承認</button>
+          </form>
+          <form method="POST" action="/revoke">
+            <input type="hidden" name="id" value="${u.id}">
+            <button>解除</button>
+          </form>
+        </td>
+      </tr>`;
+  }
+
+  html += "</table>";
+  res.send(html);
+});
+
+app.post("/approve", express.urlencoded({ extended: true }), async (req, res) => {
+  await db.collection("permissions").doc(req.body.id).update({ approved: true });
+  res.redirect("/admin");
+});
+
+app.post("/revoke", express.urlencoded({ extended: true }), async (req, res) => {
+  await db.collection("permissions").doc(req.body.id).update({ approved: false });
+  res.redirect("/admin");
+});
