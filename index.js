@@ -42,7 +42,7 @@ app.post("/webhook", async (req, res) => {
 
         await client.replyMessage(event.replyToken, {
           type: "text",
-          text: "権限申請を受け付けました（テストモード）。",
+          text: "権限申請を受け付けました。",
         });
       }
     }
@@ -107,39 +107,96 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// ================================
-// 🔐 管理者用：LINEユーザー名付き権限管理ページ（安定版）
-// ================================
 app.get("/admin", async (req, res) => {
   if (!req.session.loggedIn) return res.redirect("/login");
 
   try {
     const snapshot = await db.collection("permissions").get();
-    if (snapshot.empty) {
-      return res.send("<h2>権限申請はまだありません。</h2>");
-    }
-
     const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // --- LINEユーザー名を安全に取得 ---
+    // --- LINE名を取得（安全）---
     const results = [];
     for (const u of users) {
       let displayName = "（取得不可）";
       try {
         const profile = await client.getProfile(u.id);
         displayName = profile.displayName || "（未設定）";
-      } catch (err) {
-        // getProfile失敗時（退会やブロックなど）でも落ちないようにする
-        console.warn(`⚠️ getProfile失敗: ${u.id}`, err.message);
-      }
+      } catch (err) {}
       results.push({ ...u, displayName });
     }
 
-    // --- HTML構築 ---
+    // --- HTML生成 ---
     let html = `
-      <h1>権限管理ページ（管理者）</h1>
-      <a href="/logout">ログアウト</a>
-      <table border="1" cellspacing="0" cellpadding="5">
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>管理者ページ</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', sans-serif;
+          background: #f9fafb;
+          color: #333;
+          padding: 40px;
+        }
+        h1 {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        .top-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+        .logout {
+          text-decoration: none;
+          color: #2563eb;
+          font-weight: bold;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          background: white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        th, td {
+          padding: 12px 16px;
+          text-align: left;
+        }
+        th {
+          background: #2563eb;
+          color: white;
+        }
+        tr:nth-child(even) {
+          background: #f1f5f9;
+        }
+        button {
+          background: #2563eb;
+          border: none;
+          color: white;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        button:hover {
+          background: #1d4ed8;
+        }
+        .status {
+          font-weight: bold;
+        }
+        .approved { color: #16a34a; }
+        .pending { color: #dc2626; }
+      </style>
+    </head>
+    <body>
+      <div class="top-bar">
+        <h1>権限管理ページ</h1>
+        <a href="/logout" class="logout">ログアウト</a>
+      </div>
+      <table>
         <tr>
           <th>LINE名</th>
           <th>User ID</th>
@@ -153,7 +210,9 @@ app.get("/admin", async (req, res) => {
         <tr>
           <td>${u.displayName}</td>
           <td>${u.id}</td>
-          <td>${u.approved ? "✅ 承認済み" : "❌ 未承認"}</td>
+          <td class="status ${u.approved ? 'approved' : 'pending'}">
+            ${u.approved ? '承認済み' : '未承認'}
+          </td>
           <td>
             <form method="POST" action="/approve" style="display:inline">
               <input type="hidden" name="id" value="${u.id}">
@@ -161,14 +220,14 @@ app.get("/admin", async (req, res) => {
             </form>
             <form method="POST" action="/revoke" style="display:inline">
               <input type="hidden" name="id" value="${u.id}">
-              <button>解除</button>
+              <button style="background:#dc2626;">解除</button>
             </form>
           </td>
         </tr>
       `;
     }
 
-    html += "</table>";
+    html += `</table></body></html>`;
     res.send(html);
 
   } catch (error) {
@@ -176,6 +235,7 @@ app.get("/admin", async (req, res) => {
     res.status(500).send("管理者ページの読み込み中にエラーが発生しました。");
   }
 });
+
 
 
 app.post("/approve", express.urlencoded({ extended: true }), async (req, res) => {
@@ -260,4 +320,21 @@ app.get("/manual/check", async (req, res) => {
     </ul>
     <p><small>※このページは承認済みユーザーのみ閲覧可能です。</small></p>
   `);
+});
+
+// ================================
+// 📘 社内マニュアル閲覧ページ
+// ================================
+app.get("/manual", async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).send("ユーザーIDが指定されていません。");
+
+  // Firestoreから承認状態を確認
+  const doc = await db.collection("permissions").doc(userId).get();
+  if (!doc.exists || !doc.data().approved) {
+    return res.status(403).send("閲覧権限がありません。");
+  }
+
+  // 承認済みユーザーのみNotionへリダイレクト
+  res.redirect("https://www.notion.so/LINE-25d7cbd19fa1808e9fa4df130ecb96e7?source=copy_link");
 });
