@@ -59,15 +59,64 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
 
 // ================================
-// 🔑 管理者用：権限管理ページ
+// 🔐 管理者ログイン機能付き 権限管理ページ
 // ================================
+const session = require("express-session");
 
+// --- セッション設定 ---
+app.use(
+  session({
+    secret: process.env.ADMIN_SESSION_SECRET || "secret-key",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+// --- ログインページ表示 ---
+app.get("/login", (req, res) => {
+  res.send(`
+    <h2>管理者ログイン</h2>
+    <form method="POST" action="/login">
+      <label>ユーザーID：</label><br>
+      <input name="username" required><br><br>
+      <label>パスワード：</label><br>
+      <input type="password" name="password" required><br><br>
+      <button type="submit">ログイン</button>
+    </form>
+  `);
+});
+
+// --- ログイン処理 ---
+app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
+  const { username, password } = req.body;
+  const ADMIN_USER = process.env.ADMIN_USER || "admin";
+  const ADMIN_PASS = process.env.ADMIN_PASS || "pass123";
+
+  if (username === ADMIN_USER && password === ADMIN_PASS) {
+    req.session.loggedIn = true;
+    res.redirect("/admin");
+  } else {
+    res.send("<h3>ログイン失敗</h3><a href='/login'>戻る</a>");
+  }
+});
+
+// --- ログアウト処理 ---
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.redirect("/login");
+  });
+});
+
+// --- 管理画面 ---
 app.get("/admin", async (req, res) => {
+  if (!req.session.loggedIn) return res.redirect("/login");
+
   const snapshot = await db.collection("permissions").get();
   const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
   let html = `
-    <h1>権限管理ページ</h1>
+    <h1>権限管理ページ（管理者）</h1>
+    <a href="/logout">ログアウト</a>
     <table border="1" cellspacing="0" cellpadding="5">
       <tr><th>User ID</th><th>承認状態</th><th>操作</th></tr>
   `;
@@ -95,11 +144,13 @@ app.get("/admin", async (req, res) => {
 });
 
 app.post("/approve", express.urlencoded({ extended: true }), async (req, res) => {
+  if (!req.session.loggedIn) return res.status(403).send("ログインが必要です");
   await db.collection("permissions").doc(req.body.id).update({ approved: true });
   res.redirect("/admin");
 });
 
 app.post("/revoke", express.urlencoded({ extended: true }), async (req, res) => {
+  if (!req.session.loggedIn) return res.status(403).send("ログインが必要です");
   await db.collection("permissions").doc(req.body.id).update({ approved: false });
   res.redirect("/admin");
 });
