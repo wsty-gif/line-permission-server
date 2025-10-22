@@ -2,66 +2,38 @@ const express = require("express");
 const { Client } = require("@line/bot-sdk");
 const admin = require("firebase-admin");
 const cors = require("cors");
+const session = require("express-session");
 
-// Firebase初期化
+// ==============================
+// 🔥 Firebase初期化
+// ==============================
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
     }),
   });
 }
 const db = admin.firestore();
 
-// LINE設定
+// ==============================
+// 💬 LINE設定
+// ==============================
 const config = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.LINE_CHANNEL_SECRET,
 };
 const client = new Client(config);
 
+// ==============================
+// 🚀 Express設定
+// ==============================
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// ✅ 署名検証なし（テスト用）
-app.post("/webhook", async (req, res) => {
-  const events = req.body.events || [];
-  for (const event of events) {
-    if (event.type === "message" && event.message.type === "text") {
-      const userId = event.source.userId;
-      const text = event.message.text.trim();
-
-      if (text === "権限申請") {
-        await db.collection("permissions").doc(userId).set({
-          approved: false,
-          requestedAt: new Date(),
-        }, { merge: true });
-
-        await client.replyMessage(event.replyToken, {
-          type: "text",
-          text: "権限申請を受け付けました。",
-        });
-      }
-    }
-  }
-  res.status(200).send("OK (no signature validation)");
-});
-
-// 動作確認用
-app.get("/", (req, res) => {
-  res.send("LINE Permission Server is running 🚀 (No signature check)");
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
-
-// ================================
-// 🔐 管理者ログイン機能付き 権限管理ページ
-// ================================
-const session = require("express-session");
+app.use(express.urlencoded({ extended: true }));
 
 // --- セッション設定 ---
 app.use(
@@ -72,27 +44,118 @@ app.use(
   })
 );
 
-// --- ログインページ表示 ---
+// ==============================
+// 🌐 Webhook（署名検証なし）
+// ==============================
+app.post("/webhook", async (req, res) => {
+  const events = req.body.events || [];
+  for (const event of events) {
+    if (event.type === "message" && event.message.type === "text") {
+      const userId = event.source.userId;
+      const text = event.message.text.trim();
+
+      if (text === "権限申請") {
+        await db.collection("permissions").doc(userId).set(
+          {
+            approved: false,
+            requestedAt: new Date(),
+          },
+          { merge: true }
+        );
+
+        await client.replyMessage(event.replyToken, {
+          type: "text",
+          text: "権限申請を受け付けました。",
+        });
+      }
+    }
+  }
+  res.status(200).send("OK");
+});
+
+// ==============================
+// 🔐 管理者ログイン画面
+// ==============================
 app.get("/login", (req, res) => {
   res.send(`
-    <h2>管理者ログイン</h2>
-    <form method="POST" action="/login">
-      <label>ユーザーID：</label><br>
-      <input name="username" required><br><br>
-      <label>パスワード：</label><br>
-      <input type="password" name="password" required><br><br>
-      <button type="submit">ログイン</button>
-    </form>
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>管理者ログイン</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        background: #f9fafb;
+        color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .login-container {
+        background: white;
+        padding: 30px 24px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 360px;
+        text-align: center;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+        color: #2563eb;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        font-size: 1rem;
+      }
+      button {
+        width: 100%;
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <h1>管理者ログイン</h1>
+      <form method="POST" action="/login">
+        <input type="text" name="user" placeholder="ユーザーID" required />
+        <input type="password" name="pass" placeholder="パスワード" required />
+        <button type="submit">ログイン</button>
+      </form>
+    </div>
+  </body>
+  </html>
   `);
 });
 
-// --- ログイン処理 ---
-app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
-  const { username, password } = req.body;
-  const ADMIN_USER = process.env.ADMIN_USER || "admin";
-  const ADMIN_PASS = process.env.ADMIN_PASS || "pass123";
+// ==============================
+// ✅ ログイン処理
+// ==============================
+app.post("/login", (req, res) => {
+  const { user, pass } = req.body;
+  const ADMIN_USER = process.env.ADMIN_USER || "owner";
+  const ADMIN_PASS = process.env.ADMIN_PASS || "admin";
 
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
+  if (user === ADMIN_USER && pass === ADMIN_PASS) {
     req.session.loggedIn = true;
     res.redirect("/admin");
   } else {
@@ -100,300 +163,136 @@ app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
   }
 });
 
-// --- ログアウト処理 ---
+// ==============================
+// 🚪 ログアウト
+// ==============================
 app.get("/logout", (req, res) => {
   req.session.destroy(() => {
     res.redirect("/login");
   });
 });
 
-// ================================
-// 🔐 管理者ページ（モバイル対応版）
-// ================================
+// ==============================
+// 🧑‍💼 管理者ページ（モバイル対応）
+// ==============================
 app.get("/admin", async (req, res) => {
   if (!req.session.loggedIn) return res.redirect("/login");
 
-  try {
-    const snapshot = await db.collection("permissions").get();
-    const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const snapshot = await db.collection("permissions").get();
+  const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const results = [];
-    for (const u of users) {
-      let displayName = "（取得不可）";
-      try {
-        const profile = await client.getProfile(u.id);
-        displayName = profile.displayName || "（未設定）";
-      } catch (err) {}
-      results.push({ ...u, displayName });
-    }
-
-    // ✅ HTML + レスポンシブCSS
-    let html = `
-    <html>
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>権限管理</title>
-      <style>
-        body {
-          font-family: 'Segoe UI', sans-serif;
-          background: #f9fafb;
-          color: #333;
-          padding: 20px;
-          margin: 0;
-        }
-        h1 {
-          text-align: center;
-          font-size: 1.6rem;
-          margin-bottom: 16px;
-        }
-        .top-bar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 10px;
-        }
-        .logout {
-          text-decoration: none;
-          color: #2563eb;
-          font-weight: bold;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          background: white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-          border-radius: 8px;
-          overflow: hidden;
-        }
-        th, td {
-          padding: 10px;
-          text-align: left;
-          font-size: 0.9rem;
-        }
-        th {
-          background: #2563eb;
-          color: white;
-        }
-        tr:nth-child(even) {
-          background: #f1f5f9;
-        }
-        button {
-          background: #2563eb;
-          border: none;
-          color: white;
-          padding: 6px 10px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 0.8rem;
-        }
-        button:hover {
-          background: #1d4ed8;
-        }
-        .status {
-          font-weight: bold;
-        }
-        .approved { color: #16a34a; }
-        .pending { color: #dc2626; }
-
-        /* ✅ モバイル対応 */
-        @media (max-width: 600px) {
-          table, thead, tbody, th, td, tr {
-            display: block;
-          }
-          th {
-            display: none;
-          }
-          tr {
-            margin-bottom: 10px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 10px;
-          }
-          td {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 8px;
-          }
-          td::before {
-            content: attr(data-label);
-            font-weight: bold;
-            color: #555;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="top-bar">
-        <h1>権限管理ページ</h1>
-        <a href="/logout" class="logout">ログアウト</a>
-      </div>
-      <table>
-        <thead>
-          <tr><th>LINE名</th><th>User ID</th><th>承認状態</th><th>操作</th></tr>
-        </thead>
-        <tbody>
-    `;
-
-    for (const u of results) {
-      html += `
-        <tr>
-          <td data-label="LINE名">${u.displayName}</td>
-          <td data-label="User ID">${u.id}</td>
-          <td data-label="承認状態" class="status ${u.approved ? 'approved' : 'pending'}">
-            ${u.approved ? '承認済み' : '未承認'}
-          </td>
-          <td data-label="操作">
-            <form method="POST" action="/approve" style="display:inline">
-              <input type="hidden" name="id" value="${u.id}">
-              <button>承認</button>
-            </form>
-            <form method="POST" action="/revoke" style="display:inline">
-              <input type="hidden" name="id" value="${u.id}">
-              <button style="background:#dc2626;">解除</button>
-            </form>
-          </td>
-        </tr>`;
-    }
-
-    html += `
-        </tbody></table>
-    </body></html>`;
-    res.send(html);
-  } catch (error) {
-    console.error("❌ /admin エラー:", error);
-    res.status(500).send("管理者ページの読み込み中にエラーが発生しました。");
+  const results = [];
+  for (const u of users) {
+    let displayName = "（取得不可）";
+    try {
+      const profile = await client.getProfile(u.id);
+      displayName = profile.displayName || "（未設定）";
+    } catch {}
+    results.push({ ...u, displayName });
   }
+
+  let html = `
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>権限管理</title>
+    <style>
+      body { font-family: 'Segoe UI', sans-serif; background: #f9fafb; color: #333; margin: 0; padding: 20px; }
+      h1 { text-align: center; color: #2563eb; }
+      .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+      .logout { color: #2563eb; text-decoration: none; font-weight: bold; }
+      table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+      th, td { padding: 10px; text-align: left; font-size: 0.9rem; }
+      th { background: #2563eb; color: white; }
+      tr:nth-child(even) { background: #f1f5f9; }
+      button { background: #2563eb; border: none; color: white; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+      button:hover { background: #1d4ed8; }
+      .approved { color: #16a34a; font-weight: bold; }
+      .pending { color: #dc2626; font-weight: bold; }
+      @media (max-width: 600px) {
+        table, thead, tbody, th, td, tr { display: block; }
+        th { display: none; }
+        tr { margin-bottom: 10px; background: #fff; border-radius: 8px; padding: 10px; }
+        td { display: flex; justify-content: space-between; padding: 6px 8px; }
+        td::before { content: attr(data-label); font-weight: bold; color: #555; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-bar">
+      <h1>権限管理ページ</h1>
+      <a href="/logout" class="logout">ログアウト</a>
+    </div>
+    <table>
+      <thead><tr><th>LINE名</th><th>User ID</th><th>承認状態</th><th>操作</th></tr></thead>
+      <tbody>`;
+
+  for (const u of results) {
+    html += `
+      <tr>
+        <td data-label="LINE名">${u.displayName}</td>
+        <td data-label="User ID">${u.id}</td>
+        <td data-label="承認状態" class="${u.approved ? "approved" : "pending"}">
+          ${u.approved ? "承認済み" : "未承認"}
+        </td>
+        <td data-label="操作">
+          <form method="POST" action="/approve" style="display:inline">
+            <input type="hidden" name="id" value="${u.id}">
+            <button>承認</button>
+          </form>
+          <form method="POST" action="/revoke" style="display:inline">
+            <input type="hidden" name="id" value="${u.id}">
+            <button style="background:#dc2626;">解除</button>
+          </form>
+        </td>
+      </tr>`;
+  }
+
+  html += `</tbody></table></body></html>`;
+  res.send(html);
 });
 
-app.post("/approve", express.urlencoded({ extended: true }), async (req, res) => {
+// ==============================
+// ✅ 承認・解除API
+// ==============================
+app.post("/approve", async (req, res) => {
   if (!req.session.loggedIn) return res.status(403).send("ログインが必要です");
   await db.collection("permissions").doc(req.body.id).update({ approved: true });
   res.redirect("/admin");
 });
 
-app.post("/revoke", express.urlencoded({ extended: true }), async (req, res) => {
+app.post("/revoke", async (req, res) => {
   if (!req.session.loggedIn) return res.status(403).send("ログインが必要です");
   await db.collection("permissions").doc(req.body.id).update({ approved: false });
   res.redirect("/admin");
 });
 
-// ================================
-// 📘 社内マニュアル（LIFFログイン対応版）
-// ================================
+// ==============================
+// 📘 社内マニュアル（LIFF → Firestore承認 → Notion埋め込み）
+// ==============================
 app.get("/manual", (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <title>社内マニュアルログイン</title>
-      <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    </head>
-    <body>
-      <h2>LINEログイン中...</h2>
-      <script>
-        const liffId = "${process.env.LIFF_ID}";
-        async function main() {
-          try {
-            await liff.init({ liffId });
-            if (!liff.isLoggedIn()) {
-              liff.login();
-              return;
-            }
-            const profile = await liff.getProfile();
-            const userId = profile.userId;
-            // Firestoreチェックページへリダイレクト
-            window.location.href = "/manual/check?userId=" + userId;
-          } catch (err) {
-            document.body.innerHTML = "<h3>LIFF初期化に失敗しました：" + err + "</h3>";
-          }
-        }
-        main();
-      </script>
-    </body>
-    </html>
-  `);
-});
-
-// ================================
-// 🔍 Firestore 承認チェック
-// ================================
-app.get("/manual/check", async (req, res) => {
-  const { userId } = req.query;
-
-  if (!userId) {
-    return res.status(400).send("<h3>ユーザー情報を取得できませんでした。</h3>");
-  }
-
-  const doc = await db.collection("permissions").doc(userId).get();
-  const data = doc.data();
-
-  if (!data) {
-    return res.status(404).send("<h3>権限申請が未登録です。LINEから「権限申請」と送信してください。</h3>");
-  }
-
-  if (!data.approved) {
-    return res.status(403).send("<h3>管理者の承認待ちです。しばらくお待ちください。</h3>");
-  }
-
-  // ✅ 承認済みユーザー用マニュアル
-  res.send(`
-    <h1>📘 社内マニュアル</h1>
-    <p>ようこそ、${userId} さん。</p>
-    <ul>
-      <li>① 業務開始手順</li>
-      <li>② 勤怠報告とチェック</li>
-      <li>③ 緊急時対応マニュアル</li>
-    </ul>
-    <p><small>※このページは承認済みユーザーのみ閲覧可能です。</small></p>
-  `);
-});
-
-// ================================
-// 📘 社内マニュアル閲覧ページ
-// ================================
-app.get("/manual", async (req, res) => {
-  const userId = req.query.userId;
-  if (!userId) return res.status(400).send("ユーザーIDが指定されていません。");
-
-  // Firestoreから承認状態を確認
-  const doc = await db.collection("permissions").doc(userId).get();
-  if (!doc.exists || !doc.data().approved) {
-    return res.status(403).send("閲覧権限がありません。");
-  }
-
-  // 承認済みユーザーのみNotionへリダイレクト
-  res.redirect("https://www.notion.so/LINE-25d7cbd19fa1808e9fa4df130ecb96e7?source=copy_link");
-});
-
-// ================================
-// 🪪 LIFF経由でユーザーID自動付与
-// ================================
-app.get("/manual-liff", (req, res) => {
-  const liffId = "2008339429-9bBKAoLQ"; // ← あなたのLIFF IDに置き換える
   res.send(`
   <!DOCTYPE html>
   <html lang="ja">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
     <title>社内マニュアル</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   </head>
   <body>
-    <p>LINE認証中です。しばらくお待ちください...</p>
+    <p>LINEログイン中です...</p>
     <script>
+      const liffId = "${process.env.LIFF_ID}";
       async function main() {
-        await liff.init({ liffId: "${liffId}" });
+        await liff.init({ liffId });
         if (!liff.isLoggedIn()) {
           liff.login();
           return;
         }
         const profile = await liff.getProfile();
         const userId = profile.userId;
-        window.location.href = "/manual?userId=" + encodeURIComponent(userId);
+        window.location.href = "/manual-check?userId=" + encodeURIComponent(userId);
       }
       main();
     </script>
@@ -401,3 +300,50 @@ app.get("/manual-liff", (req, res) => {
   </html>
   `);
 });
+
+// ==============================
+// 🔍 Firestoreチェック → Notion埋め込み表示
+// ==============================
+app.get("/manual-check", async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).send("ユーザー情報が取得できません。");
+
+  const doc = await db.collection("permissions").doc(userId).get();
+  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!doc.data().approved) return res.status(403).send("管理者の承認待ちです。");
+
+  // ✅ Notion埋め込み
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>社内マニュアル</title>
+    <style>
+      body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+      iframe { width: 100vw; height: 100vh; border: none; }
+      header {
+        background: #2563eb; color: white; padding: 12px;
+        text-align: center; font-size: 1.1rem; font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <header>📘 社内マニュアル</header>
+    <iframe src="https://www.notion.so/LINE-25d7cbd19fa1808e9fa4df130ecb96e7?source=copy_link"></iframe>
+  </body>
+  </html>
+  `);
+});
+
+// ==============================
+// 🪪 LIFF中継（旧URL互換）
+// ==============================
+app.get("/manual-liff", (req, res) => res.redirect("/manual"));
+
+// ==============================
+// 🚀 サーバー起動
+// ==============================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
