@@ -154,3 +154,53 @@ app.post("/revoke", express.urlencoded({ extended: true }), async (req, res) => 
   await db.collection("permissions").doc(req.body.id).update({ approved: false });
   res.redirect("/admin");
 });
+
+// ================================
+// 📘 社内マニュアル閲覧ページ
+// ================================
+
+// URL例: https://line-permission-server.onrender.com/manual?userId=Uxxxxxxxxxxxxxx
+
+app.get("/manual", async (req, res) => {
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res
+      .status(400)
+      .send("<h3>ユーザー情報が見つかりません。LINEからアクセスしてください。</h3>");
+  }
+
+  try {
+    const doc = await db.collection("permissions").doc(userId).get();
+    const data = doc.data();
+
+    if (!data) {
+      return res
+        .status(404)
+        .send("<h3>申請履歴がありません。LINEから『権限申請』を送信してください。</h3>");
+    }
+
+    if (data.approved !== true) {
+      return res
+        .status(403)
+        .send("<h3>アクセス権限がありません。管理者の承認をお待ちください。</h3>");
+    }
+
+    // ✅ 承認済みユーザーにのみマニュアルを表示
+    res.send(`
+      <h1>📘 社内マニュアル</h1>
+      <p>このページは承認済みユーザーのみが閲覧できます。</p>
+      <hr>
+      <h2>マニュアル一覧</h2>
+      <ul>
+        <li>① 業務開始手順</li>
+        <li>② 勤怠記録と報告方法</li>
+        <li>③ 緊急時の対応マニュアル</li>
+      </ul>
+      <p><small>※社外への共有は禁止されています</small></p>
+    `);
+  } catch (err) {
+    console.error("Manual Access Error:", err);
+    res.status(500).send("<h3>サーバーエラーが発生しました。</h3>");
+  }
+});
