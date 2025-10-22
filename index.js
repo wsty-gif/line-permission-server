@@ -156,51 +156,73 @@ app.post("/revoke", express.urlencoded({ extended: true }), async (req, res) => 
 });
 
 // ================================
-// 📘 社内マニュアル閲覧ページ
+// 📘 社内マニュアル（LIFFログイン対応版）
 // ================================
+app.get("/manual", (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <title>社内マニュアルログイン</title>
+      <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    </head>
+    <body>
+      <h2>LINEログイン中...</h2>
+      <script>
+        const liffId = "${process.env.LIFF_ID}";
+        async function main() {
+          try {
+            await liff.init({ liffId });
+            if (!liff.isLoggedIn()) {
+              liff.login();
+              return;
+            }
+            const profile = await liff.getProfile();
+            const userId = profile.userId;
+            // Firestoreチェックページへリダイレクト
+            window.location.href = "/manual/check?userId=" + userId;
+          } catch (err) {
+            document.body.innerHTML = "<h3>LIFF初期化に失敗しました：" + err + "</h3>";
+          }
+        }
+        main();
+      </script>
+    </body>
+    </html>
+  `);
+});
 
-// URL例: https://line-permission-server.onrender.com/manual?userId=Uxxxxxxxxxxxxxx
-
-app.get("/manual", async (req, res) => {
+// ================================
+// 🔍 Firestore 承認チェック
+// ================================
+app.get("/manual/check", async (req, res) => {
   const { userId } = req.query;
 
   if (!userId) {
-    return res
-      .status(400)
-      .send("<h3>ユーザー情報が見つかりません。LINEからアクセスしてください。</h3>");
+    return res.status(400).send("<h3>ユーザー情報を取得できませんでした。</h3>");
   }
 
-  try {
-    const doc = await db.collection("permissions").doc(userId).get();
-    const data = doc.data();
+  const doc = await db.collection("permissions").doc(userId).get();
+  const data = doc.data();
 
-    if (!data) {
-      return res
-        .status(404)
-        .send("<h3>申請履歴がありません。LINEから『権限申請』を送信してください。</h3>");
-    }
-
-    if (data.approved !== true) {
-      return res
-        .status(403)
-        .send("<h3>アクセス権限がありません。管理者の承認をお待ちください。</h3>");
-    }
-
-    // ✅ 承認済みユーザーにのみマニュアルを表示
-    res.send(`
-      <h1>📘 社内マニュアル</h1>
-      <p>このページは承認済みユーザーのみが閲覧できます。</p>
-      <hr>
-      <h2>マニュアル一覧</h2>
-      <ul>
-        <li>① 業務開始手順</li>
-        <li>② 勤怠記録と報告方法</li>
-        <li>③ 緊急時の対応マニュアル</li>
-      </ul>
-      <p><small>※社外への共有は禁止されています</small></p>
-    `);
-  } catch (err) {
-    console.error("Manual Access Error:", err);
-    res.status(500).send("<h3>サーバーエラーが発生しました。</h3>");
+  if (!data) {
+    return res.status(404).send("<h3>権限申請が未登録です。LINEから「権限申請」と送信してください。</h3>");
   }
+
+  if (!data.approved) {
+    return res.status(403).send("<h3>管理者の承認待ちです。しばらくお待ちください。</h3>");
+  }
+
+  // ✅ 承認済みユーザー用マニュアル
+  res.send(`
+    <h1>📘 社内マニュアル</h1>
+    <p>ようこそ、${userId} さん。</p>
+    <ul>
+      <li>① 業務開始手順</li>
+      <li>② 勤怠報告とチェック</li>
+      <li>③ 緊急時対応マニュアル</li>
+    </ul>
+    <p><small>※このページは承認済みユーザーのみ閲覧可能です。</small></p>
+  `);
 });
