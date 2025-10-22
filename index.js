@@ -107,6 +107,9 @@ app.get("/logout", (req, res) => {
   });
 });
 
+// ================================
+// 🔐 管理者ページ（モバイル対応版）
+// ================================
 app.get("/admin", async (req, res) => {
   if (!req.session.loggedIn) return res.redirect("/login");
 
@@ -114,7 +117,6 @@ app.get("/admin", async (req, res) => {
     const snapshot = await db.collection("permissions").get();
     const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // --- LINE名を取得（安全）---
     const results = [];
     for (const u of users) {
       let displayName = "（取得不可）";
@@ -125,29 +127,31 @@ app.get("/admin", async (req, res) => {
       results.push({ ...u, displayName });
     }
 
-    // --- HTML生成 ---
+    // ✅ HTML + レスポンシブCSS
     let html = `
     <html>
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>管理者ページ</title>
+      <title>権限管理</title>
       <style>
         body {
           font-family: 'Segoe UI', sans-serif;
           background: #f9fafb;
           color: #333;
-          padding: 40px;
+          padding: 20px;
+          margin: 0;
         }
         h1 {
           text-align: center;
-          margin-bottom: 30px;
+          font-size: 1.6rem;
+          margin-bottom: 16px;
         }
         .top-bar {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 20px;
+          margin-bottom: 10px;
         }
         .logout {
           text-decoration: none;
@@ -163,8 +167,9 @@ app.get("/admin", async (req, res) => {
           overflow: hidden;
         }
         th, td {
-          padding: 12px 16px;
+          padding: 10px;
           text-align: left;
+          font-size: 0.9rem;
         }
         th {
           background: #2563eb;
@@ -177,9 +182,10 @@ app.get("/admin", async (req, res) => {
           background: #2563eb;
           border: none;
           color: white;
-          padding: 6px 12px;
+          padding: 6px 10px;
           border-radius: 4px;
           cursor: pointer;
+          font-size: 0.8rem;
         }
         button:hover {
           background: #1d4ed8;
@@ -189,6 +195,33 @@ app.get("/admin", async (req, res) => {
         }
         .approved { color: #16a34a; }
         .pending { color: #dc2626; }
+
+        /* ✅ モバイル対応 */
+        @media (max-width: 600px) {
+          table, thead, tbody, th, td, tr {
+            display: block;
+          }
+          th {
+            display: none;
+          }
+          tr {
+            margin-bottom: 10px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 10px;
+          }
+          td {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 8px;
+          }
+          td::before {
+            content: attr(data-label);
+            font-weight: bold;
+            color: #555;
+          }
+        }
       </style>
     </head>
     <body>
@@ -197,23 +230,21 @@ app.get("/admin", async (req, res) => {
         <a href="/logout" class="logout">ログアウト</a>
       </div>
       <table>
-        <tr>
-          <th>LINE名</th>
-          <th>User ID</th>
-          <th>承認状態</th>
-          <th>操作</th>
-        </tr>
+        <thead>
+          <tr><th>LINE名</th><th>User ID</th><th>承認状態</th><th>操作</th></tr>
+        </thead>
+        <tbody>
     `;
 
     for (const u of results) {
       html += `
         <tr>
-          <td>${u.displayName}</td>
-          <td>${u.id}</td>
-          <td class="status ${u.approved ? 'approved' : 'pending'}">
+          <td data-label="LINE名">${u.displayName}</td>
+          <td data-label="User ID">${u.id}</td>
+          <td data-label="承認状態" class="status ${u.approved ? 'approved' : 'pending'}">
             ${u.approved ? '承認済み' : '未承認'}
           </td>
-          <td>
+          <td data-label="操作">
             <form method="POST" action="/approve" style="display:inline">
               <input type="hidden" name="id" value="${u.id}">
               <button>承認</button>
@@ -223,20 +254,18 @@ app.get("/admin", async (req, res) => {
               <button style="background:#dc2626;">解除</button>
             </form>
           </td>
-        </tr>
-      `;
+        </tr>`;
     }
 
-    html += `</table></body></html>`;
+    html += `
+        </tbody></table>
+    </body></html>`;
     res.send(html);
-
   } catch (error) {
     console.error("❌ /admin エラー:", error);
     res.status(500).send("管理者ページの読み込み中にエラーが発生しました。");
   }
 });
-
-
 
 app.post("/approve", express.urlencoded({ extended: true }), async (req, res) => {
   if (!req.session.loggedIn) return res.status(403).send("ログインが必要です");
@@ -337,4 +366,38 @@ app.get("/manual", async (req, res) => {
 
   // 承認済みユーザーのみNotionへリダイレクト
   res.redirect("https://www.notion.so/LINE-25d7cbd19fa1808e9fa4df130ecb96e7?source=copy_link");
+});
+
+// ================================
+// 🪪 LIFF経由でユーザーID自動付与
+// ================================
+app.get("/manual-liff", (req, res) => {
+  const liffId = "2008339429-9bBKAoLQ"; // ← あなたのLIFF IDに置き換える
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>社内マニュアル</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  </head>
+  <body>
+    <p>LINE認証中です。しばらくお待ちください...</p>
+    <script>
+      async function main() {
+        await liff.init({ liffId: "${liffId}" });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        const profile = await liff.getProfile();
+        const userId = profile.userId;
+        window.location.href = "/manual?userId=" + encodeURIComponent(userId);
+      }
+      main();
+    </script>
+  </body>
+  </html>
+  `);
 });
