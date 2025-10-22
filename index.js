@@ -74,7 +74,7 @@ app.post("/webhook", async (req, res) => {
 });
 
 // ==============================
-// 🔐 管理者ログイン画面
+// 🔐 管理者ログイン画面（モバイル対応）
 // ==============================
 app.get("/login", (req, res) => {
   res.send(`
@@ -94,6 +94,7 @@ app.get("/login", (req, res) => {
         justify-content: center;
         height: 100vh;
         margin: 0;
+        padding: 16px;
       }
       .login-container {
         background: white;
@@ -101,21 +102,23 @@ app.get("/login", (req, res) => {
         border-radius: 12px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         width: 100%;
-        max-width: 360px;
+        max-width: 380px;
         text-align: center;
+        box-sizing: border-box;
       }
       h1 {
-        font-size: 1.4rem;
+        font-size: 1.5rem;
         margin-bottom: 20px;
         color: #2563eb;
       }
       input {
         width: 100%;
         padding: 10px;
-        margin: 10px 0;
+        margin: 8px 0;
         border-radius: 6px;
         border: 1px solid #d1d5db;
         font-size: 1rem;
+        box-sizing: border-box;
       }
       button {
         width: 100%;
@@ -126,7 +129,7 @@ app.get("/login", (req, res) => {
         border-radius: 6px;
         font-size: 1rem;
         cursor: pointer;
-        margin-top: 10px;
+        margin-top: 12px;
       }
       button:hover {
         background: #1d4ed8;
@@ -173,7 +176,7 @@ app.get("/logout", (req, res) => {
 });
 
 // ==============================
-// 🧑‍💼 管理者ページ（モバイル対応）
+// 🧑‍💼 管理者ページ（モバイル対応＋余白調整）
 // ==============================
 app.get("/admin", async (req, res) => {
   if (!req.session.loggedIn) return res.redirect("/login");
@@ -198,20 +201,68 @@ app.get("/admin", async (req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>権限管理</title>
     <style>
-      body { font-family: 'Segoe UI', sans-serif; background: #f9fafb; color: #333; margin: 0; padding: 20px; }
-      h1 { text-align: center; color: #2563eb; }
-      .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-      .logout { color: #2563eb; text-decoration: none; font-weight: bold; }
-      table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
-      th, td { padding: 10px; text-align: left; font-size: 0.9rem; }
-      th { background: #2563eb; color: white; }
-      tr:nth-child(even) { background: #f1f5f9; }
-      button { background: #2563eb; border: none; color: white; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-      button:hover { background: #1d4ed8; }
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        background: #f9fafb;
+        color: #333;
+        margin: 0;
+        padding: 16px;
+        box-sizing: border-box;
+      }
+      h1 {
+        text-align: center;
+        color: #2563eb;
+      }
+      .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .logout {
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: bold;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      th, td {
+        padding: 10px;
+        text-align: left;
+        font-size: 0.9rem;
+      }
+      th {
+        background: #2563eb;
+        color: white;
+      }
+      tr:nth-child(even) {
+        background: #f1f5f9;
+      }
+      button {
+        background: #2563eb;
+        border: none;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
       .approved { color: #16a34a; font-weight: bold; }
       .pending { color: #dc2626; font-weight: bold; }
+
       @media (max-width: 600px) {
-        table, thead, tbody, th, td, tr { display: block; }
+        body { padding: 10px; }
+        table, thead, tbody, th, td, tr { display: block; width: 100%; }
         th { display: none; }
         tr { margin-bottom: 10px; background: #fff; border-radius: 8px; padding: 10px; }
         td { display: flex; justify-content: space-between; padding: 6px 8px; }
@@ -269,7 +320,7 @@ app.post("/revoke", async (req, res) => {
 });
 
 // ==============================
-// 📘 社内マニュアル（LIFF → Firestore承認 → Notion埋め込み）
+// 📘 社内マニュアル（Notionへ遷移）
 // ==============================
 app.get("/manual", (req, res) => {
   res.send(`
@@ -302,7 +353,7 @@ app.get("/manual", (req, res) => {
 });
 
 // ==============================
-// 🔍 Firestoreチェック → Notion埋め込み表示
+// 🔍 Firestore承認チェック → Notionへリダイレクト
 // ==============================
 app.get("/manual-check", async (req, res) => {
   const { userId } = req.query;
@@ -312,35 +363,9 @@ app.get("/manual-check", async (req, res) => {
   if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
   if (!doc.data().approved) return res.status(403).send("管理者の承認待ちです。");
 
-  // ✅ Notion埋め込み
-  res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>社内マニュアル</title>
-    <style>
-      body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-      iframe { width: 100vw; height: 100vh; border: none; }
-      header {
-        background: #2563eb; color: white; padding: 12px;
-        text-align: center; font-size: 1.1rem; font-weight: bold;
-      }
-    </style>
-  </head>
-  <body>
-    <header>📘 社内マニュアル</header>
-    <iframe src="https://www.notion.so/LINE-25d7cbd19fa1808e9fa4df130ecb96e7?source=copy_link"></iframe>
-  </body>
-  </html>
-  `);
+  // ✅ Notionにリダイレクト（直接遷移）
+  res.redirect("https://www.notion.so/LINE-25d7cbd19fa1808e9fa4df130ecb96e7");
 });
-
-// ==============================
-// 🪪 LIFF中継（旧URL互換）
-// ==============================
-app.get("/manual-liff", (req, res) => res.redirect("/manual"));
 
 // ==============================
 // 🚀 サーバー起動
