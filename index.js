@@ -107,40 +107,23 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// ================================
-// 🔐 管理者用：LINEユーザー名付き権限管理ページ
-// ================================
+// --- 管理画面 ---
 app.get("/admin", async (req, res) => {
   if (!req.session.loggedIn) return res.redirect("/login");
 
   const snapshot = await db.collection("permissions").get();
   const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  // --- LINEユーザー情報を取得 ---
-  const profiles = await Promise.all(
-    users.map(async (u) => {
-      try {
-        const profile = await client.getProfile(u.id);
-        return { ...u, displayName: profile.displayName };
-      } catch (err) {
-        // 退会などで取得できない場合
-        return { ...u, displayName: "（取得不可）" };
-      }
-    })
-  );
-
-  // --- HTML出力 ---
   let html = `
     <h1>権限管理ページ（管理者）</h1>
     <a href="/logout">ログアウト</a>
     <table border="1" cellspacing="0" cellpadding="5">
-      <tr><th>ユーザー名</th><th>User ID</th><th>承認状態</th><th>操作</th></tr>
+      <tr><th>User ID</th><th>承認状態</th><th>操作</th></tr>
   `;
 
-  for (const u of profiles) {
+  for (const u of users) {
     html += `
       <tr>
-        <td>${u.displayName}</td>
         <td>${u.id}</td>
         <td>${u.approved ? "✅ 承認済み" : "❌ 未承認"}</td>
         <td>
