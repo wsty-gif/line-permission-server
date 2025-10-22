@@ -107,41 +107,76 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// --- 管理画面 ---
+// ================================
+// 🔐 管理者用：LINEユーザー名付き権限管理ページ（安定版）
+// ================================
 app.get("/admin", async (req, res) => {
   if (!req.session.loggedIn) return res.redirect("/login");
 
-  const snapshot = await db.collection("permissions").get();
-  const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const snapshot = await db.collection("permissions").get();
+    if (snapshot.empty) {
+      return res.send("<h2>権限申請はまだありません。</h2>");
+    }
 
-  let html = `
-    <h1>権限管理ページ（管理者）</h1>
-    <a href="/logout">ログアウト</a>
-    <table border="1" cellspacing="0" cellpadding="5">
-      <tr><th>User ID</th><th>承認状態</th><th>操作</th></tr>
-  `;
+    const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  for (const u of users) {
-    html += `
-      <tr>
-        <td>${u.id}</td>
-        <td>${u.approved ? "✅ 承認済み" : "❌ 未承認"}</td>
-        <td>
-          <form method="POST" action="/approve">
-            <input type="hidden" name="id" value="${u.id}">
-            <button>承認</button>
-          </form>
-          <form method="POST" action="/revoke">
-            <input type="hidden" name="id" value="${u.id}">
-            <button>解除</button>
-          </form>
-        </td>
-      </tr>`;
+    // --- LINEユーザー名を安全に取得 ---
+    const results = [];
+    for (const u of users) {
+      let displayName = "（取得不可）";
+      try {
+        const profile = await client.getProfile(u.id);
+        displayName = profile.displayName || "（未設定）";
+      } catch (err) {
+        // getProfile失敗時（退会やブロックなど）でも落ちないようにする
+        console.warn(`⚠️ getProfile失敗: ${u.id}`, err.message);
+      }
+      results.push({ ...u, displayName });
+    }
+
+    // --- HTML構築 ---
+    let html = `
+      <h1>権限管理ページ（管理者）</h1>
+      <a href="/logout">ログアウト</a>
+      <table border="1" cellspacing="0" cellpadding="5">
+        <tr>
+          <th>LINE名</th>
+          <th>User ID</th>
+          <th>承認状態</th>
+          <th>操作</th>
+        </tr>
+    `;
+
+    for (const u of results) {
+      html += `
+        <tr>
+          <td>${u.displayName}</td>
+          <td>${u.id}</td>
+          <td>${u.approved ? "✅ 承認済み" : "❌ 未承認"}</td>
+          <td>
+            <form method="POST" action="/approve" style="display:inline">
+              <input type="hidden" name="id" value="${u.id}">
+              <button>承認</button>
+            </form>
+            <form method="POST" action="/revoke" style="display:inline">
+              <input type="hidden" name="id" value="${u.id}">
+              <button>解除</button>
+            </form>
+          </td>
+        </tr>
+      `;
+    }
+
+    html += "</table>";
+    res.send(html);
+
+  } catch (error) {
+    console.error("❌ /admin エラー:", error);
+    res.status(500).send("管理者ページの読み込み中にエラーが発生しました。");
   }
-
-  html += "</table>";
-  res.send(html);
 });
+
 
 app.post("/approve", express.urlencoded({ extended: true }), async (req, res) => {
   if (!req.session.loggedIn) return res.status(403).send("ログインが必要です");
