@@ -135,93 +135,58 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
   const users = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
   const lineClient = req.lineClient;
 
-  const results = [];
-  for (const u of users) {
-    let name = "（取得不可）";
-    try {
-      const p = await lineClient.getProfile(u.id);
-      name = p.displayName;
-    } catch {}
-    results.push({ ...u, displayName: name });
-  }
+    const results = users.map(u => ({
+    id: u.id,
+    name: u.name || "（未入力）",
+    approved: u.approved,
+    }));
 
-  // 🔍 検索フィルタ適用
-  const filtered = keyword
-    ? results.filter(u => u.displayName?.toLowerCase().includes(keyword))
-    : results;
-
-  res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${store} 権限管理</title>
+    res.send(`
+    <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-      body { font-family:'Segoe UI',sans-serif; background:#f9fafb; margin:0; padding:16px; }
-      h1 { text-align:center; color:#2563eb; font-size:1.5rem; margin-bottom:12px; }
-      .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
-      .links a { color:#2563eb; text-decoration:none; font-weight:bold; margin-right:10px; }
-      .search-box { width:100%; max-width:400px; display:flex; margin-top:8px; }
-      .search-box input { flex:1; padding:8px; border:1px solid #ccc; border-radius:6px 0 0 6px; }
-      .search-box button { padding:8px 12px; border:none; background:#2563eb; color:white; border-radius:0 6px 6px 0; cursor:pointer; }
-      .search-box button:hover { background:#1d4ed8; }
-
-      table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
-      th, td { padding:10px; text-align:left; border-bottom:1px solid #eee; }
-      th { background:#2563eb; color:white; }
-      button { background:#2563eb; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:0.9rem; }
-      button:hover { background:#1d4ed8; }
-
-      @media (max-width:768px){
-        table, thead, tbody, th, tr, td { display:block; }
-        thead { display:none; }
-        tr { margin-bottom:12px; background:white; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,0.1); padding:10px; }
-        td { display:flex; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #eee; }
-        td:last-child { border-bottom:none; }
-        td::before { content: attr(data-label); font-weight:bold; color:#555; }
-        button { width:48%; padding:8px; }
-        form { width:48%; display:inline-block; }
-      }
+    body { font-family:sans-serif; background:#f9fafb; padding:16px; margin:0; }
+    h1 { color:#2563eb; text-align:center; margin-bottom:10px; }
+    .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+    table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; font-size:14px; }
+    th,td { padding:8px; border-bottom:1px solid #eee; word-break:break-all; }
+    th { background:#2563eb; color:white; }
+    button { background:#2563eb; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:13px; }
+    button:hover { background:#1d4ed8; }
+    @media(max-width:600px){
+        body{padding:8px;}
+        table,thead,tbody,tr,th,td{display:block;}
+        th{display:none;}
+        tr{margin-bottom:10px; background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+        td{display:flex; justify-content:space-between; padding:6px 8px;}
+        td::before{content:attr(data-label); font-weight:bold; color:#555;}
+    }
     </style>
-  </head>
-  <body>
-    <h1>${store} 権限管理</h1>
+    </head><body>
     <div class="top-bar">
-      <div class="links">
-        <a href="/${store}/manual">📘マニュアル</a>
-        <a href="/logout">ログアウト</a>
-      </div>
-      <form class="search-box" method="GET" action="/${store}/admin">
-        <input type="text" name="q" placeholder="名前で検索" value="${keyword || ""}" />
-        <button>検索</button>
-      </form>
+        <h1>${store} 権限管理</h1>
+        <a href="/logout" style="color:#2563eb; text-decoration:none;">ログアウト</a>
     </div>
-
     <table>
-      <thead><tr><th>LINE名</th><th>User ID</th><th>状態</th><th>操作</th></tr></thead>
-      <tbody>
-        ${filtered.map(u => `
-          <tr>
-            <td data-label="LINE名">${u.displayName}</td>
+        <tr><th>名前</th><th>User ID</th><th>状態</th><th>操作</th></tr>
+        ${results.map(u => `
+        <tr>
+            <td data-label="名前">${u.name}</td>
             <td data-label="User ID">${u.id}</td>
             <td data-label="状態">${u.approved ? "承認済み" : "未承認"}</td>
             <td data-label="操作">
-              <form method="POST" action="/${store}/approve">
+            <form method="POST" action="/${store}/approve" style="display:inline">
                 <input type="hidden" name="id" value="${u.id}">
                 <button>承認</button>
-              </form>
-              <form method="POST" action="/${store}/revoke">
+            </form>
+            <form method="POST" action="/${store}/revoke" style="display:inline">
                 <input type="hidden" name="id" value="${u.id}">
                 <button style="background:#dc2626;">解除</button>
-              </form>
+            </form>
             </td>
-          </tr>
-        `).join("")}
-      </tbody>
+        </tr>`).join("")}
     </table>
-  </body>
-  </html>`);
+    </body></html>
+    `);
 });
 
 app.post("/:store/approve", ensureStore, async (req, res) => {
@@ -403,20 +368,18 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
       }, { merge: true });
 
     res.send(`
-      <html><head><meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: sans-serif; background:#f9fafb; display:flex; align-items:center; justify-content:center; height:100vh; }
-        .box { background:#fff; padding:24px; border-radius:10px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:360px; }
-        h2 { color:#16a34a; }
-        a { display:inline-block; margin-top:16px; color:#2563eb; text-decoration:none; }
-      </style></head><body>
-        <div class="box">
-          <h2>申請を受け付けました！</h2>
-          <p>管理者の承認をお待ちください。</p>
-          <a href="https://line.me/R/nv/chat">LINEに戻る</a>
-        </div>
-      </body></html>
+    <html><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+    body { font-family: sans-serif; background:#f9fafb; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+    .box { background:#fff; padding:24px; border-radius:10px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:360px; }
+    h2 { color:#16a34a; }
+    </style></head><body>
+    <div class="box">
+        <h2>申請を受け付けました！</h2>
+        <p>管理者の承認をお待ちください。</p>
+    </div>
+    </body></html>
     `);
   } catch (error) {
     console.error("Firestore保存失敗:", error);
