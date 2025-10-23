@@ -77,48 +77,6 @@ function ensureStore(req, res, next) {
 }
 
 // ==============================
-// 🛰️ Webhook（権限申請）
-// ==============================
-app.post("/webhook/:store", ensureStore, async (req, res) => {
-  const events = req.body.events || [];
-  const { store, lineClient, storeConf } = req;
-
-  try {
-    for (const event of events) {
-      if (event.type === "message" && event.message.type === "text") {
-        const userId = event.source.userId;
-        const text = event.message.text.trim();
-
-        if (text === "権限申請") {
-          await db
-            .collection("companies")
-            .doc(store)
-            .collection("permissions")
-            .doc(userId)
-            .set({ approved: false, requestedAt: new Date() }, { merge: true });
-
-          // 初期リッチメニュー設定（承認前）
-          try {
-            await lineClient.linkRichMenuToUser(userId, storeConf.richmenuBefore);
-          } catch (e) {
-            console.error("リッチメニュー初期設定失敗:", e.originalError?.response?.data || e);
-          }
-
-          await lineClient.replyMessage(event.replyToken, {
-            type: "text",
-            text: `権限申請を受け付けました。（${store}）`,
-          });
-        }
-      }
-    }
-    res.status(200).send("OK");
-  } catch (e) {
-    console.error("Webhook error:", e);
-    res.status(500).send("NG");
-  }
-});
-
-// ==============================
 // 🔐 管理者ログイン
 // ==============================
 app.get("/:store/login", ensureStore, (req, res) => {
@@ -166,6 +124,8 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
+  const keyword = (req.query.q || "").trim().toLowerCase();
+
   const snapshot = await db
     .collection("companies")
     .doc(store)
@@ -185,38 +145,83 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
     results.push({ ...u, displayName: name });
   }
 
+  // 🔍 検索フィルタ適用
+  const filtered = keyword
+    ? results.filter(u => u.displayName?.toLowerCase().includes(keyword))
+    : results;
+
   res.send(`
-  <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font-family:sans-serif; background:#f9fafb; padding:16px; }
-    h1 { color:#2563eb; }
-    table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; }
-    th,td { padding:8px; border-bottom:1px solid #eee; }
-    th { background:#2563eb; color:white; }
-    button { background:#2563eb; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; }
-    button:hover { background:#1d4ed8; }
-  </style></head><body>
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${store} 権限管理</title>
+    <style>
+      body { font-family:'Segoe UI',sans-serif; background:#f9fafb; margin:0; padding:16px; }
+      h1 { text-align:center; color:#2563eb; font-size:1.5rem; margin-bottom:12px; }
+      .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+      .links a { color:#2563eb; text-decoration:none; font-weight:bold; margin-right:10px; }
+      .search-box { width:100%; max-width:400px; display:flex; margin-top:8px; }
+      .search-box input { flex:1; padding:8px; border:1px solid #ccc; border-radius:6px 0 0 6px; }
+      .search-box button { padding:8px 12px; border:none; background:#2563eb; color:white; border-radius:0 6px 6px 0; cursor:pointer; }
+      .search-box button:hover { background:#1d4ed8; }
+
+      table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+      th, td { padding:10px; text-align:left; border-bottom:1px solid #eee; }
+      th { background:#2563eb; color:white; }
+      button { background:#2563eb; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:0.9rem; }
+      button:hover { background:#1d4ed8; }
+
+      @media (max-width:768px){
+        table, thead, tbody, th, tr, td { display:block; }
+        thead { display:none; }
+        tr { margin-bottom:12px; background:white; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,0.1); padding:10px; }
+        td { display:flex; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #eee; }
+        td:last-child { border-bottom:none; }
+        td::before { content: attr(data-label); font-weight:bold; color:#555; }
+        button { width:48%; padding:8px; }
+        form { width:48%; display:inline-block; }
+      }
+    </style>
+  </head>
+  <body>
     <h1>${store} 権限管理</h1>
-    <a href="/${store}/manual">📘マニュアル</a> | <a href="/logout">ログアウト</a>
-    <table><tr><th>LINE名</th><th>User ID</th><th>状態</th><th>操作</th></tr>
-    ${results.map(u => `
-      <tr>
-        <td>${u.displayName}</td>
-        <td>${u.id}</td>
-        <td>${u.approved ? "承認済み" : "未承認"}</td>
-        <td>
-          <form method="POST" action="/${store}/approve" style="display:inline">
-            <input type="hidden" name="id" value="${u.id}">
-            <button>承認</button>
-          </form>
-          <form method="POST" action="/${store}/revoke" style="display:inline">
-            <input type="hidden" name="id" value="${u.id}">
-            <button style="background:#dc2626;">解除</button>
-          </form>
-        </td>
-      </tr>`).join("")}
+    <div class="top-bar">
+      <div class="links">
+        <a href="/${store}/manual">📘マニュアル</a>
+        <a href="/logout">ログアウト</a>
+      </div>
+      <form class="search-box" method="GET" action="/${store}/admin">
+        <input type="text" name="q" placeholder="名前で検索" value="${keyword || ""}" />
+        <button>検索</button>
+      </form>
+    </div>
+
+    <table>
+      <thead><tr><th>LINE名</th><th>User ID</th><th>状態</th><th>操作</th></tr></thead>
+      <tbody>
+        ${filtered.map(u => `
+          <tr>
+            <td data-label="LINE名">${u.displayName}</td>
+            <td data-label="User ID">${u.id}</td>
+            <td data-label="状態">${u.approved ? "承認済み" : "未承認"}</td>
+            <td data-label="操作">
+              <form method="POST" action="/${store}/approve">
+                <input type="hidden" name="id" value="${u.id}">
+                <button>承認</button>
+              </form>
+              <form method="POST" action="/${store}/revoke">
+                <input type="hidden" name="id" value="${u.id}">
+                <button style="background:#dc2626;">解除</button>
+              </form>
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
     </table>
-  </body></html>`);
+  </body>
+  </html>`);
 });
 
 app.post("/:store/approve", ensureStore, async (req, res) => {
@@ -289,3 +294,132 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 // ==============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
+
+// ==============================
+// 🧾 権限申請フォーム（LIFFログイン → Firestore登録）
+// ==============================
+app.get("/:store/apply", ensureStore, (req, res) => {
+  const { store, storeConf } = req;
+
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${store} 権限申請</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        background: #f9fafb;
+        color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .form-box {
+        background: #fff;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        width: 90%;
+        max-width: 360px;
+        text-align: center;
+      }
+      h1 { color: #2563eb; margin-bottom: 16px; font-size: 1.4rem; }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 12px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        font-size: 1rem;
+      }
+      button {
+        width: 100%;
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      button:hover { background: #1d4ed8; }
+    </style>
+  </head>
+  <body>
+    <div class="form-box">
+      <h1>${store} 権限申請</h1>
+      <form id="applyForm" method="POST" action="/${store}/apply/submit">
+        <input type="hidden" name="userId" id="userId">
+        <input type="text" name="name" id="name" placeholder="名前を入力" required>
+        <button type="submit">申請</button>
+      </form>
+    </div>
+
+    <script>
+      async function initLiff() {
+        try {
+          await liff.init({ liffId: "${storeConf.liffId}" });
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
+          const profile = await liff.getProfile();
+          document.getElementById("userId").value = profile.userId;
+        } catch (err) {
+          alert("LIFF初期化に失敗しました: " + err.message);
+        }
+      }
+      initLiff();
+    </script>
+  </body>
+  </html>
+  `);
+});
+
+app.post("/:store/apply/submit", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, name } = req.body;
+
+  if (!userId || !name) {
+    return res.status(400).send("名前またはLINE情報が取得できませんでした。");
+  }
+
+  try {
+    await db
+      .collection("companies")
+      .doc(store)
+      .collection("permissions")
+      .doc(userId)
+      .set({
+        name,
+        approved: false,
+        requestedAt: new Date(),
+      }, { merge: true });
+
+    res.send(`
+      <html><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: sans-serif; background:#f9fafb; display:flex; align-items:center; justify-content:center; height:100vh; }
+        .box { background:#fff; padding:24px; border-radius:10px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:360px; }
+        h2 { color:#16a34a; }
+        a { display:inline-block; margin-top:16px; color:#2563eb; text-decoration:none; }
+      </style></head><body>
+        <div class="box">
+          <h2>申請を受け付けました！</h2>
+          <p>管理者の承認をお待ちください。</p>
+          <a href="https://line.me/R/nv/chat">LINEに戻る</a>
+        </div>
+      </body></html>
+    `);
+  } catch (error) {
+    console.error("Firestore保存失敗:", error);
+    res.status(500).send("申請処理中にエラーが発生しました。");
+  }
+});
