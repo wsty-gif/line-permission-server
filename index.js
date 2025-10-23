@@ -5,7 +5,38 @@ const cors = require("cors");
 const session = require("express-session");
 
 // ==============================
-// 🔥 Firebase初期化
+// 🔧 店舗ごとの設定（環境変数ベース）
+//    ここに店舗を追加してください（storeA, storeB など）
+// ==============================
+const STORES = {
+  storeA: {
+    channelAccessToken: process.env.STORE_A_CHANNEL_ACCESS_TOKEN,
+    channelSecret: process.env.STORE_A_CHANNEL_SECRET,
+    liffId: process.env.STORE_A_LIFF_ID,
+    manualUrl: process.env.STORE_A_MANUAL_URL, // Notion公開URL
+  },
+  storeB: {
+    channelAccessToken: process.env.STORE_B_CHANNEL_ACCESS_TOKEN,
+    channelSecret: process.env.STORE_B_CHANNEL_SECRET,
+    liffId: process.env.STORE_B_LIFF_ID,
+    manualUrl: process.env.STORE_B_MANUAL_URL,
+  },
+  // 追加：storeC, storeD …
+};
+
+// LINEクライアントを店舗ごとに用意
+const lineClients = {};
+for (const [store, conf] of Object.entries(STORES)) {
+  if (conf.channelAccessToken && conf.channelSecret) {
+    lineClients[store] = new Client({
+      channelAccessToken: conf.channelAccessToken,
+      channelSecret: conf.channelSecret,
+    });
+  }
+}
+
+// ==============================
+// 🔥 Firebase 初期化
 // ==============================
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -19,23 +50,12 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 // ==============================
-// 💬 LINE設定
-// ==============================
-const config = {
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-  channelSecret: process.env.LINE_CHANNEL_SECRET,
-};
-const client = new Client(config);
-
-// ==============================
-// 🚀 Express設定
+// 🚀 Express 基本設定
 // ==============================
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// --- セッション設定 ---
 app.use(
   session({
     secret: process.env.ADMIN_SESSION_SECRET || "secret-key",
@@ -45,330 +65,294 @@ app.use(
 );
 
 // ==============================
-// 🌐 Webhook（署名検証なし）
+// 🧭 ユーティリティ
 // ==============================
-app.post("/webhook", async (req, res) => {
+function ensureStore(req, res, next) {
+  const store = req.params.store;
+  if (!store || !STORES[store]) {
+    return res.status(404).send("店舗が存在しません。URL を確認してください。");
+  }
+  req.store = store;
+  req.storeConf = STORES[store];
+  req.lineClient = lineClients[store];
+  return next();
+}
+
+// ==============================
+// 🛰️ Webhook（店舗別エンドポイント）
+// ※ 本番は署名検証を入れるのが推奨だが、まずは動作優先で省略
+// ==============================
+app.post("/webhook/:store", ensureStore, async (req, res) => {
   const events = req.body.events || [];
-  for (const event of events) {
-    if (event.type === "message" && event.message.type === "text") {
-      const userId = event.source.userId;
-      const text = event.message.text.trim();
+  const store = req.store;
 
-      if (text === "権限申請") {
-        await db.collection("permissions").doc(userId).set(
-          {
-            approved: false,
-            requestedAt: new Date(),
-          },
-          { merge: true }
-        );
+  try {
+    for (const event of events) {
+      if (event.type === "message" && event.message.type === "text") {
+        const userId = event.source.userId;
+        const text = (event.message.text || "").trim();
 
-        await client.replyMessage(event.replyToken, {
-          type: "text",
-          text: "権限申請を受け付けました。",
-        });
+        // 例：「権限申請」だけで登録。文言拡張はここで分岐可能（例：役割）
+        if (text === "権限申請") {
+          await db
+            .collection("companies")
+            .doc(store)
+            .collection("permissions")
+            .doc(userId)
+            .set(
+              { approved: false, requestedAt: new Date() },
+              { merge: true }
+            );
+
+          if (req.lineClient) {
+            await req.lineClient.replyMessage(event.replyToken, {
+              type: "text",
+              text: `権限申請を受け付けました。（店舗: ${store}）`,
+            });
+          }
+        }
       }
     }
+    res.status(200).send("OK");
+  } catch (e) {
+    console.error("Webhook error:", e);
+    res.status(500).send("NG");
   }
-  res.status(200).send("OK");
 });
 
 // ==============================
-// 🔐 管理者ログイン画面（モバイル対応）
+// 🔐 管理者ログイン（共通）
 // ==============================
 app.get("/login", (req, res) => {
   res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
+  <!DOCTYPE html><html lang="ja"><head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>管理者ログイン</title>
     <style>
+      * { box-sizing: border-box; }
       body {
         font-family: 'Segoe UI', sans-serif;
-        background: #f9fafb;
-        color: #333;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        margin: 0;
-        padding: 16px;
+        background: #f9fafb; color: #333;
+        display: flex; align-items: center; justify-content: center;
+        height: 100vh; margin: 0; padding: 16px;
       }
       .login-container {
-        background: white;
-        padding: 30px 24px;
-        border-radius: 12px;
+        background: #fff; padding: 28px 22px; border-radius: 12px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        width: 100%;
-        max-width: 380px;
-        text-align: center;
-        box-sizing: border-box;
+        width: 100%; max-width: 380px; text-align: center;
       }
-      h1 {
-        font-size: 1.5rem;
-        margin-bottom: 20px;
-        color: #2563eb;
-      }
-      input {
-        width: 100%;
-        padding: 10px;
-        margin: 8px 0;
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
-        font-size: 1rem;
-        box-sizing: border-box;
+      h1 { font-size: 1.5rem; margin-bottom: 18px; color: #2563eb; }
+      input, select {
+        width: 100%; padding: 10px; margin: 8px 0;
+        border-radius: 6px; border: 1px solid #d1d5db; font-size: 1rem;
       }
       button {
-        width: 100%;
-        background: #2563eb;
-        color: white;
-        border: none;
-        padding: 10px;
-        border-radius: 6px;
-        font-size: 1rem;
-        cursor: pointer;
-        margin-top: 12px;
+        width: 100%; background: #2563eb; color: #fff; border: none;
+        padding: 10px; border-radius: 6px; font-size: 1rem; cursor: pointer; margin-top: 12px;
       }
-      button:hover {
-        background: #1d4ed8;
-      }
+      button:hover { background: #1d4ed8; }
+      .hint { font-size: .85rem; color:#555; margin-top:8px; }
     </style>
-  </head>
-  <body>
+  </head><body>
     <div class="login-container">
       <h1>管理者ログイン</h1>
       <form method="POST" action="/login">
-        <input type="text" name="user" placeholder="ユーザーID" required />
-        <input type="password" name="pass" placeholder="パスワード" required />
+        <select name="store" required>
+          <option value="" disabled selected>店舗を選択</option>
+          ${Object.keys(STORES).map(s => `<option value="${s}">${s}</option>`).join("")}
+        </select>
+        <input type="text" name="user" placeholder="ユーザーID（共通）" required />
+        <input type="password" name="pass" placeholder="パスワード（共通）" required />
         <button type="submit">ログイン</button>
       </form>
+      <div class="hint">※ ログイン情報は全店舗共通。店舗選択で表示対象が切り替わります。</div>
     </div>
-  </body>
-  </html>
+  </body></html>
   `);
 });
 
-// ==============================
-// ✅ ログイン処理
-// ==============================
 app.post("/login", (req, res) => {
-  const { user, pass } = req.body;
+  const { user, pass, store } = req.body;
+  if (!store || !STORES[store]) return res.status(400).send("店舗を選択してください。");
+
   const ADMIN_USER = process.env.ADMIN_USER || "owner";
   const ADMIN_PASS = process.env.ADMIN_PASS || "admin";
 
   if (user === ADMIN_USER && pass === ADMIN_PASS) {
     req.session.loggedIn = true;
-    res.redirect("/admin");
-  } else {
-    res.send("<h3>ログイン失敗</h3><a href='/login'>戻る</a>");
+    req.session.store = store;
+    return res.redirect(`/${store}/admin`);
   }
+  res.send("<h3>ログイン失敗</h3><a href='/login'>戻る</a>");
 });
 
-// ==============================
-// 🚪 ログアウト
-// ==============================
 app.get("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.redirect("/login");
-  });
+  req.session.destroy(() => res.redirect("/login"));
 });
 
 // ==============================
-// 🧑‍💼 管理者ページ（モバイル対応＋余白調整）
+// 🧑‍💼 管理者ページ（店舗別、一覧はその店舗のみ）
 // ==============================
-app.get("/admin", async (req, res) => {
+app.get("/:store/admin", ensureStore, async (req, res) => {
+  // ログイン必須＋ログイン時に選択した店舗のみ閲覧可
   if (!req.session.loggedIn) return res.redirect("/login");
+  if (req.session.store !== req.store) {
+    return res.status(403).send("選択した店舗とログイン済み店舗が一致しません。ログアウトして選び直してください。");
+  }
 
-  const snapshot = await db.collection("permissions").get();
-  const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const store = req.store;
+  const snapshot = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .get();
 
+  const users = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // LINE表示名取得（失敗時は「取得不可」）
   const results = [];
   for (const u of users) {
     let displayName = "（取得不可）";
     try {
-      const profile = await client.getProfile(u.id);
-      displayName = profile.displayName || "（未設定）";
+      if (req.lineClient) {
+        const p = await req.lineClient.getProfile(u.id);
+        displayName = p.displayName || displayName;
+      }
     } catch {}
     results.push({ ...u, displayName });
   }
 
-  let html = `
-  <html lang="ja">
-  <head>
+  // シンプル＋モバイル対応
+  const html = `
+  <!DOCTYPE html><html lang="ja"><head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>権限管理</title>
+    <title>権限管理（${store}）</title>
     <style>
-      body {
-        font-family: 'Segoe UI', sans-serif;
-        background: #f9fafb;
-        color: #333;
-        margin: 0;
-        padding: 16px;
-        box-sizing: border-box;
-      }
-      h1 {
-        text-align: center;
-        color: #2563eb;
-      }
-      .top-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        margin-bottom: 10px;
-      }
-      .logout {
-        color: #2563eb;
-        text-decoration: none;
-        font-weight: bold;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background: #fff;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      th, td {
-        padding: 10px;
-        text-align: left;
-        font-size: 0.9rem;
-      }
-      th {
-        background: #2563eb;
-        color: white;
-      }
-      tr:nth-child(even) {
-        background: #f1f5f9;
-      }
-      button {
-        background: #2563eb;
-        border: none;
-        color: white;
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.8rem;
-      }
-      button:hover {
-        background: #1d4ed8;
-      }
-      .approved { color: #16a34a; font-weight: bold; }
-      .pending { color: #dc2626; font-weight: bold; }
-
-      @media (max-width: 600px) {
-        body { padding: 10px; }
-        table, thead, tbody, th, td, tr { display: block; width: 100%; }
-        th { display: none; }
-        tr { margin-bottom: 10px; background: #fff; border-radius: 8px; padding: 10px; }
-        td { display: flex; justify-content: space-between; padding: 6px 8px; }
-        td::before { content: attr(data-label); font-weight: bold; color: #555; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Segoe UI', sans-serif; background:#f9fafb; color:#333; margin:0; padding:16px; }
+      .top { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+      h1 { margin:0; color:#2563eb; font-size:1.4rem; }
+      .actions a { color:#2563eb; text-decoration:none; font-weight:bold; }
+      table { width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden;
+              box-shadow:0 2px 6px rgba(0,0,0,.1); margin-top:12px; }
+      th, td { padding:10px; text-align:left; font-size:.95rem; }
+      th { background:#2563eb; color:#fff; }
+      tr:nth-child(even) { background:#f1f5f9; }
+      button { background:#2563eb; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:.85rem; }
+      button:hover { background:#1d4ed8; }
+      .approved { color:#16a34a; font-weight:bold; }
+      .pending { color:#dc2626; font-weight:bold; }
+      @media (max-width: 640px) {
+        table, thead, tbody, th, td, tr { display:block; width:100%; }
+        th { display:none; }
+        tr { margin-bottom:10px; background:#fff; border-radius:8px; padding:10px; }
+        td { display:flex; justify-content:space-between; padding:6px 8px; }
+        td::before { content: attr(data-label); font-weight:bold; color:#555; }
       }
     </style>
-  </head>
-  <body>
-    <div class="top-bar">
-      <h1>権限管理ページ</h1>
-      <a href="/logout" class="logout">ログアウト</a>
+  </head><body>
+    <div class="top">
+      <h1>権限管理（${store}）</h1>
+      <div class="actions">
+        <a href="/${store}/manual">📘 マニュアル確認</a>　|　
+        <a href="/logout">ログアウト</a>
+      </div>
     </div>
     <table>
-      <thead><tr><th>LINE名</th><th>User ID</th><th>承認状態</th><th>操作</th></tr></thead>
-      <tbody>`;
-
-  for (const u of results) {
-    html += `
-      <tr>
-        <td data-label="LINE名">${u.displayName}</td>
-        <td data-label="User ID">${u.id}</td>
-        <td data-label="承認状態" class="${u.approved ? "approved" : "pending"}">
-          ${u.approved ? "承認済み" : "未承認"}
-        </td>
-        <td data-label="操作">
-          <form method="POST" action="/approve" style="display:inline">
-            <input type="hidden" name="id" value="${u.id}">
-            <button>承認</button>
-          </form>
-          <form method="POST" action="/revoke" style="display:inline">
-            <input type="hidden" name="id" value="${u.id}">
-            <button style="background:#dc2626;">解除</button>
-          </form>
-        </td>
-      </tr>`;
-  }
-
-  html += `</tbody></table></body></html>`;
+      <thead><tr><th>LINE名</th><th>User ID</th><th>状態</th><th>操作</th></tr></thead>
+      <tbody>
+        ${results.map(u => `
+          <tr>
+            <td data-label="LINE名">${u.displayName}</td>
+            <td data-label="User ID">${u.id}</td>
+            <td data-label="状態" class="${u.approved ? "approved" : "pending"}">
+              ${u.approved ? "承認済み" : "未承認"}
+            </td>
+            <td data-label="操作">
+              <form method="POST" action="/${store}/approve" style="display:inline">
+                <input type="hidden" name="id" value="${u.id}">
+                <button>承認</button>
+              </form>
+              <form method="POST" action="/${store}/revoke" style="display:inline">
+                <input type="hidden" name="id" value="${u.id}">
+                <button style="background:#dc2626;">解除</button>
+              </form>
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  </body></html>
+  `;
   res.send(html);
 });
 
-// ==============================
-// ✅ 承認・解除API
-// ==============================
-app.post("/approve", async (req, res) => {
-  if (!req.session.loggedIn) return res.status(403).send("ログインが必要です");
-  await db.collection("permissions").doc(req.body.id).update({ approved: true });
-  res.redirect("/admin");
+// 承認・解除（店舗別）
+app.post("/:store/approve", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.status(403).send("権限がありません。");
+  await db.collection("companies").doc(req.store).collection("permissions").doc(req.body.id)
+    .set({ approved: true }, { merge: true });
+  res.redirect(`/${req.store}/admin`);
 });
 
-app.post("/revoke", async (req, res) => {
-  if (!req.session.loggedIn) return res.status(403).send("ログインが必要です");
-  await db.collection("permissions").doc(req.body.id).update({ approved: false });
-  res.redirect("/admin");
+app.post("/:store/revoke", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.status(403).send("権限がありません。");
+  await db.collection("companies").doc(req.store).collection("permissions").doc(req.body.id)
+    .set({ approved: false }, { merge: true });
+  res.redirect(`/${req.store}/admin`);
 });
 
 // ==============================
-// 📘 社内マニュアル（Notionへ遷移）
+// 📘 マニュアル（店舗別：LIFF→承認チェック→Notionへ遷移）
 // ==============================
-app.get("/manual", (req, res) => {
+app.get("/:store/manual", ensureStore, (req, res) => {
+  const { liffId } = req.storeConf;
+  if (!liffId) return res.status(500).send("LIFF ID が未設定です。");
   res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8">
-    <title>社内マニュアル</title>
+  <!DOCTYPE html><html lang="ja"><head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社内マニュアル（${req.store}）</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  </head>
-  <body>
+  </head><body>
     <p>LINEログイン中です...</p>
     <script>
-      const liffId = "${process.env.LIFF_ID}";
+      const liffId = "${liffId}";
       async function main() {
         await liff.init({ liffId });
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
+        if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = await liff.getProfile();
         const userId = profile.userId;
-        window.location.href = "/manual-check?userId=" + encodeURIComponent(userId);
+        location.href = "/${encodeURIComponent(req.store)}/manual-check?userId=" + encodeURIComponent(userId);
       }
       main();
     </script>
-  </body>
-  </html>
+  </body></html>
   `);
 });
 
-// ==============================
-// 🔍 Firestore承認チェック → Notionへリダイレクト
-// ==============================
-app.get("/manual-check", async (req, res) => {
+app.get("/:store/manual-check", ensureStore, async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.status(400).send("ユーザー情報が取得できません。");
 
-  const doc = await db.collection("permissions").doc(userId).get();
-  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
-  if (!doc.data().approved) return res.status(403).send("管理者の承認待ちです。");
+  const doc = await db.collection("companies").doc(req.store).collection("permissions").doc(userId).get();
+  if (!doc.exists) return res.status(404).send("権限申請が未登録です。LINEで「権限申請」と送信してください。");
+  const { approved } = doc.data();
+  if (!approved) return res.status(403).send("管理者の承認待ちです。");
 
-  // ✅ Notionにリダイレクト（直接遷移）
-  res.redirect("https://www.notion.so/LINE-25d7cbd19fa1808e9fa4df130ecb96e7");
+  const manualUrl = req.storeConf.manualUrl;
+  if (!manualUrl) return res.status(500).send("この店舗のマニュアルURLが未設定です。");
+  return res.redirect(manualUrl); // ← 直接 Notion へ遷移
 });
 
-// ==============================
-// 🚀 サーバー起動
-// ==============================
+// ルート
+app.get("/", (_req, res) => {
+  res.send("OK /login から開始してください。");
+});
+
+// 起動
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
