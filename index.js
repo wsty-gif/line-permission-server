@@ -117,32 +117,32 @@ app.post("/:store/login", ensureStore, (req, res) => {
 });
 
 // ==============================
-// 🧑‍💼 管理者画面（名前検索対応・UI改善）
+// 🧑‍💼 管理者画面（リアルタイム検索対応）
 // ==============================
 app.get("/:store/admin", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
-  const keyword = (req.query.q || "").trim().toLowerCase();
-
   const snapshot = await db
     .collection("companies")
     .doc(store)
     .collection("permissions")
     .get();
 
-  let users = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-  if (keyword) {
-    users = users.filter(u => (u.name || "").toLowerCase().includes(keyword));
-  }
+  const users = snapshot.docs.map(d => ({
+    id: d.id,
+    name: d.data().name || "（未入力）",
+    approved: d.data().approved
+  }));
 
+  // 🔽 HTML生成
   res.send(`
   <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background:#f9fafb; margin:0; padding:20px; }
-    h1 { color:#2563eb; margin-bottom:8px; text-align:center; }
-    .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+    body { font-family:'Segoe UI',sans-serif; background:#f9fafb; margin:0; padding:20px; }
+    h1 { color:#2563eb; text-align:center; margin-bottom:10px; }
+    .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
     .search-box { flex:1; display:flex; justify-content:center; margin-top:10px; }
     input[type="text"] {
       padding:8px; border:1px solid #ccc; border-radius:6px; width:90%; max-width:280px;
@@ -151,10 +151,8 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
     th,td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
     th { background:#2563eb; color:white; font-weight:500; }
     tr:hover { background:#f3f4f6; }
-    button {
-      background:#2563eb; color:white; border:none; padding:6px 10px;
-      border-radius:4px; cursor:pointer; font-size:13px;
-    }
+    button { background:#2563eb; color:white; border:none; padding:6px 10px;
+      border-radius:4px; cursor:pointer; font-size:13px; }
     button:hover { background:#1d4ed8; }
     @media(max-width:600px){
       table,thead,tbody,tr,th,td{display:block;}
@@ -167,33 +165,51 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
   </head><body>
     <h1>${store} 権限管理</h1>
     <div class="top-bar">
-      <form method="GET" action="/${store}/admin" class="search-box">
-        <input type="text" name="q" placeholder="名前で検索..." value="${keyword}">
-      </form>
-      <a href="/logout" style="color:#2563eb; text-decoration:none;">ログアウト</a>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="名前で検索...">
+      </div>
+      <a href="/logout" style="color:#2563eb;text-decoration:none;">ログアウト</a>
     </div>
-    <table>
-      <thead>
-        <tr><th>名前</th><th>状態</th><th>操作</th></tr>
-      </thead>
-      <tbody>
-        ${users.map(u => `
+
+    <table id="userTable">
+      <thead><tr><th>名前</th><th>状態</th><th>操作</th></tr></thead>
+      <tbody id="userBody"></tbody>
+    </table>
+
+    <script>
+      const users = ${JSON.stringify(users)};
+      const tbody = document.getElementById("userBody");
+      const input = document.getElementById("searchInput");
+
+      function render(list){
+        tbody.innerHTML = list.map(u => \`
           <tr>
-            <td data-label="名前">${u.name || "（未入力）"}</td>
-            <td data-label="状態">${u.approved ? "✅ 承認済み" : "⏳ 未承認"}</td>
+            <td data-label="名前">\${u.name}</td>
+            <td data-label="状態">\${u.approved ? "✅ 承認済み" : "⏳ 未承認"}</td>
             <td data-label="操作">
               <form method="POST" action="/${store}/approve" style="display:inline">
-                <input type="hidden" name="id" value="${u.id}">
+                <input type="hidden" name="id" value="\${u.id}">
                 <button>承認</button>
               </form>
               <form method="POST" action="/${store}/revoke" style="display:inline">
-                <input type="hidden" name="id" value="${u.id}">
+                <input type="hidden" name="id" value="\${u.id}">
                 <button style="background:#dc2626;">解除</button>
               </form>
             </td>
-          </tr>`).join("")}
-      </tbody>
-    </table>
+          </tr>\`).join("");
+      }
+
+      input.addEventListener("input", e=>{
+        const keyword = e.target.value.trim().toLowerCase();
+        const filtered = keyword
+          ? users.filter(u => u.name.toLowerCase().includes(keyword))
+          : users;
+        render(filtered);
+      });
+
+      // 初期表示
+      render(users);
+    </script>
   </body></html>
   `);
 });
