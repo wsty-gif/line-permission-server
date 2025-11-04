@@ -382,64 +382,98 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
 app.get("/:store/attendance", ensureStore, (req, res) => {
   const { storeConf, store } = req;
   res.send(`
-  <!DOCTYPE html><html lang="ja"><head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${store} 勤怠打刻</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body{font-family:sans-serif;background:#f9fafb;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}
-    .box{background:white;padding:24px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);text-align:center;width:90%;max-width:340px;}
-    h1{color:#2563eb;margin-bottom:20px;}
-    button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;font-size:1rem;cursor:pointer;}
-    .in{background:#16a34a;color:white;}
-    .out{background:#dc2626;color:white;}
-    #statusMsg{margin-top:8px;color:#555;font-size:0.9rem;}
-  </style></head><body>
-  <div class="box">
-    <h1>勤怠打刻</h1>
-    <p id="username"></p>
-    <p id="statusMsg"></p>
-    <button class="in" id="btnIn" onclick="send('in')">出勤</button>
-    <button class="out" id="btnOut" onclick="send('out')">退勤</button>
-  </div>
-  <script>
-    async function init(){
-      await liff.init({liffId:"${storeConf.liffId}"});
-      if(!liff.isLoggedIn()) return liff.login();
-      const p = await liff.getProfile();
-      document.getElementById("username").innerText = p.displayName + " さん";
-      window.user = p;
-
-      const res = await fetch("/${store}/attendance/status?userId="+p.userId);
-      const data = await res.json();
-      const status = document.getElementById("statusMsg");
-      if(data.clockIn && data.clockOut){
-        status.innerText = "本日の打刻は完了しています。";
-        document.getElementById("btnIn").disabled = true;
-        document.getElementById("btnOut").disabled = true;
-      } else if(data.clockIn){
-        status.innerText = "出勤済みです。退勤を押してください。";
-        document.getElementById("btnIn").disabled = true;
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${store} 出退勤</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #f9fafb;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
       }
-    }
+      .container {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        text-align: center;
+        width: 90%;
+        max-width: 360px;
+      }
+      h1 {
+        color: #2563eb;
+        font-size: 1.3rem;
+        margin-bottom: 16px;
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        margin-top: 10px;
+        cursor: pointer;
+      }
+      .in { background: #16a34a; color: white; }
+      .out { background: #dc2626; color: white; }
+      .in:disabled, .out:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+      }
+      .msg {
+        margin-top: 14px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>${store} 勤怠打刻</h1>
+      <p id="userName">ログイン中...</p>
+      <button class="in" id="clockInBtn">出勤</button>
+      <button class="out" id="clockOutBtn">退勤</button>
+      <p class="msg" id="message"></p>
+    </div>
 
-    async function send(type){
-      const res = await fetch("/${store}/attendance/submit",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          userId:window.user.userId,
-          name:window.user.displayName,
-          type
-        })
-      });
-      const text = await res.text();
-      alert(text);
-      location.reload();
-    }
-    init();
-  </script></body></html>
+    <script>
+      async function main() {
+        await liff.init({ liffId: "${storeConf.liffId}" });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        const profile = await liff.getProfile();
+        const userId = profile.userId;
+        const name = profile.displayName;
+        document.getElementById("userName").textContent = name + " さん";
+
+        const today = new Date().toISOString().slice(0, 10);
+
+        async function send(type) {
+          const res = await fetch("/${store}/attendance/" + type, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, name, date: today })
+          });
+          const data = await res.text();
+          document.getElementById("message").textContent = data;
+        }
+
+        document.getElementById("clockInBtn").onclick = () => send("clockIn");
+        document.getElementById("clockOutBtn").onclick = () => send("clockOut");
+      }
+      main();
+    </script>
+  </body>
+  </html>
   `);
 });
 
@@ -824,30 +858,67 @@ app.get("/:store/attendance-admin", ensureStore, async (req, res) => {
 
 
 // 🔄 勤怠修正API（Firestore Timestamp更新対応）
-app.post("/:store/attendance-admin/update", ensureStore, express.json(), async (req, res) => {
+app.post("/:store/attendance-admin/update", ensureStore, async (req, res) => {
   const { id, clockIn, clockOut } = req.body;
-  if (!id || !clockIn || !clockOut) return res.status(400).send("データが不足しています");
-
+  const [userId, date] = id.split("_");
   const store = req.store;
-  const ref = db.collection("companies").doc(store).collection("attendance").doc(id);
-  const doc = await ref.get();
-  if (!doc.exists) return res.status(404).send("該当データなし");
 
-  const date = doc.data().date;
-  const dateStr = date + "T";
-  const inDate = new Date(dateStr + clockIn + ":00+09:00");
-  const outDate = new Date(dateStr + clockOut + ":00+09:00");
-  if (inDate >= outDate) return res.status(400).send("出勤時間が退勤より後です");
+  const ci = admin.firestore.Timestamp.fromDate(new Date(clockIn));
+  const co = admin.firestore.Timestamp.fromDate(new Date(clockOut));
 
-  const totalHours = (outDate - inDate) / (1000 * 60 * 60);
+  if (ci.toMillis() >= co.toMillis()) {
+    return res.status(400).send("退勤時刻は出勤より後にしてください。");
+  }
 
-  await ref.set({
-    clockIn: admin.firestore.Timestamp.fromDate(inDate),
-    clockOut: admin.firestore.Timestamp.fromDate(outDate),
-    totalHours
-  }, { merge: true });
+  await db.collection("companies").doc(store).collection("attendance").doc(id).update({
+    clockIn: ci,
+    clockOut: co,
+  });
 
-  res.send("OK");
+  res.send("更新しました");
+});
+
+// 出勤ボタン処理
+app.post("/:store/attendance/clockIn", ensureStore, async (req, res) => {
+  const { userId, name, date } = req.body;
+  const store = req.store;
+  const docRef = db.collection("companies").doc(store).collection("attendance").doc(`${userId}_${date}`);
+  const doc = await docRef.get();
+
+  if (doc.exists && doc.data().clockIn) {
+    return res.send("⚠️ すでに出勤打刻済みです。");
+  }
+
+  await docRef.set(
+    {
+      userId,
+      name,
+      date,
+      clockIn: admin.firestore.Timestamp.now(),
+    },
+    { merge: true }
+  );
+  res.send("✅ 出勤を記録しました。");
+});
+
+// 退勤ボタン処理
+app.post("/:store/attendance/clockOut", ensureStore, async (req, res) => {
+  const { userId, date } = req.body;
+  const store = req.store;
+  const docRef = db.collection("companies").doc(store).collection("attendance").doc(`${userId}_${date}`);
+  const doc = await docRef.get();
+
+  if (!doc.exists || !doc.data().clockIn) {
+    return res.send("⚠️ 出勤打刻がありません。");
+  }
+  if (doc.data().clockOut) {
+    return res.send("⚠️ すでに退勤打刻済みです。");
+  }
+
+  await docRef.update({
+    clockOut: admin.firestore.Timestamp.now(),
+  });
+  res.send("✅ 退勤を記録しました。");
 });
 
 // ==============================
