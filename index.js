@@ -116,14 +116,23 @@ app.post("/:store/login", ensureStore, (req, res) => {
   }
 });
 
+// 🔓 ログアウト
+app.get("/logout", (req, res) => {
+  const store = req.session?.store || "storeA";
+  req.session.destroy(() => {
+    res.redirect(`/${store}/login`);
+  });
+});
+
 // ==============================
-// 🧑‍💼 管理者画面（リアルタイム検索対応）
+// 🧑‍💼 管理者画面（権限管理・名前リアルタイム検索）
 // ==============================
 app.get("/:store/admin", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
+
   const snapshot = await db
     .collection("companies")
     .doc(store)
@@ -133,16 +142,15 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
   const users = snapshot.docs.map(d => ({
     id: d.id,
     name: d.data().name || "（未入力）",
-    approved: d.data().approved
+    approved: d.data().approved,
   }));
 
-  // 🔽 HTML生成
   res.send(`
   <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family:'Segoe UI',sans-serif; background:#f9fafb; margin:0; padding:20px; }
-    h1 { color:#2563eb; text-align:center; margin-bottom:10px; }
-    .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+    body { font-family: 'Segoe UI', sans-serif; background:#f9fafb; margin:0; padding:20px; }
+    h1 { color:#2563eb; margin-bottom:8px; text-align:center; }
+    .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
     .search-box { flex:1; display:flex; justify-content:center; margin-top:10px; }
     input[type="text"] {
       padding:8px; border:1px solid #ccc; border-radius:6px; width:90%; max-width:280px;
@@ -151,9 +159,12 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
     th,td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
     th { background:#2563eb; color:white; font-weight:500; }
     tr:hover { background:#f3f4f6; }
-    button { background:#2563eb; color:white; border:none; padding:6px 10px;
-      border-radius:4px; cursor:pointer; font-size:13px; }
+    button {
+      background:#2563eb; color:white; border:none; padding:6px 10px;
+      border-radius:4px; cursor:pointer; font-size:13px;
+    }
     button:hover { background:#1d4ed8; }
+    .link-btn { text-decoration:none; color:#2563eb; font-size:14px; margin-left:8px; }
     @media(max-width:600px){
       table,thead,tbody,tr,th,td{display:block;}
       th{display:none;}
@@ -168,11 +179,16 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       <div class="search-box">
         <input type="text" id="searchInput" placeholder="名前で検索...">
       </div>
-      <a href="/logout" style="color:#2563eb;text-decoration:none;">ログアウト</a>
+      <div>
+        <a href="/${store}/admin/attendance" class="link-btn">🕒 勤怠管理</a>
+        <a href="/logout" class="link-btn">ログアウト</a>
+      </div>
     </div>
 
     <table id="userTable">
-      <thead><tr><th>名前</th><th>状態</th><th>操作</th></tr></thead>
+      <thead>
+        <tr><th>名前</th><th>状態</th><th>操作</th></tr>
+      </thead>
       <tbody id="userBody"></tbody>
     </table>
 
@@ -202,12 +218,11 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       input.addEventListener("input", e=>{
         const keyword = e.target.value.trim().toLowerCase();
         const filtered = keyword
-          ? users.filter(u => u.name.toLowerCase().includes(keyword))
+          ? users.filter(u => (u.name || "").toLowerCase().includes(keyword))
           : users;
         render(filtered);
       });
 
-      // 初期表示
       render(users);
     </script>
   </body></html>
@@ -215,7 +230,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
 });
 
 // ==============================
-// 🔄 承認・解除処理
+// 🔄 承認・解除処理（リッチメニュー切り替え）
 // ==============================
 app.post("/:store/approve", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
@@ -254,7 +269,7 @@ app.post("/:store/revoke", ensureStore, async (req, res) => {
 });
 
 // ==============================
-// 📘 マニュアル表示（承認後Notionへ）
+// 📘 マニュアル表示（承認後 Notion へ）
 // ==============================
 app.get("/:store/manual", ensureStore, (req, res) => {
   const { liffId } = req.storeConf;
@@ -283,7 +298,7 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 });
 
 // ==============================
-// 🧾 権限申請フォーム
+// 🧾 権限申請フォーム（LIFF）
 // ==============================
 app.get("/:store/apply", ensureStore, (req, res) => {
   const { store, storeConf } = req;
@@ -379,75 +394,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;font-size:1rem;cursor:pointer;}
     .in{background:#16a34a;color:white;}
     .out{background:#dc2626;color:white;}
-  </style></head><body>
-  <div class="box">
-    <h1>勤怠打刻</h1>
-    <p id="username"></p>
-    <button class="in" onclick="send('in')">出勤</button>
-    <button class="out" onclick="send('out')">退勤</button>
-  </div>
-  <script>
-    async function init(){
-      await liff.init({liffId:"${storeConf.liffId}"});
-      if(!liff.isLoggedIn()) return liff.login();
-      const p = await liff.getProfile();
-      document.getElementById("username").innerText = p.displayName + " さん";
-      window.user = p;
-    }
-
-    async function send(type){
-      const res = await fetch("/${store}/attendance/submit",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          userId:window.user.userId,
-          name:window.user.displayName,
-          type
-        })
-      });
-      const text = await res.text();
-      alert(text);
-    }
-    init();
-  </script></body></html>
-  `);
-});
-
-// ==============================
-// 🧾 勤怠データ登録API
-// ==============================
-app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { userId, name, type } = req.body;
-  const today = new Date().toISOString().split("T")[0]; // yyyy-mm-dd
-  const docRef = db.collection("companies").doc(store).collection("attendance").doc(`${userId}_${today}`);
-  const data = (await docRef.get()).data() || { userId, name, date: today };
-
-  if (type === "in") data.clockIn = new Date();
-  if (type === "out") data.clockOut = new Date();
-
-  await docRef.set(data, { merge: true });
-  res.send(type === "in" ? "出勤を記録しました。" : "退勤を記録しました。");
-});
-
-// ==============================
-// 🕒 勤怠打刻（従業員画面）
-// ==============================
-app.get("/:store/attendance", ensureStore, (req, res) => {
-  const { storeConf, store } = req;
-  res.send(`
-  <!DOCTYPE html><html lang="ja"><head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${store} 勤怠打刻</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body{font-family:sans-serif;background:#f9fafb;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}
-    .box{background:white;padding:24px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);text-align:center;width:90%;max-width:340px;}
-    h1{color:#2563eb;margin-bottom:20px;}
-    button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;font-size:1rem;cursor:pointer;}
-    .in{background:#16a34a;color:white;}
-    .out{background:#dc2626;color:white;}
+    #statusMsg{margin-top:8px;color:#555;font-size:0.9rem;}
   </style></head><body>
   <div class="box">
     <h1>勤怠打刻</h1>
@@ -464,15 +411,15 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       document.getElementById("username").innerText = p.displayName + " さん";
       window.user = p;
 
-      // 出退勤状況確認
       const res = await fetch("/${store}/attendance/status?userId="+p.userId);
       const data = await res.json();
+      const status = document.getElementById("statusMsg");
       if(data.clockIn && data.clockOut){
-        document.getElementById("statusMsg").innerText = "本日の打刻は完了しています。";
+        status.innerText = "本日の打刻は完了しています。";
         document.getElementById("btnIn").disabled = true;
         document.getElementById("btnOut").disabled = true;
       } else if(data.clockIn){
-        document.getElementById("statusMsg").innerText = "出勤済みです。退勤を押してください。";
+        status.innerText = "出勤済みです。退勤を押してください。";
         document.getElementById("btnIn").disabled = true;
       }
     }
@@ -496,9 +443,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
   `);
 });
 
-// ==============================
-// 🧾 出退勤ステータス取得API
-// ==============================
+// 出退勤ステータス取得
 app.get("/:store/attendance/status", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId } = req.query;
@@ -508,9 +453,7 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
   res.json(doc.exists ? doc.data() : {});
 });
 
-// ==============================
-// 🧾 勤怠データ登録API（二重押下防止）
-// ==============================
+// 出退勤登録（二重押下防止付き）
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, type } = req.body;
@@ -544,7 +487,41 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
     .collection("companies").doc(store)
     .collection("attendance").orderBy("date", "desc").limit(100).get();
 
-  const records = snapshot.docs.map(d => d.data());
+  // 日本時間で日付＋時刻に整形
+  const toTokyo = (ts) => {
+    if (!ts) return { dateTime: "", time: "" };
+    const d = ts.toDate ? ts.toDate() : new Date(ts._seconds * 1000);
+    const dateTime = d.toLocaleString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).replace(/\//g, "-");
+    const time = d.toLocaleTimeString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    return { dateTime, time };
+  };
+
+  const records = snapshot.docs.map(d => {
+    const data = d.data();
+    const inInfo = toTokyo(data.clockIn);
+    const outInfo = toTokyo(data.clockOut);
+    return {
+      userId: data.userId,
+      name: data.name || "",
+      date: data.date,
+      clockInStr: inInfo.dateTime,
+      clockOutStr: outInfo.dateTime,
+      clockInTime: inInfo.time,
+      clockOutTime: outInfo.time,
+    };
+  });
 
   res.send(`
   <!DOCTYPE html><html lang="ja"><head>
@@ -559,6 +536,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
     button{background:#2563eb;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;}
     button:hover{background:#1d4ed8;}
     input[type="time"]{padding:4px;font-size:13px;}
+    .top-link{display:block;margin-bottom:8px;color:#2563eb;text-decoration:none;font-size:14px;}
     @media(max-width:600px){
       table,thead,tbody,tr,th,td{display:block;}
       th{display:none;}
@@ -569,7 +547,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   </style>
   </head><body>
   <h1>${store} 勤怠管理</h1>
-  <a href="/${store}/admin" style="text-decoration:none;color:#2563eb;">← 権限管理へ戻る</a>
+  <a href="/${store}/admin" class="top-link">← 権限管理トップへ</a>
   <table>
     <thead><tr><th>名前</th><th>日付</th><th>出勤</th><th>退勤</th><th>操作</th></tr></thead>
     <tbody>
@@ -577,15 +555,15 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         <tr>
           <td data-label="名前">${r.name}</td>
           <td data-label="日付">${r.date}</td>
-          <td data-label="出勤">${r.clockIn ? new Date(r.clockIn._seconds * 1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : "未"}</td>
-          <td data-label="退勤">${r.clockOut ? new Date(r.clockOut._seconds * 1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : "未"}</td>
+          <td data-label="出勤">${r.clockInStr || "未"}</td>
+          <td data-label="退勤">${r.clockOutStr || "未"}</td>
           <td data-label="操作">
             <form method="POST" action="/${store}/admin/attendance/update" style="display:flex;gap:4px;flex-wrap:wrap;">
               <input type="hidden" name="userId" value="${r.userId}">
               <input type="hidden" name="date" value="${r.date}">
-              <input type="time" name="clockIn">
-              <input type="time" name="clockOut">
-              <button>更新</button>
+              <input type="time" name="clockIn" value="${r.clockInTime}">
+              <input type="time" name="clockOut" value="${r.clockOutTime}">
+              <button type="submit">更新</button>
             </form>
           </td>
         </tr>`).join("")}
@@ -595,9 +573,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   `);
 });
 
-// ==============================
-// ⏱ 管理者勤怠修正API
-// ==============================
+// 勤怠修正
 app.post("/:store/admin/attendance/update", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.status(403).send("権限がありません。");
