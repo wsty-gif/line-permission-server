@@ -620,6 +620,174 @@ app.post("/:store/admin/attendance/update", ensureStore, async (req, res) => {
   res.redirect(`/${store}/admin/attendance`);
 });
 
+// 毎朝9時に自動実行される処理（Render Cron Jobsで設定）
+app.get("/cron/attendance-alert/:store", ensureStore, async (req, res) => {
+  const { store, lineClient } = req;
+  const yesterday = new Date(Date.now() - 86400000);
+  const ymd = yesterday.toISOString().split("T")[0];
+
+  const snapshot = await db.collection("companies").doc(store)
+    .collection("attendance")
+    .where("date", "==", ymd)
+    .get();
+
+  const missing = [];
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    if (!data.clockIn || !data.clockOut) {
+      missing.push({ name: data.name, userId: data.userId });
+    }
+  });
+
+  if (missing.length > 0) {
+    // 管理者に通知
+    const names = missing.map(m => m.name).join("、");
+    await lineClient.broadcast({
+      type: "text",
+      text: `【${store}】昨日(${ymd})の打刻漏れ：${names}`,
+    });
+
+    // 各本人にも通知
+    for (const m of missing) {
+      await lineClient.pushMessage(m.userId, {
+        type: "text",
+        text: `昨日(${ymd})の出退勤打刻が確認できませんでした。ご確認ください。`,
+      });
+    }
+  }
+
+  res.send(`✅ ${missing.length}件の打刻漏れを通知しました`);
+});
+
+// ==============================
+// 🕒 管理者勤怠管理画面
+// ==============================
+app.get("/:store/attendance-admin", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+
+  // Firestoreから勤怠データ取得
+  const snapshot = await db.collection("companies").doc(store).collection("attendance").get();
+  const records = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // ユニークなスタッフリストを作成
+  const staffList = [...new Set(records.map(r => r.name))].filter(Boolean);
+
+  // HTML出力
+  res.send(`
+  <!DOCTYPE html><html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${store} 勤怠管理</title>
+    <style>
+      body { font-family: 'Segoe UI', sans-serif; background:#f8fafb; margin:0; padding:16px; color:#333; }
+      h1 { color:#14532d; margin-bottom:16px; }
+      .filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+      .filter-box { background:#fff; padding:10px; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+      .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:16px; }
+      .card { background:#fff; border-radius:12px; box-shadow:0 1px 6px rgba(0,0,0,0.1); padding:12px; text-align:center; }
+      .card h2 { margin:4px 0; color:#14532d; font-size:1.5em; }
+      table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; }
+      th,td { padding:10px; border-bottom:1px solid #eee; text-align:center; }
+      th { background:#14532d; color:white; }
+      button { background:#16a34a; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:0.9em; }
+      button:hover { background:#15803d; }
+      @media(max-width:600px){ th,td{font-size:12px;padding:6px;} }
+    </style>
+  </head>
+  <body>
+    <h1>${store} 勤怠管理</h1>
+    <div class="filters">
+      <div class="filter-box">
+        <label>対象月：</label>
+        <input type="month" id="month" value="${new Date().toISOString().slice(0,7)}" />
+      </div>
+      <div class="filter-box">
+        <label>スタッフ：</label>
+        <select id="staff">
+          <option value="">全スタッフ</option>
+          ${staffList.map(n => `<option>${n}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div>総勤務日数</div><h2 id="daysCount">0</h2></div>
+      <div class="card"><div>総勤務時間</div><h2 id="totalHours">0.0h</h2></div>
+      <div class="card"><div>平均勤務時間</div><h2 id="avgHours">0.0h</h2></div>
+    </div>
+
+    <table id="attendanceTable">
+      <thead><tr><th>日付</th><th>スタッフ</th><th>出勤</th><th>退勤</th><th>実働</th><th>操作</th></tr></thead>
+      <tbody>
+        ${records.map(r => `
+          <tr>
+            <td>${r.date || "-"}</td>
+            <td>${r.name || "未登録"}</td>
+            <td>${r.clockIn || "-"}</td>
+            <td>${r.clockOut || "-"}</td>
+            <td>${r.totalHours || "0.0h"}</td>
+            <td><button onclick="editRecord('${r.id}','${r.name}','${r.clockIn}','${r.clockOut}')">修正</button></td>
+          </tr>`).join("")}
+      </tbody>
+    </table>
+
+    <dialog id="editModal">
+      <form method="dialog" style="padding:20px;">
+        <h3>出退勤時間修正</h3>
+        <input type="hidden" id="editId">
+        <div><label>出勤：</label><input type="time" id="editIn" required></div>
+        <div><label>退勤：</label><input type="time" id="editOut" required></div>
+        <div style="margin-top:10px;">
+          <button type="button" onclick="saveEdit()">更新</button>
+          <button type="button" onclick="closeModal()">閉じる</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      function editRecord(id,name,inT,outT){
+        const m=document.getElementById('editModal');
+        document.getElementById('editId').value=id;
+        document.getElementById('editIn').value=inT||'';
+        document.getElementById('editOut').value=outT||'';
+        m.showModal();
+      }
+
+      async function saveEdit(){
+        const id=document.getElementById('editId').value;
+        const clockIn=document.getElementById('editIn').value;
+        const clockOut=document.getElementById('editOut').value;
+        if(clockIn>=clockOut){alert('退勤時刻は出勤より後にしてください');return;}
+        await fetch(window.location.pathname+'/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,clockIn,clockOut})});
+        alert('更新しました');location.reload();
+      }
+      function closeModal(){document.getElementById('editModal').close();}
+    </script>
+  </body></html>
+  `);
+});
+
+// 🔄 勤怠修正API
+app.post("/:store/attendance-admin/update", ensureStore, express.json(), async (req, res) => {
+  const { id, clockIn, clockOut } = req.body;
+  if (!id || !clockIn || !clockOut) return res.status(400).send("データが不足しています");
+
+  const store = req.store;
+  const ref = db.collection("companies").doc(store).collection("attendance").doc(id);
+  const doc = await ref.get();
+  if (!doc.exists) return res.status(404).send("該当データなし");
+
+  const [hIn, mIn] = clockIn.split(":").map(Number);
+  const [hOut, mOut] = clockOut.split(":").map(Number);
+  const totalHours = ((hOut * 60 + mOut) - (hIn * 60 + mIn)) / 60;
+
+  await ref.set({ clockIn, clockOut, totalHours }, { merge: true });
+  res.send("OK");
+});
 
 // ==============================
 const PORT = process.env.PORT || 3000;
