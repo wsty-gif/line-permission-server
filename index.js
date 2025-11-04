@@ -14,7 +14,7 @@ const STORES = {
     richmenuBefore: process.env.STORE_A_RICHMENU_BEFORE,
     richmenuAfter: process.env.STORE_A_RICHMENU_AFTER,
   },
-  storeB: {
+  nice_sweets: {
     channelAccessToken: process.env.STORE_B_CHANNEL_ACCESS_TOKEN,
     channelSecret: process.env.STORE_B_CHANNEL_SECRET,
     liffId: process.env.STORE_B_LIFF_ID,
