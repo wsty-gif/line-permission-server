@@ -362,5 +362,74 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
 });
 
 // ==============================
+// 🕒 勤怠打刻（従業員画面）
+// ==============================
+app.get("/:store/attendance", ensureStore, (req, res) => {
+  const { storeConf, store } = req;
+  res.send(`
+  <!DOCTYPE html><html lang="ja"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${store} 勤怠打刻</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body{font-family:sans-serif;background:#f9fafb;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}
+    .box{background:white;padding:24px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);text-align:center;width:90%;max-width:340px;}
+    h1{color:#2563eb;margin-bottom:20px;}
+    button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;font-size:1rem;cursor:pointer;}
+    .in{background:#16a34a;color:white;}
+    .out{background:#dc2626;color:white;}
+  </style></head><body>
+  <div class="box">
+    <h1>勤怠打刻</h1>
+    <p id="username"></p>
+    <button class="in" onclick="send('in')">出勤</button>
+    <button class="out" onclick="send('out')">退勤</button>
+  </div>
+  <script>
+    async function init(){
+      await liff.init({liffId:"${storeConf.liffId}"});
+      if(!liff.isLoggedIn()) return liff.login();
+      const p = await liff.getProfile();
+      document.getElementById("username").innerText = p.displayName + " さん";
+      window.user = p;
+    }
+
+    async function send(type){
+      const res = await fetch("/${store}/attendance/submit",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          userId:window.user.userId,
+          name:window.user.displayName,
+          type
+        })
+      });
+      const text = await res.text();
+      alert(text);
+    }
+    init();
+  </script></body></html>
+  `);
+});
+
+// ==============================
+// 🧾 勤怠データ登録API
+// ==============================
+app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, name, type } = req.body;
+  const today = new Date().toISOString().split("T")[0]; // yyyy-mm-dd
+  const docRef = db.collection("companies").doc(store).collection("attendance").doc(`${userId}_${today}`);
+  const data = (await docRef.get()).data() || { userId, name, date: today };
+
+  if (type === "in") data.clockIn = new Date();
+  if (type === "out") data.clockOut = new Date();
+
+  await docRef.set(data, { merge: true });
+  res.send(type === "in" ? "出勤を記録しました。" : "退勤を記録しました。");
+});
+
+// ==============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
