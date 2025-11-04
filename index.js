@@ -483,11 +483,20 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
-  const snapshot = await db
+
+  // 勤怠データ取得
+  const attendanceSnap = await db
     .collection("companies").doc(store)
     .collection("attendance").orderBy("date", "desc").limit(100).get();
 
-  // 日本時間で日付＋時刻に整形
+  // 権限申請データ（名前マスター）
+  const permissionSnap = await db
+    .collection("companies").doc(store)
+    .collection("permissions").get();
+  const nameMap = {};
+  permissionSnap.forEach(d => nameMap[d.id] = d.data().name || "");
+
+  // 日本時間変換関数
   const toTokyo = (ts) => {
     if (!ts) return { dateTime: "", time: "" };
     const d = ts.toDate ? ts.toDate() : new Date(ts._seconds * 1000);
@@ -508,13 +517,14 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
     return { dateTime, time };
   };
 
-  const records = snapshot.docs.map(d => {
+  // 勤怠データ整形
+  const records = attendanceSnap.docs.map(d => {
     const data = d.data();
     const inInfo = toTokyo(data.clockIn);
     const outInfo = toTokyo(data.clockOut);
     return {
       userId: data.userId,
-      name: data.name || "",
+      name: nameMap[data.userId] || data.name || "（未登録）",
       date: data.date,
       clockInStr: inInfo.dateTime,
       clockOutStr: outInfo.dateTime,
@@ -523,6 +533,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
     };
   });
 
+  // HTML生成
   res.send(`
   <!DOCTYPE html><html lang="ja"><head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -536,7 +547,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
     button{background:#2563eb;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;}
     button:hover{background:#1d4ed8;}
     input[type="time"]{padding:4px;font-size:13px;}
-    .top-link{display:block;margin-bottom:8px;color:#2563eb;text-decoration:none;font-size:14px;}
+    .error{color:#dc2626;text-align:center;margin:10px 0;}
     @media(max-width:600px){
       table,thead,tbody,tr,th,td{display:block;}
       th{display:none;}
@@ -547,7 +558,6 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   </style>
   </head><body>
   <h1>${store} 勤怠管理</h1>
-  <a href="/${store}/admin" class="top-link">← 権限管理トップへ</a>
   <table>
     <thead><tr><th>名前</th><th>日付</th><th>出勤</th><th>退勤</th><th>操作</th></tr></thead>
     <tbody>
@@ -573,14 +583,34 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   `);
 });
 
-// 勤怠修正
+// ==============================
+// ⏱ 管理者勤怠修正API（出勤＞退勤のバリデーション付き）
+// ==============================
 app.post("/:store/admin/attendance/update", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.status(403).send("権限がありません。");
 
   const { userId, date, clockIn, clockOut } = req.body;
   const store = req.store;
-  const docRef = db.collection("companies").doc(store).collection("attendance").doc(`${userId}_${date}`);
+
+  // 入力チェック
+  if (clockIn && clockOut) {
+    const inTime = new Date(`${date}T${clockIn}:00+09:00`);
+    const outTime = new Date(`${date}T${clockOut}:00+09:00`);
+    if (inTime > outTime) {
+      return res.send(`
+      <html><body style="font-family:sans-serif;text-align:center;padding:40px;">
+        <h2 style="color:#dc2626;">エラー</h2>
+        <p>出勤時間が退勤時間より後になっています。</p>
+        <a href="/${store}/admin/attendance" style="color:#2563eb;">← 戻る</a>
+      </body></html>
+      `);
+    }
+  }
+
+  // Firestore更新
+  const docRef = db.collection("companies").doc(store)
+    .collection("attendance").doc(`${userId}_${date}`);
 
   const updates = {};
   if (clockIn) updates.clockIn = new Date(`${date}T${clockIn}:00+09:00`);
@@ -589,6 +619,7 @@ app.post("/:store/admin/attendance/update", ensureStore, async (req, res) => {
   await docRef.set(updates, { merge: true });
   res.redirect(`/${store}/admin/attendance`);
 });
+
 
 // ==============================
 const PORT = process.env.PORT || 3000;
