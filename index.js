@@ -289,13 +289,55 @@ app.get("/:store/manual", ensureStore, (req, res) => {
   </script></body></html>`);
 });
 
+// 📘 マニュアル表示（カードタイプに対応、未承認はメッセージ表示 + env管理）
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
-  const doc = await db.collection("companies").doc(req.store)
-    .collection("permissions").doc(req.query.userId).get();
+  const { type, userId } = req.query;
+  const { store } = req;
+
+  // 🔸 LINEログインして userId を取得
+  if (!userId) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="ja">
+      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+      </head>
+      <body><p>LINEログイン中...</p>
+      <script>
+        async function main(){
+          await liff.init({ liffId: "${req.storeConf.liffId}" });
+          if(!liff.isLoggedIn()) return liff.login();
+          const p = await liff.getProfile();
+          const q = new URLSearchParams(location.search);
+          q.set("userId", p.userId);
+          location.href = location.pathname + "?" + q.toString();
+        }
+        main();
+      </script>
+      </body>
+      </html>
+    `);
+  }
+
+  // 🔸 Firestore 承認チェック
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+
   if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
-  if (!doc.data().approved) return res.status(403).send("承認待ちです。");
-  res.redirect(req.storeConf.manualUrl);
+  if (!doc.data().approved)
+    return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
+
+  // ✅ 承認済み → typeに応じて env のURLを読み込む
+  const envKey = `${store.toUpperCase()}_MANUAL_URL_${type?.toUpperCase() || "DEFAULT"}`;
+  const redirectUrl = process.env[envKey] || req.storeConf.manualUrl;
+
+  if (!redirectUrl) {
+    return res.status(404).send(`<h3>マニュアルURLが設定されていません。</h3><p>(${envKey})</p>`);
+  }
+
+  res.redirect(redirectUrl);
 });
+
 
 // ==============================
 // 🧾 権限申請フォーム（LIFF）
