@@ -18,11 +18,18 @@ const STORES = {
     channelAccessToken: process.env.STORE_B_CHANNEL_ACCESS_TOKEN,
     channelSecret: process.env.STORE_B_CHANNEL_SECRET,
     liffId: process.env.STORE_B_LIFF_ID,
-    manualUrl: process.env.STORE_B_MANUAL_URL,
     richmenuBefore: process.env.STORE_B_RICHMENU_BEFORE,
     richmenuAfter: process.env.STORE_B_RICHMENU_AFTER,
+
+    // ✅ ここを追加（複数URL対応）
+    manualUrls: {
+      line: process.env.STORE_B_MANUAL_URL_LINE,
+      todo: process.env.STORE_B_MANUAL_URL_TODO,
+      default: process.env.STORE_B_MANUAL_URL_DEFAULT,
+    },
   },
 };
+
 
 // ==============================
 // 🔥 Firebase 初期化
@@ -289,13 +296,46 @@ app.get("/:store/manual", ensureStore, (req, res) => {
   </script></body></html>`);
 });
 
+// 📘 マニュアル表示（カードタイプに対応、未承認はメッセージ表示）
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
-  const doc = await db.collection("companies").doc(req.store)
-    .collection("permissions").doc(req.query.userId).get();
-  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
-  if (!doc.data().approved) return res.status(403).send("承認待ちです。");
-  res.redirect(req.storeConf.manualUrl);
-});
+  const { type, userId } = req.query;
+  const { store, storeConf } = req;
+
+  // 1️⃣ userIdが無ければ LIFFでログイン → userIdを取得
+  if (!userId) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="ja">
+      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+      </head>
+      <body><p>LINEログイン中...</p>
+      <script>
+        async function main(){
+          try {
+            await liff.init({ liffId: "${storeConf.liffId}" });
+            if(!liff.isLoggedIn()) return liff.login();
+            const p = await liff.getProfile();
+            const q = new URLSearchParams(location.search);
+            q.set("userId", p.userId);
+            location.href = location.pathname + "?" + q.toString();
+          } catch(e){
+            document.body.innerHTML = "<h3>LIFF初期化に失敗しました：" + e.message + "</h3>";
+          }
+        }
+        main();
+      </script>
+      </body>
+      </html>
+    `);
+  }
+
+  // 2️⃣ Firestoreの承認確認
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+
+  if (!doc.exists) return res.statu
+
 
 // ==============================
 // 🧾 権限申請フォーム（LIFF）
