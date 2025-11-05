@@ -14,15 +14,23 @@ const STORES = {
     richmenuBefore: process.env.STORE_A_RICHMENU_BEFORE,
     richmenuAfter: process.env.STORE_A_RICHMENU_AFTER,
   },
+
   nice_sweets: {
     channelAccessToken: process.env.NICE_SWEETS_CHANNEL_ACCESS_TOKEN,
     channelSecret: process.env.NICE_SWEETS_CHANNEL_SECRET,
     liffId: process.env.NICE_SWEETS_LIFF_ID,
-    manualUrl: process.env.NICE_SWEETS_MANUAL_URL,
     richmenuBefore: process.env.NICE_SWEETS_RICHMENU_BEFORE,
     richmenuAfter: process.env.NICE_SWEETS_RICHMENU_AFTER,
+
+    // ✅ 複数マニュアルURLをenvからまとめて読み込む
+    manualUrls: {
+      line: process.env.NICE_SWEETS_MANUAL_URL_LINE,
+      todo: process.env.NICE_SWEETS_MANUAL_URL_TODO,
+      default: process.env.NICE_SWEETS_MANUAL_URL_DEFAULT,
+    },
   },
 };
+
 
 // ==============================
 // 🔥 Firebase 初期化
@@ -289,12 +297,12 @@ app.get("/:store/manual", ensureStore, (req, res) => {
   </script></body></html>`);
 });
 
-// 📘 マニュアル表示（カードタイプに対応、未承認はメッセージ表示 + env管理）
+// 📘 マニュアル表示（カードタイプに対応、未承認はメッセージ表示）
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
   const { type, userId } = req.query;
-  const { store } = req;
+  const { store, storeConf } = req;
 
-  // 🔸 LINEログインして userId を取得
+  // 1️⃣ userId が無ければ LIFF ログインで取得
   if (!userId) {
     return res.send(`
       <!DOCTYPE html>
@@ -305,12 +313,16 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
       <body><p>LINEログイン中...</p>
       <script>
         async function main(){
-          await liff.init({ liffId: "${req.storeConf.liffId}" });
-          if(!liff.isLoggedIn()) return liff.login();
-          const p = await liff.getProfile();
-          const q = new URLSearchParams(location.search);
-          q.set("userId", p.userId);
-          location.href = location.pathname + "?" + q.toString();
+          try {
+            await liff.init({ liffId: "${storeConf.liffId}" });
+            if(!liff.isLoggedIn()) return liff.login();
+            const p = await liff.getProfile();
+            const q = new URLSearchParams(location.search);
+            q.set("userId", p.userId);
+            location.href = location.pathname + "?" + q.toString();
+          } catch(e){
+            document.body.innerHTML = "<h3>LIFF初期化に失敗しました：" + e.message + "</h3>";
+          }
         }
         main();
       </script>
@@ -319,24 +331,29 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
     `);
   }
 
-  // 🔸 Firestore 承認チェック
+  // 2️⃣ Firestoreから承認チェック
   const doc = await db.collection("companies").doc(store)
     .collection("permissions").doc(userId).get();
 
-  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!doc.exists)
+    return res.status(404).send("<h3>権限申請が未登録です。</h3>");
   if (!doc.data().approved)
-    return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
+    return res.status(403).send("<h3>承認待ちです。管理者の承認をお待ちください。</h3>");
 
-  // ✅ 承認済み → typeに応じて env のURLを読み込む
-  const envKey = `${store.toUpperCase()}_MANUAL_URL_${type?.toUpperCase() || "DEFAULT"}`;
-  const redirectUrl = process.env[envKey] || req.storeConf.manualUrl;
+  // 3️⃣ ✅ 承認済みなら .env のURLを type ごとに選択
+  const urls = storeConf.manualUrls || {};
+  let redirectUrl =
+    (type === "line" && urls.line) ||
+    (type === "todo" && urls.todo) ||
+    urls.default;
 
-  if (!redirectUrl) {
-    return res.status(404).send(`<h3>マニュアルURLが設定されていません。</h3><p>(${envKey})</p>`);
-  }
+  if (!redirectUrl)
+    return res.status(404).send("<h3>マニュアルURLが設定されていません。</h3>");
 
+  // 4️⃣ 最終リダイレクト
   res.redirect(redirectUrl);
 });
+
 
 
 // ==============================
