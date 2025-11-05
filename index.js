@@ -334,7 +334,23 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
   const doc = await db.collection("companies").doc(store)
     .collection("permissions").doc(userId).get();
 
-  if (!doc.exists) return res.statu
+  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!doc.data().approved)
+    return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
+
+  // 3️⃣ typeパラメータ別にURLをenvから読み込み
+  const urls = storeConf.manualUrls || {};
+  let redirectUrl =
+    (type === "line" && urls.line) ||
+    (type === "todo" && urls.todo) ||
+    urls.default;
+
+  if (!redirectUrl)
+    return res.status(404).send("<h3>マニュアルURLが設定されていません。</h3>");
+
+  // 4️⃣ 承認済みなら対象Notionマニュアルへリダイレクト
+  res.redirect(redirectUrl);
+});
 
 
 // ==============================
