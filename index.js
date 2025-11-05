@@ -301,7 +301,7 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
   const { type, userId } = req.query;
   const { store, storeConf } = req;
 
-  // 1️⃣ userIdが無ければ LIFFでログイン → userIdを取得
+  // 1️⃣ userId が無ければ LIFF でログインして取得
   if (!userId) {
     return res.send(`
       <!DOCTYPE html>
@@ -330,7 +330,7 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
     `);
   }
 
-  // 2️⃣ Firestoreの承認確認
+  // 2️⃣ Firestore の承認状態を確認
   const doc = await db.collection("companies").doc(store)
     .collection("permissions").doc(userId).get();
 
@@ -338,19 +338,24 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
   if (!doc.data().approved)
     return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
 
-  // 3️⃣ typeパラメータ別にURLをenvから読み込み
-  const urls = storeConf.manualUrls || {};
-  let redirectUrl =
-    (type === "line" && urls.line) ||
-    (type === "todo" && urls.todo) ||
-    urls.default;
-
-  if (!redirectUrl)
+  // ✅ 修正版：単一URL(storeA)も複数URL(storeBなど)も対応
+  let redirectUrl;
+  if (storeConf.manualUrls) {
+    // 複数マニュアル対応（storeBなど）
+    redirectUrl =
+      (type === "line" && storeConf.manualUrls.line) ||
+      (type === "todo" && storeConf.manualUrls.todo) ||
+      storeConf.manualUrls.default;
+  } else if (storeConf.manualUrl) {
+    // ✅ 単一マニュアル対応（storeAなど）
+    redirectUrl = storeConf.manualUrl;
+  } else {
+    // URLが設定されていない場合
     return res.status(404).send("<h3>マニュアルURLが設定されていません。</h3>");
+  }
 
-  // 4️⃣ 承認済みなら対象Notionマニュアルへリダイレクト
-  res.redirect(redirectUrl);
 });
+
 
 
 // ==============================
