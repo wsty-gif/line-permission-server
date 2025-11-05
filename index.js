@@ -340,16 +340,32 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 
   // 3️⃣ typeパラメータ別にURLをenvから読み込み
   const urls = storeConf.manualUrls || {};
-  let redirectUrl =
-    (type === "line" && urls.line) ||
-    (type === "todo" && urls.todo) ||
-    urls.default;
+  // 3️⃣ typeパラメータ別にURLをenvから読み込み
+  let redirectUrl;
 
-  if (!redirectUrl)
-    return res.status(404).send("<h3>マニュアルURLが設定されていません。</h3>");
+  // ✅ 単一URL（storeAなど）対応を追加
+  if (storeConf.manualUrls) {
+    // 複数マニュアル対応（storeBなど）
+    const urls = storeConf.manualUrls;
+    redirectUrl =
+      (type === "line" && urls.line) ||
+      (type === "todo" && urls.todo) ||
+      urls.default;
+  } else if (storeConf.manualUrl) {
+    // ✅ 単一マニュアル対応（storeAなど）
+    redirectUrl = storeConf.manualUrl;
+  }
+
+  // URLが設定されていない場合のエラーハンドリング
+  if (!redirectUrl) {
+    return res
+      .status(404)
+      .send("<h3>マニュアルURLが設定されていません。</h3>");
+  }
 
   // 4️⃣ 承認済みなら対象Notionマニュアルへリダイレクト
   res.redirect(redirectUrl);
+
 });
 
 
