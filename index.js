@@ -15,12 +15,12 @@ const STORES = {
     richmenuAfter: process.env.STORE_A_RICHMENU_AFTER,
   },
   nice_sweets: {
-    channelAccessToken: process.env.STORE_B_CHANNEL_ACCESS_TOKEN,
-    channelSecret: process.env.STORE_B_CHANNEL_SECRET,
-    liffId: process.env.STORE_B_LIFF_ID,
-    manualUrl: process.env.STORE_B_MANUAL_URL,
-    richmenuBefore: process.env.STORE_B_RICHMENU_BEFORE,
-    richmenuAfter: process.env.STORE_B_RICHMENU_AFTER,
+    channelAccessToken: process.env.NICE_SWEETS_CHANNEL_ACCESS_TOKEN,
+    channelSecret: process.env.NICE_SWEETS_CHANNEL_SECRET,
+    liffId: process.env.NICE_SWEETS_LIFF_ID,
+    manualUrl: process.env.NICE_SWEETS_MANUAL_URL,
+    richmenuBefore: process.env.NICE_SWEETS_RICHMENU_BEFORE,
+    richmenuAfter: process.env.NICE_SWEETS_RICHMENU_AFTER,
   },
 };
 
