@@ -486,7 +486,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
       <div>
         <label>対象月：</label>
-        <select id="monthSelect"></select>
+        <input type="month" id="monthSelect">
       </div>
       <table id="records">
         <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th></tr></thead>
@@ -503,9 +503,11 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         const p = await liff.getProfile();
         userId = p.userId; name = p.displayName;
 
+        // main関数の中
         document.getElementById("status").innerText = name + " さんログイン中";
-        loadMonths();
+        initMonthSelector();
         loadRecords();
+
       }
 
       // ===== ボタンイベント =====
@@ -525,20 +527,16 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
       document.getElementById("btnOut").onclick = () => sendAction("clockOut");
 
-      // ===== 月一覧ロード =====
-      function loadMonths() {
-        const sel = document.getElementById("monthSelect");
+      // ▼ 削除：loadMonths関数全体
+      // ▼ 新しい初期化処理に置き換え
+      function initMonthSelector() {
+        const monthInput = document.getElementById("monthSelect");
         const now = new Date();
-        for (let i=0; i<12; i++) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const ym = d.toISOString().slice(0,7);
-          const opt = document.createElement("option");
-          opt.value = ym;
-          opt.text = ym.replace("-", "年") + "月";
-          sel.appendChild(opt);
-        }
-        sel.onchange = loadRecords;
+        const ym = now.toISOString().slice(0, 7); // 例: "2025-11"
+        monthInput.value = ym;
+        monthInput.addEventListener("change", loadRecords);
       }
+
 
       async function loadRecords() {
         const month = document.getElementById("monthSelect").value;
@@ -642,11 +640,15 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   </head>
   <body>
     <h1>${store} 勤怠管理</h1>
+    <!-- ▼ 修正箇所 -->
     <div>
-      <label>対象月：</label><select id="monthSelect"></select>
-      <label>スタッフ：</label><select id="staffSelect"></select>
+      <label>対象月：</label>
+      <input type="month" id="monthSelect">
+      <label>スタッフ：</label>
+      <select id="staffSelect"></select>
       <button class="blue" onclick="loadRecords()">表示</button>
     </div>
+
     <div class="summary" id="summary"></div>
     <table id="records">
       <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>操作</th></tr></thead>
@@ -671,18 +673,16 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       const store = "${store}";
       let records = [];
 
+      // ▼ 修正：init関数
       async function init() {
         const now = new Date();
-        const sel = document.getElementById("monthSelect");
-        for(let i=0;i<12;i++){
-          const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-          const ym = d.toISOString().slice(0,7);
-          const opt = document.createElement("option");
-          opt.value = ym; opt.text = ym.replace("-", "年")+"月";
-          sel.appendChild(opt);
-        }
+        const monthInput = document.getElementById("monthSelect");
+        const ym = now.toISOString().slice(0, 7);
+        monthInput.value = ym;
+        monthInput.addEventListener("change", loadRecords);
         await loadStaff();
       }
+
 
       async function loadStaff() {
         const res = await fetch("/${store}/admin/staff");
