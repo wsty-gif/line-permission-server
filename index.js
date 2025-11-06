@@ -477,8 +477,10 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       .action-title { font-size: .9rem; margin-bottom: 4px; color:#111827; }
       .action-time { font-size: .9rem; color:#6b7280; min-height: 1.2em; }
       .action-btn { margin-top: 6px; width: 100%; padding: 8px; border-radius: 6px; border: none; cursor: pointer; font-size: .9rem; color: #fff; }
-      .btn-in { background:#16a34a; } .btn-out { background:#dc2626; } .btn-break-start { background:#6b7280; } .btn-break-end { background:#2563eb; }
-      .action-btn:disabled { opacity:.4; cursor:default; }
+      .btn-in { background:#16a34a; }
+      .btn-out { background:#dc2626; }
+      .btn-break-start { background:#6b7280; }
+      .btn-break-end { background:#2563eb; }
       .month-row { display:flex; align-items:center; gap:8px; margin-top: 8px; margin-bottom: 4px; font-size: .9rem; }
       .month-row label { white-space:nowrap; color:#4b5563; }
       .month-row input[type="month"] { flex:1; padding:6px; border-radius:6px; border:1px solid #d1d5db; }
@@ -528,7 +530,13 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩開始</th><th>休憩終了</th></tr>
+            <tr>
+              <th>日付</th>
+              <th>出勤</th>
+              <th>退勤</th>
+              <th>休憩開始</th>
+              <th>休憩終了</th>
+            </tr>
           </thead>
           <tbody id="recordsBody"></tbody>
         </table>
@@ -545,81 +553,93 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         return jst.getFullYear() + "-" + (jst.getMonth()+1) + "-" + jst.getDate();
       }
 
-      function timeLabel(full){ if(!full)return"--:--"; const p=full.split(" "); return p[1]?.slice(0,5)||"--:--"; }
+      function timeLabel(full) {
+        if (!full) return "--:--";
+        const parts = full.split(" ");
+        return parts[1]?.slice(0,5) || "--:--";
+      }
 
-      function applyStateToButtonsAndLabels(){
+      function applyStateToLabels() {
         document.getElementById("timeIn").innerText = timeLabel(currentState.clockIn);
         document.getElementById("timeBreakStart").innerText = timeLabel(currentState.breakStart);
         document.getElementById("timeBreakEnd").innerText = timeLabel(currentState.breakEnd);
         document.getElementById("timeOut").innerText = timeLabel(currentState.clockOut);
       }
 
-      function updateButtonState(){
-        const inBtn=document.getElementById("btnIn");
-        const bStart=document.getElementById("btnBreakStart");
-        const bEnd=document.getElementById("btnBreakEnd");
-        const outBtn=document.getElementById("btnOut");
-        [inBtn,bStart,bEnd,outBtn].forEach(b=>b.disabled=true);
-
-        if(!currentState.clockIn){ inBtn.disabled=false; }
-        else if(currentState.clockIn && !currentState.breakStart){ bStart.disabled=false; }
-        else if(currentState.breakStart && !currentState.breakEnd){ bEnd.disabled=false; }
-        else if(currentState.breakEnd && !currentState.clockOut){ outBtn.disabled=false; }
-      }
-
-      async function sendAction(action){
-        if(!userId){ alert("ログイン情報がありません"); return; }
-        const res=await fetch("/${store}/attendance/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,name,action})});
+      async function sendAction(action) {
+        if (!userId) return alert("ログイン情報がありません");
+        const res = await fetch("/${store}/attendance/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, name, action })
+        });
         alert(await res.text());
         await loadRecords();
-        updateButtonState();
       }
 
-      async function loadRecords(){
-        if(!userId)return;
-        const month=document.getElementById("monthSelect").value;
-        const res=await fetch("/${store}/attendance/records?userId="+encodeURIComponent(userId)+"&month="+encodeURIComponent(month));
-        const data=await res.json();
-        const tbody=document.getElementById("recordsBody");
-        tbody.innerHTML=data.map(r=>\`<tr><td>\${r.date}</td><td>\${r.clockIn||"-"}</td><td>\${r.clockOut||"-"}</td><td>\${r.breakStart||"-"}</td><td>\${r.breakEnd||"-"}</td></tr>\`).join("");
+      async function loadRecords() {
+        if (!userId) return;
+        const month = document.getElementById("monthSelect").value;
+        if (!month) return;
 
-        const todayKey=getTodayDateKey();
-        const t=data.find(r=>r.date===todayKey);
-        currentState=t?{date:t.date,clockIn:t.clockIn,clockOut:t.clockOut,breakStart:t.breakStart,breakEnd:t.breakEnd}:{date:todayKey,clockIn:null,clockOut:null,breakStart:null,breakEnd:null};
-        applyStateToButtonsAndLabels();
-        updateButtonState();
+        const res = await fetch("/${store}/attendance/records?userId="+encodeURIComponent(userId)+"&month="+encodeURIComponent(month));
+        const data = await res.json();
+        const tbody = document.getElementById("recordsBody");
+        tbody.innerHTML = data.map(r =>
+          "<tr>" +
+          "<td>" + (r.date || "--") + "</td>" +
+          "<td>" + (r.clockIn || "--:--") + "</td>" +
+          "<td>" + (r.clockOut || "--:--") + "</td>" +
+          "<td>" + (r.breakStart || "--:--") + "</td>" +
+          "<td>" + (r.breakEnd || "--:--") + "</td>" +
+          "</tr>"
+        ).join("");
+
+        const todayKey = getTodayDateKey();
+        const todayData = data.find(r => r.date === todayKey);
+        if (todayData) {
+          currentState = todayData;
+        } else {
+          currentState = { date:todayKey, clockIn:null, clockOut:null, breakStart:null, breakEnd:null };
+        }
+        applyStateToLabels();
       }
 
-      function initMonthSelector(){
-        const m=document.getElementById("monthSelect");
-        const jst=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo"}));
-        m.value=jst.toISOString().slice(0,7);
-        m.addEventListener("change",loadRecords);
+      function initMonthSelector() {
+        const monthInput = document.getElementById("monthSelect");
+        const jst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+        monthInput.value = jst.toISOString().slice(0,7);
+        monthInput.addEventListener("change", loadRecords);
       }
 
-      async function main(){
-        try{
-          await liff.init({liffId:"${storeConf.liffId}"});
-          if(!liff.isLoggedIn())return liff.login();
-          const p=await liff.getProfile();
-          userId=p.userId; name=p.displayName;
-          document.getElementById("status").innerText=name+" さんログイン中";
-          document.getElementById("todayLabel").innerText="今日の打刻（"+getTodayDateKey()+"）";
+      async function main() {
+        try {
+          await liff.init({ liffId: "${storeConf.liffId}" });
+          if (!liff.isLoggedIn()) return liff.login();
+          const p = await liff.getProfile();
+          userId = p.userId;
+          name = p.displayName;
+          document.getElementById("status").innerText = name + " さんログイン中";
+          document.getElementById("todayLabel").innerText = "今日の打刻（" + getTodayDateKey() + "）";
           initMonthSelector();
           await loadRecords();
-        }catch(e){ document.getElementById("status").innerText="LIFF初期化に失敗: "+e.message; }
+        } catch(e) {
+          document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
+        }
       }
 
-      document.addEventListener("click",e=>{
-        if(e.target.id==="btnIn")sendAction("clockIn");
-        if(e.target.id==="btnBreakStart")sendAction("breakStart");
-        if(e.target.id==="btnBreakEnd")sendAction("breakEnd");
-        if(e.target.id==="btnOut")sendAction("clockOut");
+      document.addEventListener("click", e => {
+        if (e.target.id === "btnIn") sendAction("clockIn");
+        if (e.target.id === "btnBreakStart") sendAction("breakStart");
+        if (e.target.id === "btnBreakEnd") sendAction("breakEnd");
+        if (e.target.id === "btnOut") sendAction("clockOut");
       });
 
       main();
     </script>
-  </body></html>`);
+  </body>
+  </html>
+  `);
 });
 
 
