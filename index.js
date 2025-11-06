@@ -695,23 +695,18 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         try {
           await liff.init({ liffId: "${storeConf.liffId}" });
           if (!liff.isLoggedIn()) return liff.login();
-
           const p = await liff.getProfile();
           userId = p.userId;
-          name = p.displayName;
+          name = p.displayName || "";
+          document.getElementById("status").innerText = name + " さんログイン中";
 
-          // ✅ DOMがロードされてから代入
-          const statusEl = document.getElementById("status");
-          if (statusEl) {
-            statusEl.innerText = name + " さんログイン中";
-          } else {
-            console.warn("status 要素が見つかりませんでした。");
-          }
+          const todayKey = getTodayDateKey();
+          document.getElementById("todayLabel").innerText = "今日の打刻（ " + todayKey + " ）";
 
           initMonthSelector();
-          await loadRecords();
+          await loadRecords(); // 一覧読み込み → currentState も同期される
+          applyStateToButtonsAndLabels(); // 読み込んだデータをボタン側にも反映
         } catch (e) {
-          console.error(e);
           document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
         }
       }
@@ -786,13 +781,16 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         }).join("");
 
         // 今日のレコードがあれば currentState に反映
-        const today = new Date().toISOString().split("T")[0];
-        const todayData = data.find(r => r.date === today);
-        if (todayData) {
-          document.getElementById("clockInTime").innerText = todayData.clockIn ? todayData.clockIn.split(" ")[1].slice(0,5) : "--:--";
-          document.getElementById("breakStartTime").innerText = todayData.breakStart ? todayData.breakStart.split(" ")[1].slice(0,5) : "--:--";
-          document.getElementById("breakEndTime").innerText = todayData.breakEnd ? todayData.breakEnd.split(" ")[1].slice(0,5) : "--:--";
-          document.getElementById("clockOutTime").innerText = todayData.clockOut ? todayData.clockOut.split(" ")[1].slice(0,5) : "--:--";
+        const todayKey = getTodayDateKey();
+        const todayRec = data.find(function(r){ return r.date === todayKey; });
+        if (todayRec) {
+          currentState = {
+            date: todayRec.date,
+            clockIn: todayRec.clockIn || null,
+            clockOut: todayRec.clockOut || null,
+            breakStart: todayRec.breakStart || null,
+            breakEnd: todayRec.breakEnd || null,
+          };
         } else {
           currentState = {
             date: todayKey,
@@ -825,45 +823,43 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
 
 // 🧾 打刻処理（日本時間対応版）
 // 🧾 打刻処理（修正版）
-// 📅 勤怠打刻（JST対応版）
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
-  try {
-    const { store } = req.params;
-    const { userId, name, action } = req.body;
+  const { store } = req.params;
+  const { userId, name, action } = req.body;
 
-    // ✅ JST現在時刻を取得
-    const now = new Date();
-    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000); // UTC→JST変換
-    const dateStr = jst.toISOString().split("T")[0]; // 例: 2025-11-06
-    const timeStr = jst.toTimeString().split(" ")[0]; // 例: 16:01:00
-    const displayTime = `${dateStr} ${timeStr}`; // Firestoreに保存する文字列
+  // JST現在日時を取得
+  const jstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  const currentDate = jstNow.toISOString().split("T")[0];
 
-    const ref = db.collection("companies").doc(store)
-      .collection("attendance").doc(userId)
-      .collection("records").doc(dateStr);
+  const ref = db.collection("companies").doc(store)
+                .collection("attendance").doc(userId)
+                .collection("records").doc(currentDate);
 
-    const snap = await ref.get();
-    const data = snap.exists ? snap.data() : {};
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : {};
 
-    if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
-    if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
-    if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
-    if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
+  const ts = admin.firestore.Timestamp.fromDate(jstNow);
 
-    // ✅ JST文字列をそのまま保存
-    const updated = { ...data, userId, name, date: dateStr };
-    if (action === "clockIn") updated.clockIn = displayTime;
-    if (action === "breakStart") updated.breakStart = displayTime;
-    if (action === "breakEnd") updated.breakEnd = displayTime;
-    if (action === "clockOut") updated.clockOut = displayTime;
+  if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
+  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
+  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
+  if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
 
-    await ref.set(updated, { merge: true });
-    res.send(`打刻を記録しました (${displayTime})`);
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("サーバーエラー: " + e.message);
-  }
+  // 各アクションに応じてJSTタイムスタンプを保存
+  if (action === "clockIn") data.clockIn = ts;
+  if (action === "breakStart") data.breakStart = ts;
+  if (action === "breakEnd") data.breakEnd = ts;
+  if (action === "clockOut") data.clockOut = ts;
+
+  data.userId = userId;
+  data.name = name;
+  data.date = currentDate;
+
+  await ref.set(data, { merge: true });
+  res.send("打刻を記録しました（JST）");
 });
+
+
 
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
