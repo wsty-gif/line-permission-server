@@ -790,14 +790,19 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         // 今日のレコードがあれば currentState に反映
         const today = new Date().toISOString().split("T")[0];
+        // 今日の日付キー（例: "2025-11-07"）
         const todayKey = getTodayDateKey();
-        const todayData = data.find(r => r.date.replace(/\//g,"-") === todayKey);
+
+        // Firestoreのdateが「/」区切りでも対応
+        const todayData = data.find(r => r.date.replace(/\//g, "-") === todayKey);
+
         if (todayData) {
-          document.getElementById("clockInTime").innerText = todayData.clockIn ? todayData.clockIn.split(" ")[1].slice(0,5) : "--:--";
-          document.getElementById("breakStartTime").innerText = todayData.breakStart ? todayData.breakStart.split(" ")[1].slice(0,5) : "--:--";
-          document.getElementById("breakEndTime").innerText = todayData.breakEnd ? todayData.breakEnd.split(" ")[1].slice(0,5) : "--:--";
-          document.getElementById("clockOutTime").innerText = todayData.clockOut ? todayData.clockOut.split(" ")[1].slice(0,5) : "--:--";
-        } else {
+          document.getElementById("inTime").innerText = todayData?.clockIn?.split(" ")[1]?.slice(0,5) || "--:--";
+          document.getElementById("outTime").innerText = todayData?.clockOut?.split(" ")[1]?.slice(0,5) || "--:--";
+          document.getElementById("breakStartTime").innerText = todayData?.breakStart?.split(" ")[1]?.slice(0,5) || "--:--";
+          document.getElementById("breakEndTime").innerText = todayData?.breakEnd?.split(" ")[1]?.slice(0,5) || "--:--";
+        }
+        else {
           currentState = {
             date: todayKey,
             clockIn: null,
