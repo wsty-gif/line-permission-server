@@ -492,10 +492,49 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         <label>対象月：</label>
         <input type="month" id="monthSelect">
       </div>
-      <table id="records">
-        <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <!-- 勤怠一覧テーブル -->
+      <div class="table-wrapper">
+        <table id="recordsTable">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>出勤</th>
+              <th>退勤</th>
+              <th>休憩開始</th>
+              <th>休憩終了</th>
+              <th>実働時間</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+      </div>
+
+      <style>
+        .table-wrapper {
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          background: white;
+          font-size: 14px;
+          min-width: 600px; /* 横スク対応 */
+        }
+        th, td {
+          border: 1px solid #ddd;
+          padding: 8px;
+          text-align: center;
+          white-space: nowrap;
+        }
+        th {
+          background-color: #2563eb;
+          color: white;
+        }
+        tr:nth-child(even) { background: #f9fafb; }
+      </style>
+
     </div>
 
     <script>
@@ -575,7 +614,7 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
   res.json(doc.exists ? doc.data() : {});
 });
 
-// 🧾 打刻処理
+// 🧾 打刻処理（日本時間対応版）
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, action } = req.body;
@@ -584,7 +623,10 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
 
   const snap = await ref.get();
   const data = snap.exists ? snap.data() : {};
-  const now = admin.firestore.Timestamp.now();
+
+  // 🔸 日本時間で現在時刻を取得
+  const nowJST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  const now = admin.firestore.Timestamp.fromDate(nowJST);
 
   // 二重打刻防止 + 順序制御
   if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
@@ -599,13 +641,10 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   if (action === "clockOut") update.clockOut = now;
 
   await ref.set(update, { merge: true });
-  res.send("打刻が記録されました。");
+  res.send("打刻が記録されました（日本時間）");
 });
 
 
-// ==============================
-// 👨‍💼 管理者勤怠管理画面
-// ==============================
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
@@ -628,11 +667,12 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       .green { background:#16a34a; }
       .red { background:#dc2626; }
       table { width:100%; border-collapse:collapse; margin-top:12px; background:white; border-radius:8px; overflow:hidden; }
-      th,td { padding:8px; border-bottom:1px solid #eee; text-align:center; font-size:14px; }
+      th,td { padding:8px; border-bottom:1px solid #eee; text-align:center; font-size:14px; white-space:nowrap; }
       th { background:#2563eb; color:white; }
       .summary { text-align:right; margin-top:10px; }
       .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
-      .modal-content { background:white; padding:20px; border-radius:8px; max-width:300px; width:90%; }
+      .modal-content { background:white; padding:20px; border-radius:8px; max-width:320px; width:90%; }
+      .table-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
       @media(max-width:600px){
         table,thead,tbody,tr,th,td{display:block;}
         th{display:none;}
@@ -644,7 +684,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   </head>
   <body>
     <h1>${store} 勤怠管理</h1>
-    <!-- ▼ 修正箇所 -->
+
     <div>
       <label>対象月：</label>
       <input type="month" id="monthSelect">
@@ -654,10 +694,22 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
     </div>
 
     <div class="summary" id="summary"></div>
-    <table id="records">
-      <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>操作</th></tr></thead>
-      <tbody></tbody>
-    </table>
+
+    <div class="table-wrapper">
+      <table id="records">
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>出勤</th>
+            <th>退勤</th>
+            <th>休憩開始</th>
+            <th>休憩終了</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
 
     <!-- 修正モーダル -->
     <div id="modal" class="modal">
@@ -677,16 +729,13 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       const store = "${store}";
       let records = [];
 
-      // ▼ 修正：init関数
       async function init() {
         const now = new Date();
         const monthInput = document.getElementById("monthSelect");
         const ym = now.toISOString().slice(0, 7);
         monthInput.value = ym;
-        monthInput.addEventListener("change", loadRecords);
         await loadStaff();
       }
-
 
       async function loadStaff() {
         const res = await fetch("/${store}/admin/staff");
@@ -700,41 +749,53 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         });
       }
 
+      function formatDateTime(ts){
+        if(!ts) return "-";
+        try{
+          const d = new Date(ts);
+          return d.toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"});
+        }catch(e){ return "-"; }
+      }
+
       async function loadRecords(){
         const userId = document.getElementById("staffSelect").value;
         const month = document.getElementById("monthSelect").value;
+        if(!userId) return alert("スタッフを選択してください。");
+
         const res = await fetch("/${store}/admin/attendance/records?userId="+userId+"&month="+month);
         records = await res.json();
+
         const tbody = document.querySelector("#records tbody");
+        if(records.length===0){
+          tbody.innerHTML = "<tr><td colspan='6'>該当データなし</td></tr>";
+          document.getElementById("summary").innerText="";
+          return;
+        }
+
         tbody.innerHTML = records.map(r=>\`
           <tr>
             <td data-label="日付">\${r.date}</td>
-            <td data-label="出勤">\${r.clockIn||"-"}</td>
-            <td data-label="退勤">\${r.clockOut||"-"}</td>
-            <td data-label="休憩">\${r.breakStart&&r.breakEnd?r.breakStart+"~"+r.breakEnd:"-"}</td>
+            <td data-label="出勤">\${r.clockIn?formatDateTime(r.clockIn):"-"}</td>
+            <td data-label="退勤">\${r.clockOut?formatDateTime(r.clockOut):"-"}</td>
+            <td data-label="休憩開始">\${r.breakStart?formatDateTime(r.breakStart):"-"}</td>
+            <td data-label="休憩終了">\${r.breakEnd?formatDateTime(r.breakEnd):"-"}</td>
             <td data-label="操作"><button class='blue' onclick='openModal("\${r.date}")'>修正</button></td>
           </tr>\`).join("");
-        
-        const worked = records.filter(r=>r.clockIn && r.clockOut);
-        const totalH = worked.reduce((a,b)=>a+(toMinutes(b.clockOut)-toMinutes(b.clockIn)
-          - (b.breakStart&&b.breakEnd?toMinutes(b.breakEnd)-toMinutes(b.breakStart):0))/60,0);
-        document.getElementById("summary").innerText = 
-          "総勤務日数: "+worked.length+"日 / 総勤務時間: "+Math.floor(totalH)+"h";
-      }
 
-      function toMinutes(t){
-        if(!t)return 0;const [h,m]=t.split(":");return parseInt(h)*60+parseInt(m);
+        const worked = records.filter(r=>r.clockIn && r.clockOut);
+        document.getElementById("summary").innerText = "総勤務日数: "+worked.length+"日";
       }
 
       function openModal(date){
         const r = records.find(x=>x.date===date);
         document.getElementById("editDate").value = date;
-        document.getElementById("editIn").value = r.clockIn||"";
-        document.getElementById("editBreakStart").value = r.breakStart||"";
-        document.getElementById("editBreakEnd").value = r.breakEnd||"";
-        document.getElementById("editOut").value = r.clockOut||"";
+        document.getElementById("editIn").value = r.clockInTime || "";
+        document.getElementById("editBreakStart").value = r.breakStartTime || "";
+        document.getElementById("editBreakEnd").value = r.breakEndTime || "";
+        document.getElementById("editOut").value = r.clockOutTime || "";
         document.getElementById("modal").style.display="flex";
       }
+
       function closeModal(){ document.getElementById("modal").style.display="none"; }
 
       async function saveEdit(){
@@ -743,6 +804,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         const inT = document.getElementById("editIn").value;
         const outT = document.getElementById("editOut").value;
         if(inT && outT && inT>outT){ alert("出勤時間は退勤時間より前にしてください。"); return; }
+
         const body = {
           userId, date,
           clockIn: inT, clockOut: outT,
@@ -761,6 +823,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   </html>
   `);
 });
+
 
 
 // ==============================
