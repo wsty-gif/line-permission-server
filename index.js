@@ -457,8 +457,7 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
 app.get("/:store/attendance", ensureStore, (req, res) => {
   const { store, storeConf } = req;
 
-  res.send(`
-  <!DOCTYPE html>
+  res.send(`<!DOCTYPE html>
   <html lang="ja">
   <head>
     <meta charset="UTF-8">
@@ -466,35 +465,57 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     <title>${store} 勤怠打刻</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body { font-family: sans-serif; background: #f9fafb; padding: 16px; }
-      .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 520px; margin: 0 auto; }
-      h1 { font-size: 1.2rem; text-align: center; margin-bottom: 12px; color: #111827; }
-      #status { text-align:center; margin-bottom: 12px; color:#4b5563; font-size: .9rem; }
-      .today-box { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
-      .today-title { font-size: .9rem; margin-bottom: 8px; color:#374151; }
-      .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .action-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; text-align: center; background: #fff; }
-      .action-title { font-size: .9rem; margin-bottom: 4px; color:#111827; }
-      .action-time { font-size: .9rem; color:#6b7280; min-height: 1.2em; }
-      .action-btn { margin-top: 6px; width: 100%; padding: 8px; border-radius: 6px; border: none; cursor: pointer; font-size: .9rem; color: #fff; }
+      body { font-family: sans-serif; background: #f9fafb; padding: 16px; margin:0; }
+      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:480px; margin:16px auto; }
+      h1 { color:#2563eb; text-align:center; margin-top:0; }
+
+      .status { text-align:center; margin-bottom:8px; }
+
+      .today-box { margin-top:12px; }
+      .today-title { font-weight:bold; margin-bottom:6px; }
+
+      .grid-2x2 {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+      }
+      .action-card {
+        background:#f3f4f6;
+        border-radius:8px;
+        padding:8px;
+        text-align:center;
+      }
+      .action-title { font-size:14px; margin-bottom:4px; }
+      .action-time { font-size:16px; font-weight:bold; margin-bottom:6px; }
+
+      .action-btn {
+        width:100%;
+        padding:8px;
+        border:none;
+        border-radius:6px;
+        color:#fff;
+        font-size:14px;
+        cursor:pointer;
+      }
       .btn-in { background:#16a34a; }
       .btn-out { background:#dc2626; }
-      .btn-break-start { background:#6b7280; }
+      .btn-break-start { background:#f59e0b; }
       .btn-break-end { background:#2563eb; }
-      .month-row { display:flex; align-items:center; gap:8px; margin-top: 8px; margin-bottom: 4px; font-size: .9rem; }
-      .month-row label { white-space:nowrap; color:#4b5563; }
-      .month-row input[type="month"] { flex:1; padding:6px; border-radius:6px; border:1px solid #d1d5db; }
-      .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; }
-      table { width: 100%; border-collapse: collapse; background: white; font-size: 0.8rem; min-width: 640px; }
-      th, td { border: 1px solid #e5e7eb; padding: 6px; text-align: center; white-space: nowrap; }
-      th { background: #2563eb; color: white; position: sticky; top: 0; }
-      tr:nth-child(even) { background: #f9fafb; }
+
+      .month-box { margin-top:16px; text-align:left; }
+      .month-box label { margin-right:8px; }
+
+      .table-wrapper { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:8px; }
+      table { width:100%; border-collapse:collapse; min-width:600px; background:#fff; }
+      th,td { border:1px solid #e5e7eb; padding:6px; font-size:13px; text-align:center; white-space:nowrap; }
+      th { background:#2563eb; color:#fff; }
+      tr:nth-child(even) { background:#f9fafb; }
     </style>
   </head>
   <body>
     <div class="card">
       <h1>${store} 勤怠管理</h1>
-      <div id="status">LINEログイン中...</div>
+      <div id="status" class="status">LINEログイン中...</div>
 
       <div class="today-box">
         <div class="today-title" id="todayLabel">今日の打刻</div>
@@ -522,7 +543,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </div>
       </div>
 
-      <div class="month-row">
+      <div class="month-box">
         <label for="monthSelect">対象月</label>
         <input type="month" id="monthSelect">
       </div>
@@ -542,146 +563,146 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </table>
       </div>
     </div>
-<script>
-  let userId, name;
-  let currentState = { date:null, clockIn:null, clockOut:null, breakStart:null, breakEnd:null };
 
-  function getTodayDateKey() {
-    const now = new Date();
-    const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-    return jst.getFullYear() + "-" + (jst.getMonth()+1) + "-" + jst.getDate();
-  }
+    <script>
+      let userId = null;
+      let name = null;
 
-  function getNowJSTString() {
-    const now = new Date();
-    const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-    const yyyy = jst.getFullYear();
-    const mm = String(jst.getMonth() + 1).padStart(2, "0");
-    const dd = String(jst.getDate()).padStart(2, "0");
-    const hh = String(jst.getHours()).padStart(2, "0");
-    const mi = String(jst.getMinutes()).padStart(2, "0");
-    const ss = String(jst.getSeconds()).padStart(2, "0");
-    return `${yyyy}/${mm}/${dd} ${hh}:${mi}:${ss}`;
-  }
+      // JST 基準の現在日時を返す
+      function nowJST() {
+        const now = new Date();
+        // ブラウザは既にJSTなのでそのまま使う想定
+        return now;
+      }
 
-  function timeLabel(full) {
-    if (!full) return "--:--";
-    const parts = full.split(" ");
-    return parts[1]?.slice(0,5) || "--:--";
-  }
+      function pad2(n) {
+        return n < 10 ? "0" + n : "" + n;
+      }
 
-  function applyStateToLabels() {
-    document.getElementById("timeIn").innerText = timeLabel(currentState.clockIn);
-    document.getElementById("timeBreakStart").innerText = timeLabel(currentState.breakStart);
-    document.getElementById("timeBreakEnd").innerText = timeLabel(currentState.breakEnd);
-    document.getElementById("timeOut").innerText = timeLabel(currentState.clockOut);
-  }
+      function formatDateJST(d) {
+        const y = d.getFullYear();
+        const m = pad2(d.getMonth() + 1);
+        const day = pad2(d.getDate());
+        return y + "/" + m + "/" + day;
+      }
 
-async function sendAction(action) {
-  if (!userId) return alert("ログイン情報がありません");
+      async function main() {
+        try {
+          await liff.init({ liffId: "${storeConf.liffId}" });
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
 
-  // JST時刻を即時取得
-  const nowStr = getNowJSTString();
+          const p = await liff.getProfile();
+          userId = p.userId;
+          name = p.displayName || "";
 
-  // 即時反映（loadRecordsを待たずに更新）
-  switch (action) {
-    case "clockIn":
-      currentState.clockIn = nowStr;
-      document.getElementById("timeIn").innerText = timeLabel(nowStr);
-      break;
-    case "breakStart":
-      currentState.breakStart = nowStr;
-      document.getElementById("timeBreakStart").innerText = timeLabel(nowStr);
-      break;
-    case "breakEnd":
-      currentState.breakEnd = nowStr;
-      document.getElementById("timeBreakEnd").innerText = timeLabel(nowStr);
-      break;
-    case "clockOut":
-      currentState.clockOut = nowStr;
-      document.getElementById("timeOut").innerText = timeLabel(nowStr);
-      break;
-  }
+          const statusEl = document.getElementById("status");
+          if (statusEl) {
+            statusEl.innerText = name + " さんログイン中";
+          }
 
-  // Firestore保存
-  const res = await fetch("/${store}/attendance/submit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, name, action })
-  });
+          const today = nowJST();
+          const ym = today.toISOString().slice(0, 7); // YYYY-MM
+          const monthInput = document.getElementById("monthSelect");
+          monthInput.value = ym;
+          monthInput.addEventListener("change", function () {
+            loadRecords();
+          });
 
-  const msg = await res.text();
-  alert(msg);
+          document.getElementById("btnIn").addEventListener("click", function() {
+            sendAction("clockIn");
+          });
+          document.getElementById("btnOut").addEventListener("click", function() {
+            sendAction("clockOut");
+          });
+          document.getElementById("btnBreakStart").addEventListener("click", function() {
+            sendAction("breakStart");
+          });
+          document.getElementById("btnBreakEnd").addEventListener("click", function() {
+            sendAction("breakEnd");
+          });
 
-  // 🔸 Firestore保存後は一覧更新だけ（ボタンの時刻は上書きしない）
-  loadRecords();
-}
+          await loadRecords();
+        } catch (e) {
+          console.error(e);
+          const statusEl = document.getElementById("status");
+          if (statusEl) {
+            statusEl.innerText = "LIFF初期化に失敗しました: " + e.message;
+          }
+        }
+      }
 
+      async function sendAction(action) {
+        if (!userId) {
+          alert("ユーザー情報取得中です。少し待ってから再度お試しください。");
+          return;
+        }
+        const res = await fetch("/${store}/attendance/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: userId, name: name, action: action })
+        });
+        const msg = await res.text();
+        alert(msg);
+        await loadRecords();
+      }
 
-  async function loadRecords() {
-    if (!userId) return;
-    const month = document.getElementById("monthSelect").value;
-    if (!month) return;
+      async function loadRecords() {
+        if (!userId) return;
 
-    const res = await fetch("/${store}/attendance/records?userId="+encodeURIComponent(userId)+"&month="+encodeURIComponent(month));
-    const data = await res.json();
-    const tbody = document.getElementById("recordsBody");
-    tbody.innerHTML = data.map(r =>
-      "<tr>" +
-      "<td>" + (r.date || "--") + "</td>" +
-      "<td>" + (r.clockIn || "--:--") + "</td>" +
-      "<td>" + (r.clockOut || "--:--") + "</td>" +
-      "<td>" + (r.breakStart || "--:--") + "</td>" +
-      "<td>" + (r.breakEnd || "--:--") + "</td>" +
-      "</tr>"
-    ).join("");
+        const month = document.getElementById("monthSelect").value;
+        if (!month) return;
 
-    const todayKey = getTodayDateKey();
-    const todayData = data.find(r => r.date === todayKey);
-    if (todayData) {
-      currentState = todayData;
-    } else {
-      currentState = { date:todayKey, clockIn:null, clockOut:null, breakStart:null, breakEnd:null };
-    }
-    applyStateToLabels();
-  }
+        const res = await fetch("/${store}/attendance/records?userId=" +
+          encodeURIComponent(userId) + "&month=" + encodeURIComponent(month));
+        const data = await res.json();
 
-  function initMonthSelector() {
-    const monthInput = document.getElementById("monthSelect");
-    const jst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-    monthInput.value = jst.toISOString().slice(0,7);
-    monthInput.addEventListener("change", loadRecords);
-  }
+        const tbody = document.getElementById("recordsBody");
+        if (!tbody) return;
 
-  async function main() {
-    try {
-      await liff.init({ liffId: "${storeConf.liffId}" });
-      if (!liff.isLoggedIn()) return liff.login();
-      const p = await liff.getProfile();
-      userId = p.userId;
-      name = p.displayName;
-      document.getElementById("status").innerText = name + " さんログイン中";
-      document.getElementById("todayLabel").innerText = "今日の打刻（" + getTodayDateKey() + "）";
-      initMonthSelector();
-      await loadRecords();
-    } catch(e) {
-      document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
-    }
-  }
+        tbody.innerHTML = data.map(function(r) {
+          const date = r.date || "--";
+          const cin  = r.clockIn  || "--:--";
+          const cout = r.clockOut || "--:--";
+          const bIn  = r.breakStart || "--:--";
+          const bOut = r.breakEnd   || "--:--";
+          return "<tr>"
+            + "<td>" + date + "</td>"
+            + "<td>" + cin + "</td>"
+            + "<td>" + cout + "</td>"
+            + "<td>" + bIn + "</td>"
+            + "<td>" + bOut + "</td>"
+            + "</tr>";
+        }).join("");
 
-  document.addEventListener("click", e => {
-    if (e.target.id === "btnIn") sendAction("clockIn");
-    if (e.target.id === "btnBreakStart") sendAction("breakStart");
-    if (e.target.id === "btnBreakEnd") sendAction("breakEnd");
-    if (e.target.id === "btnOut") sendAction("clockOut");
-  });
+        // 今日の行を探してボタン下の時刻に反映
+        const today = nowJST();
+        const todayStr = formatDateJST(today); // "YYYY/MM/DD"
+        const todayRow = data.find(function(r) {
+          return r.date === todayStr;
+        });
 
-  main();
-</script>
+        document.getElementById("timeIn").innerText =
+          (todayRow && todayRow.clockIn) ? todayRow.clockIn : "--:--";
+        document.getElementById("timeOut").innerText =
+          (todayRow && todayRow.clockOut) ? todayRow.clockOut : "--:--";
+        document.getElementById("timeBreakStart").innerText =
+          (todayRow && todayRow.breakStart) ? todayRow.breakStart : "--:--";
+        document.getElementById("timeBreakEnd").innerText =
+          (todayRow && todayRow.breakEnd) ? todayRow.breakEnd : "--:--";
 
+        const todayLabel = document.getElementById("todayLabel");
+        if (todayLabel) {
+          todayLabel.innerText = "今日の打刻（" + todayStr + "）";
+        }
+      }
+
+      main();
+    </script>
   </body>
-  </html>
-  `);
+  </html>`);
 });
 
 
