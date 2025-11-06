@@ -823,29 +823,34 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
 
 // 🧾 打刻処理（日本時間対応版）
 // 🧾 打刻処理（修正版）
+// 🧾 打刻処理（日本時間で正確に保存）
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, action } = req.body;
 
-  // JST現在日時を取得
-  const jstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-  const currentDate = jstNow.toISOString().split("T")[0];
+  // ✅ JSTでの日付文字列（勤怠1日単位のキー用）
+  const now = new Date(); // ← UTCベースで取得（これが重要）
+  const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const currentDate = jstNow.toISOString().split("T")[0]; // "YYYY-MM-DD"
 
+  // Firestore参照
   const ref = db.collection("companies").doc(store)
-                .collection("attendance").doc(userId)
-                .collection("records").doc(currentDate);
+    .collection("attendance").doc(userId)
+    .collection("records").doc(currentDate);
 
   const snap = await ref.get();
   const data = snap.exists ? snap.data() : {};
 
-  const ts = admin.firestore.Timestamp.fromDate(jstNow);
+  // ✅ Firestore Timestamp は「UTCのまま」保存する
+  const ts = admin.firestore.Timestamp.fromDate(now);
 
+  // 二重打刻チェック
   if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
   if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
   if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
   if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
 
-  // 各アクションに応じてJSTタイムスタンプを保存
+  // 各アクションに対応
   if (action === "clockIn") data.clockIn = ts;
   if (action === "breakStart") data.breakStart = ts;
   if (action === "breakEnd") data.breakEnd = ts;
@@ -856,10 +861,9 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   data.date = currentDate;
 
   await ref.set(data, { merge: true });
-  res.send("打刻を記録しました（JST）");
+
+  res.send("打刻を記録しました（JST表示対応）");
 });
-
-
 
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
