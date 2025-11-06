@@ -1068,7 +1068,9 @@ app.get("/:store/attendance-admin", ensureStore, async (req, res) => {
       }
 
       // ✅ DOM読み込み後に初期化
-      document.addEventListener("DOMContentLoaded", init);
+      document.addEventListener("DOMContentLoaded", () => {
+        loadRecords();
+      });
     </script>
 
   </body></html>
@@ -1141,27 +1143,50 @@ app.post("/:store/attendance/clockOut", ensureStore, async (req, res) => {
 });
 
 // 📅 月別一覧取得
+// 勤怠一覧取得API
 app.get("/:store/attendance/records", ensureStore, async (req, res) => {
-  const { store } = req.params;
   const { userId, month } = req.query;
-  if (!userId) return res.json([]);
+  const store = req.store;
 
-  const col = db.collection("companies").doc(store).collection("attendance").doc(userId).collection("records");
-  const snapshot = await col.get();
+  if (!userId || !month) {
+    return res.status(400).send("userId と month は必須です");
+  }
 
-  const records = snapshot.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .filter(r => r.date.startsWith(month))
-    .map(r => ({
-      date: r.date,
-      clockIn: r.clockIn ? r.clockIn.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
-      breakStart: r.breakStart ? r.breakStart.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
-      breakEnd: r.breakEnd ? r.breakEnd.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
-      clockOut: r.clockOut ? r.clockOut.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
-    }));
+  try {
+    const snap = await db
+      .collection("companies")
+      .doc(store)
+      .collection("attendance")
+      .doc(userId)
+      .collection("records")
+      .orderBy("date", "asc")
+      .get();
 
-  res.json(records);
+    const records = snap.docs
+      .map(doc => {
+        const d = doc.data();
+        return {
+          date: d.date,
+          clockIn: d.clockIn ? formatDate(d.clockIn) : null,
+          clockOut: d.clockOut ? formatDate(d.clockOut) : null,
+          breakStart: d.breakStart ? formatDate(d.breakStart) : null,
+          breakEnd: d.breakEnd ? formatDate(d.breakEnd) : null,
+        };
+      })
+      .filter(r => r.date && r.date.startsWith(month)); // 対象月のみ表示
+
+    res.json(records);
+  } catch (e) {
+    console.error("❌ 勤怠データ取得エラー:", e);
+    res.status(500).send("データ取得に失敗しました");
+  }
 });
+
+function formatDate(ts) {
+  const date = ts.toDate();
+  return date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+}
+
 
 // 承認済みスタッフ一覧
 app.get("/:store/admin/staff", ensureStore, async (req, res) => {
