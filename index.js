@@ -542,101 +542,141 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </table>
       </div>
     </div>
+<script>
+  let userId, name;
+  let currentState = { date:null, clockIn:null, clockOut:null, breakStart:null, breakEnd:null };
 
-    <script>
-      let userId, name;
-      let currentState = { date:null, clockIn:null, clockOut:null, breakStart:null, breakEnd:null };
+  function getTodayDateKey() {
+    const now = new Date();
+    const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    return jst.getFullYear() + "-" + (jst.getMonth()+1) + "-" + jst.getDate();
+  }
 
-      function getTodayDateKey() {
-        const now = new Date();
-        const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-        return jst.getFullYear() + "-" + (jst.getMonth()+1) + "-" + jst.getDate();
-      }
+  function getNowJSTString() {
+    const now = new Date();
+    const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    const yyyy = jst.getFullYear();
+    const mm = String(jst.getMonth() + 1).padStart(2, "0");
+    const dd = String(jst.getDate()).padStart(2, "0");
+    const hh = String(jst.getHours()).padStart(2, "0");
+    const mi = String(jst.getMinutes()).padStart(2, "0");
+    const ss = String(jst.getSeconds()).padStart(2, "0");
+    return `${yyyy}/${mm}/${dd} ${hh}:${mi}:${ss}`;
+  }
 
-      function timeLabel(full) {
-        if (!full) return "--:--";
-        const parts = full.split(" ");
-        return parts[1]?.slice(0,5) || "--:--";
-      }
+  function timeLabel(full) {
+    if (!full) return "--:--";
+    const parts = full.split(" ");
+    return parts[1]?.slice(0,5) || "--:--";
+  }
 
-      function applyStateToLabels() {
-        document.getElementById("timeIn").innerText = timeLabel(currentState.clockIn);
-        document.getElementById("timeBreakStart").innerText = timeLabel(currentState.breakStart);
-        document.getElementById("timeBreakEnd").innerText = timeLabel(currentState.breakEnd);
-        document.getElementById("timeOut").innerText = timeLabel(currentState.clockOut);
-      }
+  function applyStateToLabels() {
+    document.getElementById("timeIn").innerText = timeLabel(currentState.clockIn);
+    document.getElementById("timeBreakStart").innerText = timeLabel(currentState.breakStart);
+    document.getElementById("timeBreakEnd").innerText = timeLabel(currentState.breakEnd);
+    document.getElementById("timeOut").innerText = timeLabel(currentState.clockOut);
+  }
 
-      async function sendAction(action) {
-        if (!userId) return alert("ログイン情報がありません");
-        const res = await fetch("/${store}/attendance/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, name, action })
-        });
-        alert(await res.text());
-        await loadRecords();
-      }
+  async function sendAction(action) {
+    if (!userId) return alert("ログイン情報がありません");
 
-      async function loadRecords() {
-        if (!userId) return;
-        const month = document.getElementById("monthSelect").value;
-        if (!month) return;
+    // 🔹 JST時刻を即時取得
+    const nowStr = getNowJSTString();
 
-        const res = await fetch("/${store}/attendance/records?userId="+encodeURIComponent(userId)+"&month="+encodeURIComponent(month));
-        const data = await res.json();
-        const tbody = document.getElementById("recordsBody");
-        tbody.innerHTML = data.map(r =>
-          "<tr>" +
-          "<td>" + (r.date || "--") + "</td>" +
-          "<td>" + (r.clockIn || "--:--") + "</td>" +
-          "<td>" + (r.clockOut || "--:--") + "</td>" +
-          "<td>" + (r.breakStart || "--:--") + "</td>" +
-          "<td>" + (r.breakEnd || "--:--") + "</td>" +
-          "</tr>"
-        ).join("");
+    // 🔹 Firestoreへ送信
+    const res = await fetch("/${store}/attendance/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, name, action })
+    });
+    const msg = await res.text();
+    alert(msg);
 
-        const todayKey = getTodayDateKey();
-        const todayData = data.find(r => r.date === todayKey);
-        if (todayData) {
-          currentState = todayData;
-        } else {
-          currentState = { date:todayKey, clockIn:null, clockOut:null, breakStart:null, breakEnd:null };
-        }
-        applyStateToLabels();
-      }
+    // 🔹 即時反映
+    switch (action) {
+      case "clockIn":
+        currentState.clockIn = nowStr;
+        document.getElementById("timeIn").innerText = timeLabel(nowStr);
+        break;
+      case "breakStart":
+        currentState.breakStart = nowStr;
+        document.getElementById("timeBreakStart").innerText = timeLabel(nowStr);
+        break;
+      case "breakEnd":
+        currentState.breakEnd = nowStr;
+        document.getElementById("timeBreakEnd").innerText = timeLabel(nowStr);
+        break;
+      case "clockOut":
+        currentState.clockOut = nowStr;
+        document.getElementById("timeOut").innerText = timeLabel(nowStr);
+        break;
+    }
 
-      function initMonthSelector() {
-        const monthInput = document.getElementById("monthSelect");
-        const jst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-        monthInput.value = jst.toISOString().slice(0,7);
-        monthInput.addEventListener("change", loadRecords);
-      }
+    // 🔹 一覧にも反映
+    await loadRecords();
+  }
 
-      async function main() {
-        try {
-          await liff.init({ liffId: "${storeConf.liffId}" });
-          if (!liff.isLoggedIn()) return liff.login();
-          const p = await liff.getProfile();
-          userId = p.userId;
-          name = p.displayName;
-          document.getElementById("status").innerText = name + " さんログイン中";
-          document.getElementById("todayLabel").innerText = "今日の打刻（" + getTodayDateKey() + "）";
-          initMonthSelector();
-          await loadRecords();
-        } catch(e) {
-          document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
-        }
-      }
+  async function loadRecords() {
+    if (!userId) return;
+    const month = document.getElementById("monthSelect").value;
+    if (!month) return;
 
-      document.addEventListener("click", e => {
-        if (e.target.id === "btnIn") sendAction("clockIn");
-        if (e.target.id === "btnBreakStart") sendAction("breakStart");
-        if (e.target.id === "btnBreakEnd") sendAction("breakEnd");
-        if (e.target.id === "btnOut") sendAction("clockOut");
-      });
+    const res = await fetch("/${store}/attendance/records?userId="+encodeURIComponent(userId)+"&month="+encodeURIComponent(month));
+    const data = await res.json();
+    const tbody = document.getElementById("recordsBody");
+    tbody.innerHTML = data.map(r =>
+      "<tr>" +
+      "<td>" + (r.date || "--") + "</td>" +
+      "<td>" + (r.clockIn || "--:--") + "</td>" +
+      "<td>" + (r.clockOut || "--:--") + "</td>" +
+      "<td>" + (r.breakStart || "--:--") + "</td>" +
+      "<td>" + (r.breakEnd || "--:--") + "</td>" +
+      "</tr>"
+    ).join("");
 
-      main();
-    </script>
+    const todayKey = getTodayDateKey();
+    const todayData = data.find(r => r.date === todayKey);
+    if (todayData) {
+      currentState = todayData;
+    } else {
+      currentState = { date:todayKey, clockIn:null, clockOut:null, breakStart:null, breakEnd:null };
+    }
+    applyStateToLabels();
+  }
+
+  function initMonthSelector() {
+    const monthInput = document.getElementById("monthSelect");
+    const jst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    monthInput.value = jst.toISOString().slice(0,7);
+    monthInput.addEventListener("change", loadRecords);
+  }
+
+  async function main() {
+    try {
+      await liff.init({ liffId: "${storeConf.liffId}" });
+      if (!liff.isLoggedIn()) return liff.login();
+      const p = await liff.getProfile();
+      userId = p.userId;
+      name = p.displayName;
+      document.getElementById("status").innerText = name + " さんログイン中";
+      document.getElementById("todayLabel").innerText = "今日の打刻（" + getTodayDateKey() + "）";
+      initMonthSelector();
+      await loadRecords();
+    } catch(e) {
+      document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
+    }
+  }
+
+  document.addEventListener("click", e => {
+    if (e.target.id === "btnIn") sendAction("clockIn");
+    if (e.target.id === "btnBreakStart") sendAction("breakStart");
+    if (e.target.id === "btnBreakEnd") sendAction("breakEnd");
+    if (e.target.id === "btnOut") sendAction("clockOut");
+  });
+
+  main();
+</script>
+
   </body>
   </html>
   `);
