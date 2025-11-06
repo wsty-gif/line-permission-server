@@ -718,13 +718,16 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
       function initMonthSelector() {
         const monthInput = document.getElementById("monthSelect");
+
+        // ✅ JST時間に変換
         const now = new Date();
-        const jst = new Date(now.toLocaleString("en-US",{ timeZone: "Asia/Tokyo" }));
-        const ym = jst.toISOString().slice(0,7); // "2025-11"
+        const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000); // UTC → JST
+
+        // ✅ yyyy-MM 形式を抽出
+        const ym = jst.toISOString().slice(0, 7); // 例: "2025-11"
+
         monthInput.value = ym;
-        monthInput.addEventListener("change", () => {
-          loadRecords();
-        });
+        monthInput.addEventListener("change", loadRecords);
       }
 
       // 送信共通処理
