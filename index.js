@@ -577,44 +577,46 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     document.getElementById("timeOut").innerText = timeLabel(currentState.clockOut);
   }
 
-  async function sendAction(action) {
-    if (!userId) return alert("ログイン情報がありません");
+async function sendAction(action) {
+  if (!userId) return alert("ログイン情報がありません");
 
-    // 🔹 JST時刻を即時取得
-    const nowStr = getNowJSTString();
+  // JST時刻を即時取得
+  const nowStr = getNowJSTString();
 
-    // 🔹 Firestoreへ送信
-    const res = await fetch("/${store}/attendance/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, name, action })
-    });
-    const msg = await res.text();
-    alert(msg);
-
-    // 🔹 即時反映
-    switch (action) {
-      case "clockIn":
-        currentState.clockIn = nowStr;
-        document.getElementById("timeIn").innerText = timeLabel(nowStr);
-        break;
-      case "breakStart":
-        currentState.breakStart = nowStr;
-        document.getElementById("timeBreakStart").innerText = timeLabel(nowStr);
-        break;
-      case "breakEnd":
-        currentState.breakEnd = nowStr;
-        document.getElementById("timeBreakEnd").innerText = timeLabel(nowStr);
-        break;
-      case "clockOut":
-        currentState.clockOut = nowStr;
-        document.getElementById("timeOut").innerText = timeLabel(nowStr);
-        break;
-    }
-
-    // 🔹 一覧にも反映
-    await loadRecords();
+  // 即時反映（loadRecordsを待たずに更新）
+  switch (action) {
+    case "clockIn":
+      currentState.clockIn = nowStr;
+      document.getElementById("timeIn").innerText = timeLabel(nowStr);
+      break;
+    case "breakStart":
+      currentState.breakStart = nowStr;
+      document.getElementById("timeBreakStart").innerText = timeLabel(nowStr);
+      break;
+    case "breakEnd":
+      currentState.breakEnd = nowStr;
+      document.getElementById("timeBreakEnd").innerText = timeLabel(nowStr);
+      break;
+    case "clockOut":
+      currentState.clockOut = nowStr;
+      document.getElementById("timeOut").innerText = timeLabel(nowStr);
+      break;
   }
+
+  // Firestore保存
+  const res = await fetch("/${store}/attendance/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, name, action })
+  });
+
+  const msg = await res.text();
+  alert(msg);
+
+  // 🔸 Firestore保存後は一覧更新だけ（ボタンの時刻は上書きしない）
+  loadRecords();
+}
+
 
   async function loadRecords() {
     if (!userId) return;
