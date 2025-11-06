@@ -35,7 +35,6 @@ const STORES = {
   },
 };
 
-
 // ==============================
 // 🔥 Firebase 初期化
 // ==============================
@@ -442,6 +441,7 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
     .box { background:#fff; padding:24px; border-radius:10px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:360px; }
     h2 { color:#16a34a; }
     </style></head><body>
+    <div class="box">
         <h2>申請を受け付けました！</h2>
         <p>管理者の承認をお待ちください。</p>
     </div>
@@ -451,7 +451,9 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
     res.status(500).send("申請処理中にエラーが発生しました。");
   }
 });
-
+// ==============================
+// 🕒 従業員用：勤怠打刻 + 月別一覧
+// ==============================
 app.get("/:store/attendance", ensureStore, (req, res) => {
   const { store, storeConf } = req;
 
@@ -464,106 +466,64 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     <title>${store} 勤怠打刻</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body { font-family: 'Noto Sans JP', sans-serif; background:#f8f8f8; text-align:center; padding:20px; margin:0; }
-      h1 { color:#333; }
-      #status { margin:10px 0; color:#666; font-size:1rem; }
-      .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:400px; margin:0 auto; }
-      button { padding:14px; border:1px solid #ccc; border-radius:8px; background:#fff; cursor:pointer; font-size:1rem; }
-      button:hover:not(:disabled){ background:#f0f0f0; }
-      button:disabled{ background:#e5e5e5; color:#aaa; cursor:not-allowed; }
-      .time-label { margin-top:4px; font-size:0.9rem; color:#555; height:18px; }
-      table { margin-top:20px; width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; }
-      th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:14px; }
-      th { background:#f3f4f6; }
+      body { font-family: sans-serif; background: #f9fafb; padding: 16px; }
+      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:480px; margin:auto; }
+      h1 { color:#2563eb; text-align:center; }
+      button { width:100%; padding:10px; margin:6px 0; border:none; border-radius:6px; color:white; font-size:1rem; cursor:pointer; }
+      .in { background:#16a34a; }
+      .out { background:#dc2626; }
+      .break { background:#f59e0b; }
+      .endbreak { background:#2563eb; }
+      table { width:100%; border-collapse:collapse; margin-top:20px; }
+      th,td { border-bottom:1px solid #ddd; padding:6px; font-size:14px; text-align:center; }
+      select { padding:6px; border-radius:6px; border:1px solid #ccc; margin-top:10px; }
     </style>
   </head>
   <body>
-    <h1>${store} 勤怠打刻</h1>
-    <div id="status">LINEログイン中...</div>
+    <div class="card">
+      <h1>${store} 勤怠管理</h1>
+      <div id="status">ログイン中...</div>
+      <button id="btnIn" class="in">出勤</button>
+      <button id="btnBreakStart" class="break">休憩開始</button>
+      <button id="btnBreakEnd" class="endbreak">休憩終了</button>
+      <button id="btnOut" class="out">退勤</button>
 
-    <div class="grid">
-      <div><button id="btnIn">出勤</button><div id="timeIn" class="time-label"></div></div>
-      <div><button id="btnOut">退勤</button><div id="timeOut" class="time-label"></div></div>
-      <div><button id="btnBreakStart">休憩開始</button><div id="timeBreakStart" class="time-label"></div></div>
-      <div><button id="btnBreakEnd">休憩終了</button><div id="timeBreakEnd" class="time-label"></div></div>
+      <div>
+        <label>対象月：</label>
+        <input type="month" id="monthSelect">
+      </div>
+      <table id="records">
+        <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
-
-    <div style="margin-top:20px;">
-      <label>対象月：</label>
-      <input type="month" id="monthSelect">
-    </div>
-
-    <table id="records">
-      <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩開始</th><th>休憩終了</th></tr></thead>
-      <tbody></tbody>
-    </table>
 
     <script>
-      let userId, name, currentState = {};
+      let userId, name;
 
       async function main() {
-        try {
-          await liff.init({ liffId: "${storeConf.liffId}" });
-          await liff.ready; // ← LIFFの初期化完了を待機
+        await liff.init({ liffId: "${storeConf.liffId}" });
+        if (!liff.isLoggedIn()) return liff.login();
+        const p = await liff.getProfile();
+        userId = p.userId; name = p.displayName;
 
-          if (!liff.isLoggedIn()) {
-            liff.login({ redirectUri: location.href });
-            return;
-          }
+        // main関数の中
+        document.getElementById("status").innerText = name + " さんログイン中";
+        initMonthSelector();
+        loadRecords();
 
-          const profile = await liff.getProfile();
-          userId = profile.userId;
-          name = profile.displayName;
-          document.getElementById("status").innerText = name + " さんログイン中";
-
-          const now = new Date();
-          const ym = now.toISOString().slice(0,7);
-          document.getElementById("monthSelect").value = ym;
-          document.getElementById("monthSelect").addEventListener("change", loadRecords);
-
-          updateButtons();
-          loadRecords();
-        } catch(e) {
-          console.error("LIFF初期化失敗:", e);
-          document.getElementById("status").innerText = "ログインエラー：" + e.message;
-        }
       }
 
+      // ===== ボタンイベント =====
       async function sendAction(action) {
         const res = await fetch("/${store}/attendance/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, name, action })
         });
-        alert(await res.text());
+        const msg = await res.text();
+        alert(msg);
         loadRecords();
-      }
-
-      function updateButtons() {
-        document.getElementById("btnIn").disabled = currentState.clockIn;
-        document.getElementById("btnBreakStart").disabled = !currentState.clockIn || currentState.breakStart;
-        document.getElementById("btnBreakEnd").disabled = !currentState.breakStart || currentState.breakEnd;
-        document.getElementById("btnOut").disabled = !currentState.clockIn || currentState.clockOut;
-      }
-
-      async function loadRecords() {
-        const month = document.getElementById("monthSelect").value;
-        const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
-        const data = await res.json();
-        const today = new Date().toLocaleDateString("ja-JP",{ timeZone:"Asia/Tokyo" }).replace(/\//g,"-");
-        currentState = data.find(r => r.date === today) || {};
-        updateButtons();
-
-        const tbody = document.querySelector("#records tbody");
-        tbody.innerHTML = data.map(r => \`
-          <tr>
-            <td>\${r.date}</td>
-            <td>\${r.clockIn || "-"}</td>
-            <td>\${r.clockOut || "-"}</td>
-            <td>\${r.breakStart || "-"}</td>
-            <td>\${r.breakEnd || "-"}</td>
-          </tr>\`
-        ).join("");
       }
 
       document.getElementById("btnIn").onclick = () => sendAction("clockIn");
@@ -571,11 +531,39 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
       document.getElementById("btnOut").onclick = () => sendAction("clockOut");
 
+      // ▼ 削除：loadMonths関数全体
+      // ▼ 新しい初期化処理に置き換え
+      function initMonthSelector() {
+        const monthInput = document.getElementById("monthSelect");
+        const now = new Date();
+        const ym = now.toISOString().slice(0, 7); // 例: "2025-11"
+        monthInput.value = ym;
+        monthInput.addEventListener("change", loadRecords);
+      }
+
+
+      async function loadRecords() {
+        const month = document.getElementById("monthSelect").value;
+        const res = await fetch("/${store}/attendance/records?userId="+userId+"&month="+month);
+        const data = await res.json();
+        const tbody = document.querySelector("#records tbody");
+        tbody.innerHTML = data.map(r => 
+          \`<tr>
+            <td>\${r.date}</td>
+            <td>\${r.clockIn||"-"}</td>
+            <td>\${r.clockOut||"-"}</td>
+            <td>\${r.breakStart && r.breakEnd ? r.breakStart+"~"+r.breakEnd : "-"}</td>
+          </tr>\`
+        ).join("");
+      }
+
       main();
     </script>
   </body>
-  </html>`);
+  </html>
+  `);
 });
+
 
 // 出退勤ステータス取得
 app.get("/:store/attendance/status", ensureStore, async (req, res) => {
@@ -591,30 +579,27 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, action } = req.body;
-
-  // JSTに調整
-  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-  const currentDate = now.toISOString().split("T")[0];
-  const ref = db.collection("companies").doc(store)
-                .collection("attendance").doc(userId)
-                .collection("records").doc(currentDate);
+  const dateStr = new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" }).replace(/\//g, "-");
+  const ref = db.collection("companies").doc(store).collection("attendance").doc(userId).collection("records").doc(dateStr);
 
   const snap = await ref.get();
   const data = snap.exists ? snap.data() : {};
+  const now = admin.firestore.Timestamp.now();
 
-  // 打刻制御
+  // 二重打刻防止 + 順序制御
   if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
-  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
-  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
+  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は1回のみ、または出勤前です。");
+  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は1回のみ、または開始前です。");
   if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
 
-  // 退勤時間が翌日でも同じ勤務日として扱う
-  const update = { name, userId, date: currentDate };
-  const ts = admin.firestore.Timestamp.fromDate(now);
-  update[action] = ts;
+  const update = { name, userId, date: dateStr };
+  if (action === "clockIn") update.clockIn = now;
+  if (action === "breakStart") update.breakStart = now;
+  if (action === "breakEnd") update.breakEnd = now;
+  if (action === "clockOut") update.clockOut = now;
 
   await ref.set(update, { merge: true });
-  res.send("打刻を記録しました。");
+  res.send("打刻が記録されました。");
 });
 
 
@@ -1088,27 +1073,22 @@ app.get("/:store/attendance/records", ensureStore, async (req, res) => {
   const { userId, month } = req.query;
   if (!userId) return res.json([]);
 
-  const col = db.collection("companies").doc(store)
-                .collection("attendance").doc(userId)
-                .collection("records");
-  const snap = await col.get();
+  const col = db.collection("companies").doc(store).collection("attendance").doc(userId).collection("records");
+  const snapshot = await col.get();
 
-  const list = snap.docs.map(d => d.data())
+  const records = snapshot.docs
+    .map(d => ({ id: d.id, ...d.data() }))
     .filter(r => r.date.startsWith(month))
     .map(r => ({
       date: r.date,
-      clockIn: r.clockIn ? formatJST(r.clockIn.toDate()) : null,
-      clockOut: r.clockOut ? formatJST(r.clockOut.toDate()) : null,
-      breakStart: r.breakStart ? formatJST(r.breakStart.toDate()) : null,
-      breakEnd: r.breakEnd ? formatJST(r.breakEnd.toDate()) : null,
+      clockIn: r.clockIn ? r.clockIn.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
+      breakStart: r.breakStart ? r.breakStart.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
+      breakEnd: r.breakEnd ? r.breakEnd.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
+      clockOut: r.clockOut ? r.clockOut.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
     }));
-  res.json(list);
-});
 
-function formatJST(date) {
-  const options = { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" };
-  return new Intl.DateTimeFormat("ja-JP", options).format(date).replace(/\//g, "/").replace(",", "");
-}
+  res.json(records);
+});
 
 // 承認済みスタッフ一覧
 app.get("/:store/admin/staff", ensureStore, async (req, res) => {
