@@ -13,6 +13,11 @@ const STORES = {
     manualUrl: process.env.STORE_A_MANUAL_URL,
     richmenuBefore: process.env.STORE_A_RICHMENU_BEFORE,
     richmenuAfter: process.env.STORE_A_RICHMENU_AFTER,
+    manualUrls: {
+      line: process.env.STORE_A_MANUAL_URL_LINE,
+      todo: process.env.STORE_A_MANUAL_URL_TODO,
+      default: process.env.STORE_A_MANUAL_URL_DEFAULT,
+    },
   },
   nice_sweets: {
     channelAccessToken: process.env.STORE_B_CHANNEL_ACCESS_TOKEN,
@@ -437,7 +442,6 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
     .box { background:#fff; padding:24px; border-radius:10px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:360px; }
     h2 { color:#16a34a; }
     </style></head><body>
-    <div class="box">
         <h2>申請を受け付けました！</h2>
         <p>管理者の承認をお待ちください。</p>
     </div>
