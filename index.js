@@ -684,14 +684,28 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
           return r.date === todayStr;
         });
 
+        function formatToHHMM(timestampStr) {
+          if (!timestampStr) return "--:--";
+          // Firestoreの文字列 "2025年11月6日 20:19:39 UTC+9" → Dateに変換
+          const date = new Date(timestampStr.replace("UTC+9", "+09:00"));
+          if (isNaN(date)) return "--:--";
+          return date.getHours().toString().padStart(2, "0") + ":" +
+                date.getMinutes().toString().padStart(2, "0");
+        }
+
+        // 今日の行を探してボタン下の時刻に反映
+        const today = new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" });
+        const todayRow = data.find(r => r.date === today);
+
         document.getElementById("timeIn").innerText =
-          (todayRow && todayRow.clockIn) ? todayRow.clockIn : "--:--";
+          (todayRow && todayRow.clockIn) ? formatToHHMM(todayRow.clockIn) : "--:--";
         document.getElementById("timeOut").innerText =
-          (todayRow && todayRow.clockOut) ? todayRow.clockOut : "--:--";
+          (todayRow && todayRow.clockOut) ? formatToHHMM(todayRow.clockOut) : "--:--";
         document.getElementById("timeBreakStart").innerText =
-          (todayRow && todayRow.breakStart) ? todayRow.breakStart : "--:--";
+          (todayRow && todayRow.breakStart) ? formatToHHMM(todayRow.breakStart) : "--:--";
         document.getElementById("timeBreakEnd").innerText =
-          (todayRow && todayRow.breakEnd) ? todayRow.breakEnd : "--:--";
+          (todayRow && todayRow.breakEnd) ? formatToHHMM(todayRow.breakEnd) : "--:--";
+
 
         const todayLabel = document.getElementById("todayLabel");
         if (todayLabel) {
