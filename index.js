@@ -469,30 +469,40 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       body { font-family: sans-serif; background: #f9fafb; padding: 16px; }
       .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:480px; margin:auto; }
       h1 { color:#2563eb; text-align:center; }
-      button { width:100%; padding:10px; margin:6px 0; border:none; border-radius:6px; color:white; font-size:1rem; cursor:pointer; }
+      button { width:48%; padding:10px; margin:4px 1%; border:none; border-radius:6px; color:white; font-size:1rem; cursor:pointer; }
+      .row { display:flex; justify-content:space-between; flex-wrap:wrap; }
       .in { background:#16a34a; }
       .out { background:#dc2626; }
       .break { background:#f59e0b; }
       .endbreak { background:#2563eb; }
-      table { width:100%; border-collapse:collapse; margin-top:20px; }
-      th,td { border-bottom:1px solid #ddd; padding:6px; font-size:14px; text-align:center; }
-      select { padding:6px; border-radius:6px; border:1px solid #ccc; margin-top:10px; }
+      select, input[type=month] { padding:6px; border-radius:6px; border:1px solid #ccc; margin-top:10px; width:100%; }
+      .table-wrapper { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:20px; }
+      table { width:100%; border-collapse:collapse; background:white; font-size:14px; min-width:650px; }
+      th,td { border:1px solid #ddd; padding:8px; text-align:center; white-space:nowrap; }
+      th { background:#2563eb; color:white; }
+      tr:nth-child(even) { background:#f9fafb; }
     </style>
   </head>
   <body>
     <div class="card">
       <h1>${store} 勤怠管理</h1>
-      <div id="status">ログイン中...</div>
-      <button id="btnIn" class="in">出勤</button>
-      <button id="btnBreakStart" class="break">休憩開始</button>
-      <button id="btnBreakEnd" class="endbreak">休憩終了</button>
-      <button id="btnOut" class="out">退勤</button>
+      <div id="status">LINEログイン中...</div>
 
+      <!-- 打刻ボタン 2×2 レイアウト -->
+      <div class="row">
+        <button id="btnIn" class="in">出勤</button>
+        <button id="btnOut" class="out">退勤</button>
+        <button id="btnBreakStart" class="break">休憩開始</button>
+        <button id="btnBreakEnd" class="endbreak">休憩終了</button>
+      </div>
+
+      <!-- 月選択 -->
       <div>
         <label>対象月：</label>
         <input type="month" id="monthSelect">
       </div>
-      <!-- 勤怠一覧テーブル -->
+
+      <!-- 勤怠一覧 -->
       <div class="table-wrapper">
         <table id="recordsTable">
           <thead>
@@ -502,58 +512,40 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
               <th>退勤</th>
               <th>休憩開始</th>
               <th>休憩終了</th>
-              <th>実働時間</th>
             </tr>
           </thead>
           <tbody id="recordsBody"></tbody>
         </table>
       </div>
-
-      <style>
-        .table-wrapper {
-          width: 100%;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          background: white;
-          font-size: 14px;
-          min-width: 600px; /* 横スク対応 */
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 8px;
-          text-align: center;
-          white-space: nowrap;
-        }
-        th {
-          background-color: #2563eb;
-          color: white;
-        }
-        tr:nth-child(even) { background: #f9fafb; }
-      </style>
-
     </div>
 
     <script>
       let userId, name;
 
       async function main() {
-        await liff.init({ liffId: "${storeConf.liffId}" });
-        if (!liff.isLoggedIn()) return liff.login();
-        const p = await liff.getProfile();
-        userId = p.userId; name = p.displayName;
-
-        // main関数の中
-        document.getElementById("status").innerText = name + " さんログイン中";
-        initMonthSelector();
-        loadRecords();
-
+        try {
+          await liff.init({ liffId: "${storeConf.liffId}" });
+          if (!liff.isLoggedIn()) return liff.login();
+          const p = await liff.getProfile();
+          userId = p.userId;
+          name = p.displayName;
+          document.getElementById("status").innerText = name + " さんログイン中";
+          initMonthSelector();
+          loadRecords();
+        } catch (e) {
+          document.getElementById("status").innerText = "LIFF初期化エラー：" + e.message;
+        }
       }
 
-      // ===== ボタンイベント =====
+      // 月選択初期化
+      function initMonthSelector() {
+        const monthInput = document.getElementById("monthSelect");
+        const now = new Date();
+        monthInput.value = now.toISOString().slice(0, 7);
+        monthInput.addEventListener("change", loadRecords);
+      }
+
+      // 打刻API送信
       async function sendAction(action) {
         const res = await fetch("/${store}/attendance/submit", {
           method: "POST",
@@ -565,43 +557,41 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         loadRecords();
       }
 
+      // ボタンイベント
       document.getElementById("btnIn").onclick = () => sendAction("clockIn");
       document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
       document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
       document.getElementById("btnOut").onclick = () => sendAction("clockOut");
 
-      // ▼ 削除：loadMonths関数全体
-      // ▼ 新しい初期化処理に置き換え
-      function initMonthSelector() {
-        const monthInput = document.getElementById("monthSelect");
-        const now = new Date();
-        const ym = now.toISOString().slice(0, 7); // 例: "2025-11"
-        monthInput.value = ym;
-        monthInput.addEventListener("change", loadRecords);
-      }
-
-
+      // 勤怠一覧ロード
       async function loadRecords() {
         const month = document.getElementById("monthSelect").value;
-        const res = await fetch("/${store}/attendance/records?userId="+userId+"&month="+month);
+        const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
         const data = await res.json();
-        const tbody = document.querySelector("#records tbody");
-        tbody.innerHTML = data.map(r => 
-          \`<tr>
-            <td>\${r.date}</td>
-            <td>\${r.clockIn||"-"}</td>
-            <td>\${r.clockOut||"-"}</td>
-            <td>\${r.breakStart && r.breakEnd ? r.breakStart+"~"+r.breakEnd : "-"}</td>
-          </tr>\`
-        ).join("");
+        const tbody = document.getElementById("recordsBody");
+        if (!tbody) {
+          console.error("⚠️ tbodyが見つかりません");
+          return;
+        }
+
+        tbody.innerHTML = data.map(r => `
+          <tr>
+            <td>${r.date || "-"}</td>
+            <td>${r.clockIn || "-"}</td>
+            <td>${r.clockOut || "-"}</td>
+            <td>${r.breakStart || "-"}</td>
+            <td>${r.breakEnd || "-"}</td>
+          </tr>
+        `).join("");
       }
 
-      main();
+      document.addEventListener("DOMContentLoaded", main);
     </script>
   </body>
   </html>
   `);
 });
+
 
 
 // 出退勤ステータス取得
