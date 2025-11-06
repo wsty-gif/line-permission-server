@@ -723,7 +723,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       }
 
       // 送信共通処理
-      async function sendAction(action) {
+      async function sendAction(action) { 
         if (!userId) {
           alert("LINEログイン情報が取得できていません。");
           return;
@@ -753,6 +753,8 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         applyStateToButtonsAndLabels();
         await loadRecords(); // 一覧も更新
+        updateButtonState(); // 状態を最新化
+
       }
 
       document.addEventListener("click", function(e){
@@ -1007,6 +1009,38 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
         const worked = records.filter(r=>r.clockIn && r.clockOut);
         document.getElementById("summary").innerText = "総勤務日数: "+worked.length+"日";
+
+        // ✅ ボタンの状態を更新
+        function updateButtonState() {
+          const inBtn = document.getElementById("btnIn");
+          const breakStartBtn = document.getElementById("btnBreakStart");
+          const breakEndBtn = document.getElementById("btnBreakEnd");
+          const outBtn = document.getElementById("btnOut");
+
+          // すべて一旦無効化
+          [inBtn, breakStartBtn, breakEndBtn, outBtn].forEach(btn => btn.disabled = true);
+
+          // 現在の状態を確認
+          if (!currentState.clockIn) {
+            // 出勤していない → 出勤ボタンのみ有効
+            inBtn.disabled = false;
+          } else if (currentState.clockIn && !currentState.breakStart) {
+            // 出勤済み → 休憩開始だけ有効
+            breakStartBtn.disabled = false;
+          } else if (currentState.breakStart && !currentState.breakEnd) {
+            // 休憩中 → 休憩終了だけ有効
+            breakEndBtn.disabled = false;
+          } else if (currentState.breakEnd && !currentState.clockOut) {
+            // 休憩終了 → 退勤だけ有効
+            outBtn.disabled = false;
+          } else if (currentState.clockOut) {
+            // すべて完了 → 全ボタン無効
+            [inBtn, breakStartBtn, breakEndBtn, outBtn].forEach(btn => btn.disabled = true);
+          }
+        }
+        applyStateToButtonsAndLabels();
+        updateButtonState(); // ✅ DBデータに応じてボタン制御
+
       }
 
       function openModal(date){
