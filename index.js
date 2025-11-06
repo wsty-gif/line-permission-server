@@ -718,16 +718,13 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
       function initMonthSelector() {
         const monthInput = document.getElementById("monthSelect");
-
-        // ✅ JST時間に変換
         const now = new Date();
-        const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000); // UTC → JST
-
-        // ✅ yyyy-MM 形式を抽出
-        const ym = jst.toISOString().slice(0, 7); // 例: "2025-11"
-
+        const jst = new Date(now.toLocaleString("en-US",{ timeZone: "Asia/Tokyo" }));
+        const ym = jst.toISOString().slice(0,7); // "2025-11"
         monthInput.value = ym;
-        monthInput.addEventListener("change", loadRecords);
+        monthInput.addEventListener("change", () => {
+          loadRecords();
+        });
       }
 
       // 送信共通処理
@@ -746,7 +743,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         // JST現在時刻をボタン下に即反映させる
         const now = new Date();
-        const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+        const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
         const dateStr = jst.toLocaleDateString("ja-JP");
         const timeStr = jst.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         const fullStr = dateStr + " " + timeStr;
@@ -790,19 +787,13 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         // 今日のレコードがあれば currentState に反映
         const today = new Date().toISOString().split("T")[0];
-        // 今日の日付キー（例: "2025-11-07"）
-        const todayKey = getTodayDateKey();
-
-        // Firestoreのdateが「/」区切りでも対応
-        const todayData = data.find(r => r.date.replace(/\//g, "-") === todayKey);
-
+        const todayData = data.find(r => r.date === today);
         if (todayData) {
-          document.getElementById("inTime").innerText = todayData?.clockIn?.split(" ")[1]?.slice(0,5) || "--:--";
-          document.getElementById("outTime").innerText = todayData?.clockOut?.split(" ")[1]?.slice(0,5) || "--:--";
-          document.getElementById("breakStartTime").innerText = todayData?.breakStart?.split(" ")[1]?.slice(0,5) || "--:--";
-          document.getElementById("breakEndTime").innerText = todayData?.breakEnd?.split(" ")[1]?.slice(0,5) || "--:--";
-        }
-        else {
+          document.getElementById("clockInTime").innerText = todayData.clockIn ? todayData.clockIn.split(" ")[1].slice(0,5) : "--:--";
+          document.getElementById("breakStartTime").innerText = todayData.breakStart ? todayData.breakStart.split(" ")[1].slice(0,5) : "--:--";
+          document.getElementById("breakEndTime").innerText = todayData.breakEnd ? todayData.breakEnd.split(" ")[1].slice(0,5) : "--:--";
+          document.getElementById("clockOutTime").innerText = todayData.clockOut ? todayData.clockOut.split(" ")[1].slice(0,5) : "--:--";
+        } else {
           currentState = {
             date: todayKey,
             clockIn: null,
@@ -836,67 +827,43 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
 // 🧾 打刻処理（修正版）
 // 📅 勤怠打刻（JST対応版）
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
-  const { store } = req;
-  const { userId, name, action } = req.body;
-
-  if (!userId || !name || !action) {
-    return res.status(400).send("パラメータ不足です。");
-  }
-
   try {
-    // ① まず「今この瞬間」の絶対時刻（UTCベース）だけを取る
+    const { store } = req.params;
+    const { userId, name, action } = req.body;
+
+    // ✅ JST現在時刻を取得
     const now = new Date();
+    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000); // UTC→JST変換
+    const dateStr = jst.toISOString().split("T")[0]; // 例: 2025-11-06
+    const timeStr = jst.toTimeString().split(" ")[0]; // 例: 16:01:00
+    const displayTime = `${dateStr} ${timeStr}`; // Firestoreに保存する文字列
 
-    // ② JSTの日付文字列だけが欲しいので、
-    //    9時間足した「JST相当」のDateから YYYY-MM-DD を作る
-    const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const currentDate = jstNow.toISOString().split("T")[0]; // 例: "2025-11-06"
-
-    // ③ Firestoreの保存先: /companies/{store}/attendance/{userId}/days/{currentDate}
     const ref = db.collection("companies").doc(store)
-      .collection("attendance")
-      .doc(userId)
-      .collection("days")
-      .doc(currentDate);
+      .collection("attendance").doc(userId)
+      .collection("records").doc(dateStr);
 
     const snap = await ref.get();
     const data = snap.exists ? snap.data() : {};
 
-    const updated = {
-      ...data,
-      name,
-      userId,
-      date: currentDate,
-    };
+    if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
+    if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
+    if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
+    if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
 
-    // ④ 二重打刻チェック（今までのロジックそのままでOK）
-    if (action === "clockIn" && updated.clockIn) {
-      return res.status(400).send("すでに出勤打刻されています。");
-    }
-    if (action === "clockOut" && updated.clockOut) {
-      return res.status(400).send("すでに退勤打刻されています。");
-    }
-    if (action === "breakStart" && updated.breakStart && !updated.breakEnd) {
-      return res.status(400).send("すでに休憩開始済みです。");
-    }
-    if (action === "breakEnd" && updated.breakEnd) {
-      return res.status(400).send("すでに休憩終了済みです。");
-    }
-
-    // ⑤ ここが一番大事：
-    //    Firestoreには UTC の「now」をそのまま Timestamp として保存する
-    const ts = admin.firestore.Timestamp.fromDate(now);
-    updated[action] = ts;
+    // ✅ JST文字列をそのまま保存
+    const updated = { ...data, userId, name, date: dateStr };
+    if (action === "clockIn") updated.clockIn = displayTime;
+    if (action === "breakStart") updated.breakStart = displayTime;
+    if (action === "breakEnd") updated.breakEnd = displayTime;
+    if (action === "clockOut") updated.clockOut = displayTime;
 
     await ref.set(updated, { merge: true });
-
-    res.send(`「${action}」を記録しました。`);
+    res.send(`打刻を記録しました (${displayTime})`);
   } catch (e) {
-    console.error("勤怠保存エラー:", e);
-    res.status(500).send("勤怠保存中にエラーが発生しました。");
+    console.error(e);
+    res.status(500).send("サーバーエラー: " + e.message);
   }
 });
-
 
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
@@ -1002,14 +969,13 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         });
       }
 
-      function formatDateTime(ts) {
-        if (!ts) return "";
-        const d = ts.seconds
-          ? new Date(ts.seconds * 1000)
-          : new Date(ts); // どちらでも対応
-        return d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+      function formatDateTime(ts){
+        if(!ts) return "-";
+        try{
+          const d = new Date(ts);
+          return d.toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"});
+        }catch(e){ return "-"; }
       }
-
 
       async function loadRecords(){
         const userId = document.getElementById("staffSelect").value;
