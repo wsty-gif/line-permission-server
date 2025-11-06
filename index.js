@@ -822,34 +822,43 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
 });
 
 // 🧾 打刻処理（日本時間対応版）
+// 🧾 打刻処理（修正版）
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, action } = req.body;
-  const dateStr = new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" }).replace(/\//g, "-");
-  const ref = db.collection("companies").doc(store).collection("attendance").doc(userId).collection("records").doc(dateStr);
+
+  // JST現在日時を取得
+  const jstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  const currentDate = jstNow.toISOString().split("T")[0];
+
+  const ref = db.collection("companies").doc(store)
+                .collection("attendance").doc(userId)
+                .collection("records").doc(currentDate);
 
   const snap = await ref.get();
   const data = snap.exists ? snap.data() : {};
 
-  // 🔸 日本時間で現在時刻を取得
-  const nowJST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-  const now = admin.firestore.Timestamp.fromDate(nowJST);
+  const ts = admin.firestore.Timestamp.fromDate(jstNow);
 
-  // 二重打刻防止 + 順序制御
   if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
-  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は1回のみ、または出勤前です。");
-  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は1回のみ、または開始前です。");
+  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
+  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
   if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
 
-  const update = { name, userId, date: dateStr };
-  if (action === "clockIn") update.clockIn = now;
-  if (action === "breakStart") update.breakStart = now;
-  if (action === "breakEnd") update.breakEnd = now;
-  if (action === "clockOut") update.clockOut = now;
+  // 各アクションに応じてJSTタイムスタンプを保存
+  if (action === "clockIn") data.clockIn = ts;
+  if (action === "breakStart") data.breakStart = ts;
+  if (action === "breakEnd") data.breakEnd = ts;
+  if (action === "clockOut") data.clockOut = ts;
 
-  await ref.set(update, { merge: true });
-  res.send("打刻が記録されました（日本時間）");
+  data.userId = userId;
+  data.name = name;
+  data.date = currentDate;
+
+  await ref.set(data, { merge: true });
+  res.send("打刻を記録しました（JST）");
 });
+
 
 
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
