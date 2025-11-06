@@ -681,8 +681,9 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         const today = nowJST();
         const todayStr = formatDateJST(today); // "YYYY/MM/DD"
         const todayRow = data.find(function(r) {
-          return r.date === todayStr;
+          return r.date.replace(/-/g, "/") === todayStr.replace(/-/g, "/");
         });
+
 
         document.getElementById("timeIn").innerText =
           (todayRow && todayRow.clockIn) ? formatToHHMM(todayRow.clockIn) : "--:--";
