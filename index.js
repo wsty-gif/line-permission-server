@@ -466,131 +466,27 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     <title>${store} 勤怠打刻</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body {
-        font-family: sans-serif;
-        background: #f9fafb;
-        padding: 16px;
-      }
-      .card {
-        background: #fff;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        max-width: 520px;
-        margin: 0 auto;
-      }
-      h1 {
-        font-size: 1.2rem;
-        text-align: center;
-        margin-bottom: 12px;
-        color: #111827;
-      }
-      #status {
-        text-align:center;
-        margin-bottom: 12px;
-        color:#4b5563;
-        font-size: .9rem;
-      }
-
-      .today-box {
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 16px;
-      }
-      .today-title {
-        font-size: .9rem;
-        margin-bottom: 8px;
-        color:#374151;
-      }
-      .grid-2x2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-      }
-      .action-card {
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 10px;
-        text-align: center;
-        background: #fff;
-      }
-      .action-title {
-        font-size: .9rem;
-        margin-bottom: 4px;
-        color:#111827;
-      }
-      .action-time {
-        font-size: .9rem;
-        color:#6b7280;
-        min-height: 1.2em;
-      }
-      .action-btn {
-        margin-top: 6px;
-        width: 100%;
-        padding: 8px;
-        border-radius: 6px;
-        border: none;
-        cursor: pointer;
-        font-size: .9rem;
-        color: #fff;
-      }
-      .btn-in { background:#16a34a; }
-      .btn-out { background:#dc2626; }
-      .btn-break-start { background:#6b7280; }
-      .btn-break-end { background:#2563eb; }
-      .action-btn:disabled {
-        opacity:.4;
-        cursor:default;
-      }
-
-      .month-row {
-        display:flex;
-        align-items:center;
-        gap:8px;
-        margin-top: 8px;
-        margin-bottom: 4px;
-        font-size: .9rem;
-      }
-      .month-row label {
-        white-space:nowrap;
-        color:#4b5563;
-      }
-      .month-row input[type="month"] {
-        flex:1;
-        padding:6px;
-        border-radius:6px;
-        border:1px solid #d1d5db;
-      }
-
-      .table-wrapper {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        margin-top: 8px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        font-size: 0.8rem;
-        min-width: 640px;
-      }
-      th, td {
-        border: 1px solid #e5e7eb;
-        padding: 6px;
-        text-align: center;
-        white-space: nowrap;
-      }
-      th {
-        background: #2563eb;
-        color: white;
-        position: sticky;
-        top: 0;
-      }
-      tr:nth-child(even) {
-        background: #f9fafb;
-      }
+      body { font-family: sans-serif; background: #f9fafb; padding: 16px; }
+      .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 520px; margin: 0 auto; }
+      h1 { font-size: 1.2rem; text-align: center; margin-bottom: 12px; color: #111827; }
+      #status { text-align:center; margin-bottom: 12px; color:#4b5563; font-size: .9rem; }
+      .today-box { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+      .today-title { font-size: .9rem; margin-bottom: 8px; color:#374151; }
+      .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .action-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; text-align: center; background: #fff; }
+      .action-title { font-size: .9rem; margin-bottom: 4px; color:#111827; }
+      .action-time { font-size: .9rem; color:#6b7280; min-height: 1.2em; }
+      .action-btn { margin-top: 6px; width: 100%; padding: 8px; border-radius: 6px; border: none; cursor: pointer; font-size: .9rem; color: #fff; }
+      .btn-in { background:#16a34a; } .btn-out { background:#dc2626; } .btn-break-start { background:#6b7280; } .btn-break-end { background:#2563eb; }
+      .action-btn:disabled { opacity:.4; cursor:default; }
+      .month-row { display:flex; align-items:center; gap:8px; margin-top: 8px; margin-bottom: 4px; font-size: .9rem; }
+      .month-row label { white-space:nowrap; color:#4b5563; }
+      .month-row input[type="month"] { flex:1; padding:6px; border-radius:6px; border:1px solid #d1d5db; }
+      .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; }
+      table { width: 100%; border-collapse: collapse; background: white; font-size: 0.8rem; min-width: 640px; }
+      th, td { border: 1px solid #e5e7eb; padding: 6px; text-align: center; white-space: nowrap; }
+      th { background: #2563eb; color: white; position: sticky; top: 0; }
+      tr:nth-child(even) { background: #f9fafb; }
     </style>
   </head>
   <body>
@@ -598,7 +494,6 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       <h1>${store} 勤怠管理</h1>
       <div id="status">LINEログイン中...</div>
 
-      <!-- 今日の打刻 -->
       <div class="today-box">
         <div class="today-title" id="todayLabel">今日の打刻</div>
         <div class="grid-2x2">
@@ -625,23 +520,15 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </div>
       </div>
 
-      <!-- 対象月選択 -->
       <div class="month-row">
         <label for="monthSelect">対象月</label>
         <input type="month" id="monthSelect">
       </div>
 
-      <!-- 勤怠一覧 -->
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr>
-              <th>日付</th>
-              <th>出勤</th>
-              <th>退勤</th>
-              <th>休憩開始</th>
-              <th>休憩終了</th>
-            </tr>
+            <tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩開始</th><th>休憩終了</th></tr>
           </thead>
           <tbody id="recordsBody"></tbody>
         </table>
@@ -650,169 +537,89 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
     <script>
       let userId, name;
-      // 今日の状態を保持（ボタン制御 & 時刻表示に利用）
-      let currentState = {
-        date: null,
-        clockIn: null,
-        clockOut: null,
-        breakStart: null,
-        breakEnd: null,
-      };
+      let currentState = { date:null, clockIn:null, clockOut:null, breakStart:null, breakEnd:null };
 
       function getTodayDateKey() {
-        // JSTの今日を "YYYY-M-D" 形式で取得（Firestoreの date と合わせる）
         const now = new Date();
         const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-        const y = jst.getFullYear();
-        const m = jst.getMonth() + 1;
-        const d = jst.getDate();
-        return y + "-" + m + "-" + d;
+        return jst.getFullYear() + "-" + (jst.getMonth()+1) + "-" + jst.getDate();
       }
 
-      function timeLabelFromFull(full) {
-        // "YYYY/MM/DD HH:MM:SS" → "HH:MM"
-        if (!full) return "--:--";
-        const parts = full.split(" ");
-        if (parts.length < 2) return "--:--";
-        return parts[1].slice(0,5);
+      function timeLabel(full){ if(!full)return"--:--"; const p=full.split(" "); return p[1]?.slice(0,5)||"--:--"; }
+
+      function applyStateToButtonsAndLabels(){
+        document.getElementById("timeIn").innerText = timeLabel(currentState.clockIn);
+        document.getElementById("timeBreakStart").innerText = timeLabel(currentState.breakStart);
+        document.getElementById("timeBreakEnd").innerText = timeLabel(currentState.breakEnd);
+        document.getElementById("timeOut").innerText = timeLabel(currentState.clockOut);
       }
 
-      function applyStateToButtonsAndLabels() {
-        // ボタン有効/無効
-        document.getElementById("btnIn").disabled = !!currentState.clockIn;
-        document.getElementById("btnBreakStart").disabled = !currentState.clockIn || !!currentState.breakStart;
-        document.getElementById("btnBreakEnd").disabled = !currentState.breakStart || !!currentState.breakEnd;
-        document.getElementById("btnOut").disabled = !currentState.clockIn || !!currentState.clockOut;
+      function updateButtonState(){
+        const inBtn=document.getElementById("btnIn");
+        const bStart=document.getElementById("btnBreakStart");
+        const bEnd=document.getElementById("btnBreakEnd");
+        const outBtn=document.getElementById("btnOut");
+        [inBtn,bStart,bEnd,outBtn].forEach(b=>b.disabled=true);
 
-        // ラベル（--:-- or HH:MM）
-        document.getElementById("timeIn").innerText = timeLabelFromFull(currentState.clockIn);
-        document.getElementById("timeBreakStart").innerText = timeLabelFromFull(currentState.breakStart);
-        document.getElementById("timeBreakEnd").innerText = timeLabelFromFull(currentState.breakEnd);
-        document.getElementById("timeOut").innerText = timeLabelFromFull(currentState.clockOut);
+        if(!currentState.clockIn){ inBtn.disabled=false; }
+        else if(currentState.clockIn && !currentState.breakStart){ bStart.disabled=false; }
+        else if(currentState.breakStart && !currentState.breakEnd){ bEnd.disabled=false; }
+        else if(currentState.breakEnd && !currentState.clockOut){ outBtn.disabled=false; }
       }
 
-      async function main() {
-        try {
-          await liff.init({ liffId: "${storeConf.liffId}" });
-          if (!liff.isLoggedIn()) return liff.login();
-          const p = await liff.getProfile();
-          userId = p.userId;
-          name = p.displayName || "";
-          document.getElementById("status").innerText = name + " さんログイン中";
-
-          const todayKey = getTodayDateKey();
-          document.getElementById("todayLabel").innerText = "今日の打刻（ " + todayKey + " ）";
-
-          initMonthSelector();
-          await loadRecords(); // 一覧読み込み → currentState も同期される
-          applyStateToButtonsAndLabels(); // 読み込んだデータをボタン側にも反映
-        } catch (e) {
-          document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
-        }
+      async function sendAction(action){
+        if(!userId){ alert("ログイン情報がありません"); return; }
+        const res=await fetch("/${store}/attendance/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,name,action})});
+        alert(await res.text());
+        await loadRecords();
+        updateButtonState();
       }
 
-      function initMonthSelector() {
-        const monthInput = document.getElementById("monthSelect");
-        const now = new Date();
-        const jst = new Date(now.toLocaleString("en-US",{ timeZone: "Asia/Tokyo" }));
-        const ym = jst.toISOString().slice(0,7); // "2025-11"
-        monthInput.value = ym;
-        monthInput.addEventListener("change", () => {
-          loadRecords();
-        });
-      }
+      async function loadRecords(){
+        if(!userId)return;
+        const month=document.getElementById("monthSelect").value;
+        const res=await fetch("/${store}/attendance/records?userId="+encodeURIComponent(userId)+"&month="+encodeURIComponent(month));
+        const data=await res.json();
+        const tbody=document.getElementById("recordsBody");
+        tbody.innerHTML=data.map(r=>\`<tr><td>\${r.date}</td><td>\${r.clockIn||"-"}</td><td>\${r.clockOut||"-"}</td><td>\${r.breakStart||"-"}</td><td>\${r.breakEnd||"-"}</td></tr>\`).join("");
 
-      // 送信共通処理
-      async function sendAction(action) { 
-        if (!userId) {
-          alert("LINEログイン情報が取得できていません。");
-          return;
-        }
-        const res = await fetch("/${store}/attendance/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, name, action }),
-        });
-        const msg = await res.text();
-        alert(msg);
-
-        // JST現在時刻をボタン下に即反映させる
-        const now = new Date();
-        const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-        const dateStr = jst.toLocaleDateString("ja-JP");
-        const timeStr = jst.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        const fullStr = dateStr + " " + timeStr;
-
-        const todayKey = getTodayDateKey();
-        currentState.date = todayKey;
-
-        if (action === "clockIn") currentState.clockIn = fullStr;
-        if (action === "breakStart") currentState.breakStart = fullStr;
-        if (action === "breakEnd") currentState.breakEnd = fullStr;
-        if (action === "clockOut") currentState.clockOut = fullStr;
-
+        const todayKey=getTodayDateKey();
+        const t=data.find(r=>r.date===todayKey);
+        currentState=t?{date:t.date,clockIn:t.clockIn,clockOut:t.clockOut,breakStart:t.breakStart,breakEnd:t.breakEnd}:{date:todayKey,clockIn:null,clockOut:null,breakStart:null,breakEnd:null};
         applyStateToButtonsAndLabels();
-        await loadRecords(); // 一覧も更新
-        updateButtonState(); // 状態を最新化
-
+        updateButtonState();
       }
 
-      document.addEventListener("click", function(e){
-        if(e.target.id === "btnIn") sendAction("clockIn");
-        if(e.target.id === "btnBreakStart") sendAction("breakStart");
-        if(e.target.id === "btnBreakEnd") sendAction("breakEnd");
-        if(e.target.id === "btnOut") sendAction("clockOut");
+      function initMonthSelector(){
+        const m=document.getElementById("monthSelect");
+        const jst=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo"}));
+        m.value=jst.toISOString().slice(0,7);
+        m.addEventListener("change",loadRecords);
+      }
+
+      async function main(){
+        try{
+          await liff.init({liffId:"${storeConf.liffId}"});
+          if(!liff.isLoggedIn())return liff.login();
+          const p=await liff.getProfile();
+          userId=p.userId; name=p.displayName;
+          document.getElementById("status").innerText=name+" さんログイン中";
+          document.getElementById("todayLabel").innerText="今日の打刻（"+getTodayDateKey()+"）";
+          initMonthSelector();
+          await loadRecords();
+        }catch(e){ document.getElementById("status").innerText="LIFF初期化に失敗: "+e.message; }
+      }
+
+      document.addEventListener("click",e=>{
+        if(e.target.id==="btnIn")sendAction("clockIn");
+        if(e.target.id==="btnBreakStart")sendAction("breakStart");
+        if(e.target.id==="btnBreakEnd")sendAction("breakEnd");
+        if(e.target.id==="btnOut")sendAction("clockOut");
       });
-
-async function loadRecords() {
-  if (!userId) return;
-  const month = document.getElementById("monthSelect").value;
-  const res = await fetch("/${store}/attendance/records?userId=" + encodeURIComponent(userId) + "&month=" + encodeURIComponent(month));
-  const data = await res.json();
-
-  // 一覧表示
-  const tbody = document.getElementById("recordsBody");
-  tbody.innerHTML = data.map(function(r){
-    return "<tr>"
-      + "<td>" + (r.date || "-") + "</td>"
-      + "<td>" + (r.clockIn || "-") + "</td>"
-      + "<td>" + (r.clockOut || "-") + "</td>"
-      + "<td>" + (r.breakStart || "-") + "</td>"
-      + "<td>" + (r.breakEnd || "-") + "</td>"
-      + "</tr>";
-  }).join("");
-
-  // ✅ 今日のレコードを取得して currentState に反映
-  const todayKey = getTodayDateKey();
-  const todayRec = data.find(r => r.date === todayKey);
-  if (todayRec) {
-    currentState = {
-      date: todayRec.date,
-      clockIn: todayRec.clockIn || null,
-      clockOut: todayRec.clockOut || null,
-      breakStart: todayRec.breakStart || null,
-      breakEnd: todayRec.breakEnd || null,
-    };
-  } else {
-    currentState = {
-      date: todayKey,
-      clockIn: null,
-      clockOut: null,
-      breakStart: null,
-      breakEnd: null,
-    };
-  }
-
-  // ✅ 勤務一覧の時間を出勤／退勤／休憩ボタン下に反映
-  applyStateToButtonsAndLabels();
-}
-
 
       main();
     </script>
-  </body>
-  </html>
-  `);
+  </body></html>`);
 });
 
 
