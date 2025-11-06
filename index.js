@@ -574,15 +574,17 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
           return;
         }
 
-        tbody.innerHTML = data.map(r => `
-          <tr>
-            <td>${r.date || "-"}</td>
-            <td>${r.clockIn || "-"}</td>
-            <td>${r.clockOut || "-"}</td>
-            <td>${r.breakStart || "-"}</td>
-            <td>${r.breakEnd || "-"}</td>
-          </tr>
-        `).join("");
+        let html = "";
+        data.forEach(r => {
+          html += "<tr>"
+                + "<td>" + (r.date || "-") + "</td>"
+                + "<td>" + (r.clockIn || "-") + "</td>"
+                + "<td>" + (r.clockOut || "-") + "</td>"
+                + "<td>" + (r.breakStart || "-") + "</td>"
+                + "<td>" + (r.breakEnd || "-") + "</td>"
+                + "</tr>";
+        });
+        tbody.innerHTML = html;
       }
 
       document.addEventListener("DOMContentLoaded", main);
