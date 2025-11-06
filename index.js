@@ -464,127 +464,37 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     <title>${store} 勤怠打刻</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body {
-        font-family: 'Noto Sans JP', sans-serif;
-        background: #f8f8f8;
-        padding: 20px;
-        text-align: center;
-        margin: 0;
-      }
-      h1 {
-        margin-bottom: 20px;
-        color: #222;
-      }
-      #status {
-        margin-bottom: 15px;
-        font-size: 1rem;
-        color: #555;
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        max-width: 400px;
-        margin: 0 auto;
-      }
-      button {
-        width: 100%;
-        padding: 16px;
-        font-size: 1.1rem;
-        background: white;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        color: #222;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      button:hover:not(:disabled) {
-        background: #f2f2f2;
-      }
-      button:disabled {
-        background: #e5e5e5;
-        color: #999;
-        cursor: not-allowed;
-      }
-      .time-label {
-        font-size: 0.9rem;
-        color: #555;
-        margin-top: 4px;
-        height: 18px;
-      }
-      #monthSelect {
-        margin-top: 20px;
-        padding: 6px;
-        border-radius: 6px;
-        border: 1px solid #ccc;
-        font-size: 1rem;
-      }
-      table {
-        margin-top: 20px;
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        border-radius: 8px;
-        overflow-x: auto;
-        display: block;
-        white-space: nowrap;
-      }
-      th, td {
-        border: 1px solid #ddd;
-        padding: 8px 10px;
-        text-align: center;
-        font-size: 14px;
-      }
-      th {
-        background: #f2f2f2;
-        font-weight: bold;
-      }
-      @media (max-width: 600px) {
-        h1 { font-size: 1.2rem; }
-        button { font-size: 1rem; padding: 14px; }
-      }
+      body { font-family: 'Noto Sans JP', sans-serif; background:#f8f8f8; text-align:center; padding:20px; margin:0; }
+      h1 { color:#333; }
+      #status { margin:10px 0; color:#666; font-size:1rem; }
+      .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:400px; margin:0 auto; }
+      button { padding:14px; border:1px solid #ccc; border-radius:8px; background:#fff; cursor:pointer; font-size:1rem; }
+      button:hover:not(:disabled){ background:#f0f0f0; }
+      button:disabled{ background:#e5e5e5; color:#aaa; cursor:not-allowed; }
+      .time-label { margin-top:4px; font-size:0.9rem; color:#555; height:18px; }
+      table { margin-top:20px; width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; }
+      th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:14px; }
+      th { background:#f3f4f6; }
     </style>
   </head>
   <body>
     <h1>${store} 勤怠打刻</h1>
     <div id="status">LINEログイン中...</div>
 
-    <!-- ✅ 打刻ボタンエリア -->
     <div class="grid">
-      <div>
-        <button id="btnIn">出勤</button>
-        <div id="timeIn" class="time-label"></div>
-      </div>
-      <div>
-        <button id="btnOut">退勤</button>
-        <div id="timeOut" class="time-label"></div>
-      </div>
-      <div>
-        <button id="btnBreakStart">休憩開始</button>
-        <div id="timeBreakStart" class="time-label"></div>
-      </div>
-      <div>
-        <button id="btnBreakEnd">休憩終了</button>
-        <div id="timeBreakEnd" class="time-label"></div>
-      </div>
+      <div><button id="btnIn">出勤</button><div id="timeIn" class="time-label"></div></div>
+      <div><button id="btnOut">退勤</button><div id="timeOut" class="time-label"></div></div>
+      <div><button id="btnBreakStart">休憩開始</button><div id="timeBreakStart" class="time-label"></div></div>
+      <div><button id="btnBreakEnd">休憩終了</button><div id="timeBreakEnd" class="time-label"></div></div>
     </div>
 
-    <!-- ✅ 月選択＋一覧 -->
-    <div>
+    <div style="margin-top:20px;">
       <label>対象月：</label>
       <input type="month" id="monthSelect">
     </div>
 
     <table id="records">
-      <thead>
-        <tr>
-          <th>日付</th>
-          <th>出勤</th>
-          <th>退勤</th>
-          <th>休憩開始</th>
-          <th>休憩終了</th>
-        </tr>
-      </thead>
+      <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩開始</th><th>休憩終了</th></tr></thead>
       <tbody></tbody>
     </table>
 
@@ -592,44 +502,40 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       let userId, name, currentState = {};
 
       async function main() {
-        await liff.init({ liffId: "${storeConf.liffId}" });
-        if (!liff.isLoggedIn()) return liff.login();
+        try {
+          await liff.init({ liffId: "${storeConf.liffId}" });
+          await liff.ready; // ← LIFFの初期化完了を待機
 
-        const profile = await liff.getProfile();
-        userId = profile.userId;
-        name = profile.displayName;
-        document.getElementById("status").innerText = name + " さんログイン中";
+          if (!liff.isLoggedIn()) {
+            liff.login({ redirectUri: location.href });
+            return;
+          }
 
-        const now = new Date();
-        const ym = now.toISOString().slice(0,7);
-        document.getElementById("monthSelect").value = ym;
-        document.getElementById("monthSelect").addEventListener("change", loadRecords);
+          const profile = await liff.getProfile();
+          userId = profile.userId;
+          name = profile.displayName;
+          document.getElementById("status").innerText = name + " さんログイン中";
 
-        updateButtons();
-        loadRecords();
+          const now = new Date();
+          const ym = now.toISOString().slice(0,7);
+          document.getElementById("monthSelect").value = ym;
+          document.getElementById("monthSelect").addEventListener("change", loadRecords);
+
+          updateButtons();
+          loadRecords();
+        } catch(e) {
+          console.error("LIFF初期化失敗:", e);
+          document.getElementById("status").innerText = "ログインエラー：" + e.message;
+        }
       }
 
       async function sendAction(action) {
         const res = await fetch("/${store}/attendance/submit", {
           method: "POST",
-          headers: {"Content-Type": "application/json"},
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, name, action })
         });
-
-        const msg = await res.text();
-        alert(msg);
-        const now = new Date();
-        const jst = new Date(now.getTime() + 9*60*60*1000);
-        const dateStr = jst.toLocaleDateString("ja-JP");
-        const timeStr = jst.toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"});
-        const fullStr = dateStr + " " + timeStr;
-
-        if (action === "clockIn") document.getElementById("timeIn").innerText = fullStr;
-        if (action === "breakStart") document.getElementById("timeBreakStart").innerText = fullStr;
-        if (action === "breakEnd") document.getElementById("timeBreakEnd").innerText = fullStr;
-        if (action === "clockOut") document.getElementById("timeOut").innerText = fullStr;
-
-        updateButtons();
+        alert(await res.text());
         loadRecords();
       }
 
@@ -637,21 +543,20 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         document.getElementById("btnIn").disabled = currentState.clockIn;
         document.getElementById("btnBreakStart").disabled = !currentState.clockIn || currentState.breakStart;
         document.getElementById("btnBreakEnd").disabled = !currentState.breakStart || currentState.breakEnd;
-        document.getElementById("btnOut").disabled = !currentState.breakEnd || currentState.clockOut;
+        document.getElementById("btnOut").disabled = !currentState.clockIn || currentState.clockOut;
       }
 
       async function loadRecords() {
         const month = document.getElementById("monthSelect").value;
-        const res = await fetch("/${store}/attendance/records?userId="+userId+"&month="+month);
+        const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
         const data = await res.json();
-
         const today = new Date().toLocaleDateString("ja-JP",{ timeZone:"Asia/Tokyo" }).replace(/\//g,"-");
         currentState = data.find(r => r.date === today) || {};
         updateButtons();
 
         const tbody = document.querySelector("#records tbody");
-        tbody.innerHTML = data.map(r => 
-          \`<tr>
+        tbody.innerHTML = data.map(r => \`
+          <tr>
             <td>\${r.date}</td>
             <td>\${r.clockIn || "-"}</td>
             <td>\${r.clockOut || "-"}</td>
@@ -669,10 +574,8 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       main();
     </script>
   </body>
-  </html>
-  `);
+  </html>`);
 });
-
 
 // 出退勤ステータス取得
 app.get("/:store/attendance/status", ensureStore, async (req, res) => {
