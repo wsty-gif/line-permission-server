@@ -650,27 +650,29 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 <script>
   let userId, name;
 
-  async function main() {
-    try {
-      await liff.init({ liffId: "${storeConf.liffId}" });
-      if (!liff.isLoggedIn()) return liff.login();
+async function main() {
+  try {
+    await liff.init({ liffId: "${storeConf.liffId}" });
+    if (!liff.isLoggedIn()) return liff.login();
 
-      const p = await liff.getProfile();
-      userId = p.userId;
-      name = p.displayName;
+    const p = await liff.getProfile();
+    userId = p.userId;
+    name = p.displayName;
 
-      document.getElementById("status").innerText = name + " さんログイン中";
+    document.getElementById("status").innerText = name + " さんログイン中";
 
-      // ✅ DOMの構築を保証してから実行
-      window.addEventListener("DOMContentLoaded", async () => {
-        initMonthSelector();
-        await loadRecords();
-        await loadTodayStatus();
-      });
-    } catch (e) {
-      document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
-    }
+    initMonthSelector();
+
+    // ✅ LIFF完了後に loadRecords 呼び出し
+    setTimeout(() => {
+      loadRecords();
+    }, 500);
+  } catch (e) {
+    document.getElementById("status").innerText =
+      "LIFF初期化に失敗しました: " + e.message;
   }
+}
+
 
 
   // ✅ ボタン打刻API
@@ -722,33 +724,48 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     monthInput.addEventListener("change", loadRecords);
   }
 
-  async function loadRecords() {
-    const month = document.getElementById("monthSelect").value;
-    const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
-    const data = await res.json();
-
-    // 🔒 安全チェック
-    const table = document.getElementById("recordsTable");
-    const tbody = table ? table.querySelector("tbody") : null;
-    if (!tbody) {
-      console.warn("⚠️ tbody 要素が見つかりません。HTML構造を確認してください。");
-      return;
-    }
-
-    // 🔧 JST形式の時刻だけ抜き出して描画
-    tbody.innerHTML = data.map(function(r) {
-      return (
-        "<tr>" +
-          "<td>" + (r.date || "--") + "</td>" +
-          "<td>" + (r.clockIn || "--:--") + "</td>" +
-          "<td>" + (r.clockOut || "--:--") + "</td>" +
-          "<td>" + (r.breakStart || "--:--") + "</td>" +
-          "<td>" + (r.breakEnd || "--:--") + "</td>" +
-        "</tr>"
-      );
-    }).join("");
+async function loadRecords() {
+  // ✅ userId 未取得なら実行しない
+  if (!userId) {
+    console.warn("⚠️ userId が未設定です。LIFF初期化が完了していない可能性があります。");
+    return;
   }
 
+  const monthInput = document.getElementById("monthSelect");
+  if (!monthInput) {
+    console.warn("⚠️ monthSelect 要素が見つかりません。");
+    return;
+  }
+
+  const month = monthInput.value;
+  if (!month) {
+    console.warn("⚠️ month が未選択です。");
+    return;
+  }
+
+  // ✅ fetch
+  const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
+  const data = await res.json();
+
+  const table = document.getElementById("recordsTable");
+  const tbody = table ? table.querySelector("tbody") : null;
+  if (!tbody) {
+    console.warn("⚠️ tbody 要素が見つかりません。");
+    return;
+  }
+
+  tbody.innerHTML = data.map(function(r) {
+    return (
+      "<tr>" +
+        "<td>" + (r.date || "--") + "</td>" +
+        "<td>" + (r.clockIn || "--:--") + "</td>" +
+        "<td>" + (r.clockOut || "--:--") + "</td>" +
+        "<td>" + (r.breakStart || "--:--") + "</td>" +
+        "<td>" + (r.breakEnd || "--:--") + "</td>" +
+      "</tr>"
+    );
+  }).join("");
+}
 
   main();
 </script>
