@@ -695,23 +695,18 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         try {
           await liff.init({ liffId: "${storeConf.liffId}" });
           if (!liff.isLoggedIn()) return liff.login();
-
           const p = await liff.getProfile();
           userId = p.userId;
-          name = p.displayName;
+          name = p.displayName || "";
+          document.getElementById("status").innerText = name + " さんログイン中";
 
-          // ✅ DOMがロードされてから代入
-          const statusEl = document.getElementById("status");
-          if (statusEl) {
-            statusEl.innerText = name + " さんログイン中";
-          } else {
-            console.warn("status 要素が見つかりませんでした。");
-          }
+          const todayKey = getTodayDateKey();
+          document.getElementById("todayLabel").innerText = "今日の打刻（ " + todayKey + " ）";
 
           initMonthSelector();
-          await loadRecords();
+          await loadRecords(); // 一覧読み込み → currentState も同期される
+          applyStateToButtonsAndLabels(); // 読み込んだデータをボタン側にも反映
         } catch (e) {
-          console.error(e);
           document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
         }
       }
