@@ -1009,7 +1009,10 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
         const worked = records.filter(r=>r.clockIn && r.clockOut);
         document.getElementById("summary").innerText = "総勤務日数: "+worked.length+"日";
+        applyStateToButtonsAndLabels();
+        updateButtonState(); // ✅ DBデータに応じてボタン制御
 
+      }
         // ✅ ボタンの状態を更新
         function updateButtonState() {
           const inBtn = document.getElementById("btnIn");
@@ -1038,11 +1041,6 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
             [inBtn, breakStartBtn, breakEndBtn, outBtn].forEach(btn => btn.disabled = true);
           }
         }
-        applyStateToButtonsAndLabels();
-        updateButtonState(); // ✅ DBデータに応じてボタン制御
-
-      }
-
       function openModal(date){
         const r = records.find(x=>x.date===date);
         document.getElementById("editDate").value = date;
