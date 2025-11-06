@@ -690,7 +690,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     const data = await res.json();
 
     // Firestoreに保存されている今日のデータを探す
-    const todayData = data.find(r => r.date.replace(/\//g, "-") === today);
+    const todayData = data.find(r => r.date.replace(/\\//g, "-") === today);
 
     // フォーマット関数
     const fmt = (t) => t ? t.split(" ")[1]?.slice(0, 5) : "--:--";
