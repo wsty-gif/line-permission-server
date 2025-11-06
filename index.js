@@ -633,7 +633,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
       <!-- 勤怠一覧 -->
       <div class="table-wrapper">
-        <table>
+        <table id="recordsTable">
           <thead>
             <tr>
               <th>日付</th>
@@ -643,9 +643,10 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
               <th>休憩終了</th>
             </tr>
           </thead>
-          <tbody id="recordsBody"></tbody>
+          <tbody></tbody>
         </table>
       </div>
+
     </div>
 <script>
   let userId, name;
@@ -661,18 +662,15 @@ async function main() {
 
     document.getElementById("status").innerText = name + " さんログイン中";
 
-    initMonthSelector();
-
-    // ✅ LIFF完了後に loadRecords 呼び出し
-    setTimeout(() => {
-      loadRecords();
-    }, 500);
+    // DOMが構築されてから初期化
+    window.addEventListener("DOMContentLoaded", async () => {
+      initMonthSelector();
+      await loadRecords();
+    });
   } catch (e) {
-    document.getElementById("status").innerText =
-      "LIFF初期化に失敗しました: " + e.message;
+    document.getElementById("status").innerText = "LIFF初期化に失敗しました: " + e.message;
   }
 }
-
 
 
   // ✅ ボタン打刻API
@@ -747,8 +745,7 @@ async function loadRecords() {
   const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
   const data = await res.json();
 
-  const table = document.getElementById("recordsTable");
-  const tbody = table ? table.querySelector("tbody") : null;
+  const tbody = document.querySelector("#recordsTable tbody");
   if (!tbody) {
     console.warn("⚠️ tbody 要素が見つかりません。");
     return;
