@@ -762,46 +762,49 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         if(e.target.id === "btnOut") sendAction("clockOut");
       });
 
-      async function loadRecords() {
-        if (!userId) return;
-        const month = document.getElementById("monthSelect").value;
-        const res = await fetch("/${store}/attendance/records?userId=" + encodeURIComponent(userId) + "&month=" + encodeURIComponent(month));
-        const data = await res.json();
+async function loadRecords() {
+  if (!userId) return;
+  const month = document.getElementById("monthSelect").value;
+  const res = await fetch("/${store}/attendance/records?userId=" + encodeURIComponent(userId) + "&month=" + encodeURIComponent(month));
+  const data = await res.json();
 
-        // 一覧表示（サーバー側は JST で "YYYY/MM/DD HH:MM:SS" を返す想定）
-        const tbody = document.getElementById("recordsBody");
-        tbody.innerHTML = data.map(function(r){
-          return "<tr>"
-            + "<td>" + (r.date || "-") + "</td>"
-            + "<td>" + (r.clockIn || "-") + "</td>"
-            + "<td>" + (r.clockOut || "-") + "</td>"
-            + "<td>" + (r.breakStart || "-") + "</td>"
-            + "<td>" + (r.breakEnd || "-") + "</td>"
-            + "</tr>";
-        }).join("");
+  // 一覧表示
+  const tbody = document.getElementById("recordsBody");
+  tbody.innerHTML = data.map(function(r){
+    return "<tr>"
+      + "<td>" + (r.date || "-") + "</td>"
+      + "<td>" + (r.clockIn || "-") + "</td>"
+      + "<td>" + (r.clockOut || "-") + "</td>"
+      + "<td>" + (r.breakStart || "-") + "</td>"
+      + "<td>" + (r.breakEnd || "-") + "</td>"
+      + "</tr>";
+  }).join("");
 
-        // 今日のレコードがあれば currentState に反映
-        const todayKey = getTodayDateKey();
-        const todayRec = data.find(function(r){ return r.date === todayKey; });
-        if (todayRec) {
-          currentState = {
-            date: todayRec.date,
-            clockIn: todayRec.clockIn || null,
-            clockOut: todayRec.clockOut || null,
-            breakStart: todayRec.breakStart || null,
-            breakEnd: todayRec.breakEnd || null,
-          };
-        } else {
-          currentState = {
-            date: todayKey,
-            clockIn: null,
-            clockOut: null,
-            breakStart: null,
-            breakEnd: null,
-          };
-        }
-        applyStateToButtonsAndLabels();
-      }
+  // ✅ 今日のレコードを取得して currentState に反映
+  const todayKey = getTodayDateKey();
+  const todayRec = data.find(r => r.date === todayKey);
+  if (todayRec) {
+    currentState = {
+      date: todayRec.date,
+      clockIn: todayRec.clockIn || null,
+      clockOut: todayRec.clockOut || null,
+      breakStart: todayRec.breakStart || null,
+      breakEnd: todayRec.breakEnd || null,
+    };
+  } else {
+    currentState = {
+      date: todayKey,
+      clockIn: null,
+      clockOut: null,
+      breakStart: null,
+      breakEnd: null,
+    };
+  }
+
+  // ✅ 勤務一覧の時間を出勤／退勤／休憩ボタン下に反映
+  applyStateToButtonsAndLabels();
+}
+
 
       main();
     </script>
