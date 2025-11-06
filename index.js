@@ -1049,18 +1049,28 @@ app.get("/:store/attendance-admin", ensureStore, async (req, res) => {
       }
 
       async function saveEdit(){
-        const id=document.getElementById('editId').value;
-        const clockIn=document.getElementById('editIn').value;
-        const clockOut=document.getElementById('editOut').value;
-        if(clockIn>=clockOut){alert('退勤時刻は出勤より後にしてください');return;}
-        await fetch(window.location.pathname+'/update',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({id,clockIn,clockOut})
-        });
-        alert('更新しました');location.reload();
+        const userId = document.getElementById("staffSelect").value;
+        const date = document.getElementById("editDate").value;
+        const inT = document.getElementById("editIn").value;
+        const outT = document.getElementById("editOut").value;
+        if(inT && outT && inT>outT){ alert("出勤時間は退勤時間より前にしてください。"); return; }
+
+        const body = {
+          userId, date,
+          clockIn: inT, clockOut: outT,
+          breakStart: document.getElementById("editBreakStart").value,
+          breakEnd: document.getElementById("editBreakEnd").value
+        };
+        const res = await fetch("/${store}/admin/attendance/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        alert(await res.text());
+        closeModal();
+        loadRecords();
       }
-      function closeModal(){document.getElementById('editModal').close();}
+
+      // ✅ DOM読み込み後に初期化
+      document.addEventListener("DOMContentLoaded", init);
     </script>
+
   </body></html>
   `);
 });
