@@ -1386,6 +1386,99 @@ app.post("/:store/admin/attendance/update", ensureStore, async (req,res)=>{
   res.send("勤怠を更新しました。");
 });
 
+app.get("/:store/manual-view", ensureStore, async (req, res) => {
+  const { store, storeConf } = req;
+
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${store} マニュアル閲覧</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: sans-serif;
+        background: #f9fafb;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        background: #2563eb;
+        color: white;
+        text-align: center;
+        padding: 10px;
+        font-size: 18px;
+        font-weight: bold;
+      }
+      iframe {
+        flex: 1;
+        width: 100%;
+        border: none;
+      }
+      /* 黒画面オーバーレイ */
+      #blackout {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 1);
+        z-index: 9999;
+        display: none;
+      }
+      #blackout p {
+        color: white;
+        text-align: center;
+        margin-top: 40vh;
+        font-size: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>${store} マニュアル</header>
+
+    <!-- Notion 埋め込み -->
+    <iframe src="${storeConf.manualUrl}" id="notionFrame" allowfullscreen></iframe>
+
+    <!-- オーバーレイ -->
+    <div id="blackout">
+      <p>マニュアルを保護中...</p>
+    </div>
+
+    <script>
+      async function main() {
+        await liff.init({ liffId: "${storeConf.liffId}" });
+        if (!liff.isLoggedIn()) liff.login();
+
+        // visibilitychange イベントで黒画面を切り替え
+        document.addEventListener("visibilitychange", () => {
+          const overlay = document.getElementById("blackout");
+          if (document.hidden) {
+            // アプリを離れた瞬間に黒画面ON
+            overlay.style.display = "block";
+          } else {
+            // アプリに戻ったら解除
+            overlay.style.display = "none";
+          }
+        });
+
+        // スマホ画面を閉じたりスリープした場合にも対応
+        window.addEventListener("pagehide", () => {
+          document.getElementById("blackout").style.display = "block";
+        });
+        window.addEventListener("pageshow", () => {
+          document.getElementById("blackout").style.display = "none";
+        });
+      }
+
+      main();
+    </script>
+  </body>
+  </html>
+  `);
+});
+
 // ==============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
