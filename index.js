@@ -455,7 +455,7 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
 // 🕒 従業員勤怠打刻画面（修正申請付き）
 // ==============================
 // ==============================
-// 🕒 従業員勤怠打刻画面（各行修正申請ボタン付き）
+// 🕒 従業員勤怠打刻画面（修正申請＋UI改良版）
 // ==============================
 app.get("/:store/attendance", ensureStore, (req, res) => {
   const { store, storeConf } = req;
@@ -469,24 +469,43 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     <title>${store} 勤怠打刻</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body { font-family:sans-serif; background:#f9fafb; padding:16px; }
-      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:480px; margin:auto; }
-      h1 { color:#2563eb; text-align:center; }
+      body { font-family: sans-serif; background: #f9fafb; padding: 16px; margin:0; }
+      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:480px; margin:16px auto; }
+      h1 { color:#2563eb; text-align:center; margin-top:0; }
+      #status { text-align:center; margin-bottom:12px; color:#4b5563; }
+
       .grid-2x2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
       .action-card { background:#f3f4f6; border-radius:8px; padding:8px; text-align:center; }
-      .action-btn { width:100%; padding:6px; border:none; border-radius:6px; color:white; font-size:0.9rem; cursor:pointer; }
-      .btn-in{background:#16a34a;} .btn-out{background:#dc2626;}
-      .btn-break-start{background:#f59e0b;} .btn-break-end{background:#2563eb;}
-      table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
-      th,td { border:1px solid #ddd; padding:6px; text-align:center; white-space:nowrap; }
-      th { background:#2563eb; color:white; }
-      .btn-request { background:#6b7280; color:white; border:none; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px; }
+      .action-title { font-size:0.9rem; margin-bottom:4px; }
+      .action-time { font-size:1.1rem; font-weight:bold; margin-bottom:4px; }
+      .action-btn { width:100%; padding:6px 0; border:none; border-radius:6px; color:white; font-size:0.9rem; cursor:pointer; }
+      .btn-in { background:#16a34a; }
+      .btn-out { background:#dc2626; }
+      .btn-break-start { background:#f59e0b; }
+      .btn-break-end { background:#2563eb; }
+      .btn-request { background:#6b7280; margin-top:10px; width:100%; }
 
+      .filter-row { margin-top:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+      .filter-row label { font-size:0.9rem; }
+      input[type="month"] { padding:4px 6px; border-radius:6px; border:1px solid #d1d5db; }
+
+      /* ✅ 横スクロール対応 */
+      .table-wrapper { width:100%; overflow-x:auto; margin-top:12px; -webkit-overflow-scrolling:touch; }
+      table { width:100%; border-collapse:collapse; background:white; font-size:13px; min-width:700px; }
+      th, td { border:1px solid #e5e7eb; padding:6px; text-align:center; white-space:nowrap; }
+      th { background-color:#2563eb; color:white; }
+      tr:nth-child(even){ background:#f9fafb; }
+
+      /* ✅ モーダル */
       .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
-      .modal-content { background:white; padding:20px; border-radius:8px; max-width:320px; width:90%; }
-      .modal-content input, .modal-content textarea { width:100%; margin-top:8px; padding:6px; border:1px solid #ccc; border-radius:6px; }
-      .modal-content button { margin-top:10px; padding:6px 10px; border:none; border-radius:6px; color:white; cursor:pointer; }
-      .btn-send { background:#2563eb; } .btn-close { background:#dc2626; }
+      .modal-content { background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; max-height:80%; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+      .modal-content h3 { margin:0; color:#2563eb; text-align:center; }
+      .modal-content input, .modal-content textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; }
+      .modal-content textarea { height:80px; resize:none; }
+      .time-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+      .btn-send { background:#2563eb; color:white; border:none; border-radius:6px; padding:8px; cursor:pointer; }
+      .btn-close { background:#dc2626; color:white; border:none; border-radius:6px; padding:8px; cursor:pointer; }
+      .current-record { background:#f3f4f6; border-radius:6px; padding:8px; font-size:14px; }
     </style>
   </head>
   <body>
@@ -496,121 +515,173 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
       <div class="grid-2x2">
         <div class="action-card">
-          <div>出勤</div>
-          <div id="timeIn">--:--</div>
+          <div class="action-title">出勤</div>
+          <div class="action-time" id="timeIn">--:--</div>
           <button id="btnIn" class="action-btn btn-in">出勤</button>
         </div>
         <div class="action-card">
-          <div>退勤</div>
-          <div id="timeOut">--:--</div>
+          <div class="action-title">退勤</div>
+          <div class="action-time" id="timeOut">--:--</div>
           <button id="btnOut" class="action-btn btn-out">退勤</button>
         </div>
         <div class="action-card">
-          <div>休憩開始</div>
-          <div id="timeBreakStart">--:--</div>
+          <div class="action-title">休憩開始</div>
+          <div class="action-time" id="timeBreakStart">--:--</div>
           <button id="btnBreakStart" class="action-btn btn-break-start">休憩開始</button>
         </div>
         <div class="action-card">
-          <div>休憩終了</div>
-          <div id="timeBreakEnd">--:--</div>
+          <div class="action-title">休憩終了</div>
+          <div class="action-time" id="timeBreakEnd">--:--</div>
           <button id="btnBreakEnd" class="action-btn btn-break-end">休憩終了</button>
         </div>
       </div>
 
-      <div style="margin-top:12px;">
-        <label>対象月：</label><input type="month" id="monthSelect">
+      <button id="btnRequest" class="btn-request">打刻時間修正申請</button>
+
+      <div class="filter-row">
+        <label for="monthSelect">対象月</label>
+        <input type="month" id="monthSelect">
       </div>
 
-      <table>
-        <thead><tr>
-          <th>日付</th><th>出勤</th><th>退勤</th><th>休憩開始</th><th>休憩終了</th><th>修正依頼</th>
-        </tr></thead>
-        <tbody id="recordsBody"></tbody>
-      </table>
+      <div class="table-wrapper">
+        <table id="recordsTable">
+          <thead>
+            <tr>
+              <th>日付</th><th>出勤</th><th>退勤</th><th>休憩開始</th><th>休憩終了</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- 修正申請モーダル -->
+    <!-- ✅ 修正申請モーダル -->
     <div id="modal" class="modal">
       <div class="modal-content">
-        <h3>打刻修正申請</h3>
-        <input type="date" id="reqDate" readonly>
-        <textarea id="reqMessage" placeholder="例：11/6 出勤時間を9:00に修正してください"></textarea>
-        <button class="btn-send" onclick="submitRequest()">送信</button>
-        <button class="btn-close" onclick="closeModal()">閉じる</button>
+        <h3>打刻時間修正申請</h3>
+
+        <label>修正対象日</label>
+        <input type="date" id="reqDate" />
+
+        <div class="current-record" id="currentRecord">現在の記録: データ取得中...</div>
+
+        <label>修正後の時間</label>
+        <div class="time-grid">
+          <input type="time" id="newClockIn" placeholder="出勤" />
+          <input type="time" id="newClockOut" placeholder="退勤" />
+          <input type="time" id="newBreakStart" placeholder="休憩開始" />
+          <input type="time" id="newBreakEnd" placeholder="休憩終了" />
+        </div>
+
+        <label>修正理由</label>
+        <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
+
+        <div style="display:flex; gap:10px; justify-content:space-between;">
+          <button class="btn-close" onclick="closeModal()">キャンセル</button>
+          <button class="btn-send" onclick="submitRequest()">申請</button>
+        </div>
       </div>
     </div>
 
     <script>
-      let userId,name,selectedDate="";
+      let userId, name, allRecords = [];
 
-      async function main(){
-        await liff.init({liffId:"${storeConf.liffId}"});
-        if(!liff.isLoggedIn())return liff.login();
-        const p=await liff.getProfile();userId=p.userId;name=p.displayName;
-        document.getElementById("status").innerText=name+" さんログイン中";
-        initMonth();loadRecords();
+      async function main() {
+        await liff.init({ liffId: "${storeConf.liffId}" });
+        if (!liff.isLoggedIn()) return liff.login();
+        const p = await liff.getProfile();
+        userId = p.userId; name = p.displayName;
+        document.getElementById("status").innerText = name + " さんログイン中";
+        initMonthSelector();
+        await loadRecords();
       }
 
-      function initMonth(){
-        const now=new Date();const jst=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Tokyo"}));
-        const ym=jst.toISOString().slice(0,7);
-        document.getElementById("monthSelect").value=ym;
-        document.getElementById("monthSelect").addEventListener("change",loadRecords);
-      }
+      function timeOnly(str){ if(!str)return "--:--"; const p=String(str).split(" "); return p.length>1?p[1].slice(0,5):str.slice(-5); }
+      function getTodayKey(){ const jst=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo"})); return jst.toISOString().slice(0,10); }
+      function initMonthSelector(){ const m=document.getElementById("monthSelect"); const jst=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo"})); m.value=jst.toISOString().slice(0,7); m.addEventListener("change",loadRecords); }
 
-      async function sendAction(a){
-        await fetch("/${store}/attendance/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,name,action:a})});
+      async function sendAction(action){
+        await fetch("/${store}/attendance/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,name,action})});
         loadRecords();
       }
+      document.getElementById("btnIn").onclick=()=>sendAction("clockIn");
+      document.getElementById("btnOut").onclick=()=>sendAction("clockOut");
+      document.getElementById("btnBreakStart").onclick=()=>sendAction("breakStart");
+      document.getElementById("btnBreakEnd").onclick=()=>sendAction("breakEnd");
+      document.getElementById("btnRequest").onclick=()=>openModal();
 
-      ["In","Out","BreakStart","BreakEnd"].forEach(id=>{
-        document.getElementById("btn"+id).onclick=()=>sendAction("clock"+id);
-      });
+      function closeModal(){ document.getElementById("modal").style.display="none"; }
+
+      function openModal(){
+        const modal=document.getElementById("modal");
+        modal.style.display="flex";
+        const today=getTodayKey();
+        const record=allRecords.find(r=>r.date===today);
+        const recText = record
+          ? \`出勤:\${record.clockIn||"--"} 退勤:\${record.clockOut||"--"} 休憩開始:\${record.breakStart||"--"} 休憩終了:\${record.breakEnd||"--"}\`
+          : "記録がありません";
+        document.getElementById("currentRecord").innerText = "現在の記録: " + recText;
+        document.getElementById("reqDate").value = today;
+      }
+
+      async function submitRequest(){
+        const date=document.getElementById("reqDate").value;
+        const msg=document.getElementById("reqMessage").value;
+        const newData={
+          clockIn:document.getElementById("newClockIn").value,
+          clockOut:document.getElementById("newClockOut").value,
+          breakStart:document.getElementById("newBreakStart").value,
+          breakEnd:document.getElementById("newBreakEnd").value
+        };
+        if(!date||!msg)return alert("日付と理由を入力してください。");
+        await fetch("/${store}/attendance/request",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({userId,name,date,message:msg,newData})
+        });
+        alert("修正申請を送信しました。");
+        closeModal();
+      }
 
       async function loadRecords(){
         const month=document.getElementById("monthSelect").value;
         const res=await fetch("/${store}/attendance/records?userId="+userId+"&month="+month);
         const data=await res.json();
+        allRecords=data;
         const tbody=document.getElementById("recordsBody");
-        tbody.innerHTML=data.map(r=>\`
-          <tr>
-            <td>\${r.date||"--"}</td>
-            <td>\${r.clockIn||"--:--"}</td>
-            <td>\${r.clockOut||"--:--"}</td>
-            <td>\${r.breakStart||"--:--"}</td>
-            <td>\${r.breakEnd||"--:--"}</td>
-            <td><button class='btn-request' onclick='openModal("\${r.date}")'>申請</button></td>
-          </tr>\`).join("");
+        tbody.innerHTML=data.map(r=>"<tr><td>"+(r.date||"--")+"</td><td>"+(r.clockIn||"--:--")+"</td><td>"+(r.clockOut||"--:--")+"</td><td>"+(r.breakStart||"--:--")+"</td><td>"+(r.breakEnd||"--:--")+"</td></tr>").join("");
 
-        const now=new Date();
-        const jst=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Tokyo"}));
-        const today = jst.toISOString().slice(0,10);
-        const rec=data.find(r=>r.date===today);
-        document.getElementById("timeIn").innerText=(rec?.clockIn?.slice(-8, -3))||"--:--";
-        document.getElementById("timeOut").innerText=(rec?.clockOut?.slice(-8, -3))||"--:--";
-        document.getElementById("timeBreakStart").innerText=(rec?.breakStart?.slice(-8, -3))||"--:--";
-        document.getElementById("timeBreakEnd").innerText=(rec?.breakEnd?.slice(-8, -3))||"--:--";
-      }
-
-      function openModal(date){
-        selectedDate=date;
-        document.getElementById("reqDate").value=date;
-        document.getElementById("modal").style.display="flex";
-      }
-      function closeModal(){document.getElementById("modal").style.display="none";}
-
-      async function submitRequest(){
-        const msg=document.getElementById("reqMessage").value;
-        if(!msg)return alert("内容を入力してください。");
-        await fetch("/${store}/attendance/request",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,name,date:selectedDate,message:msg})});
-        alert("修正申請を送信しました。");
-        closeModal();
+        const today=getTodayKey();
+        const todayData=data.find(r=>r.date===today);
+        document.getElementById("timeIn").innerText=timeOnly(todayData?.clockIn);
+        document.getElementById("timeOut").innerText=timeOnly(todayData?.clockOut);
+        document.getElementById("timeBreakStart").innerText=timeOnly(todayData?.breakStart);
+        document.getElementById("timeBreakEnd").innerText=timeOnly(todayData?.breakEnd);
       }
 
       main();
     </script>
-  </body></html>
+  </body>
+  </html>
   `);
+});
+
+// ✅ Firestore申請保存API
+app.post("/:store/attendance/request", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, name, date, message, newData } = req.body;
+  if (!userId || !date || !message)
+    return res.status(400).send("入力不足です。");
+
+  await db.collection("companies").doc(store)
+    .collection("attendance_requests")
+    .add({
+      userId, name, date, message, newData,
+      status: "未対応",
+      createdAt: admin.firestore.Timestamp.now(),
+    });
+
+  res.send("修正申請を送信しました。");
 });
 
 // 修正申請の保存API
