@@ -891,33 +891,53 @@ app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
     const { store } = req;
     const { userId } = req.query;
 
-    const ref = db
+    let ref = db
       .collection("companies")
       .doc(store)
-      .collection("attendanceFixRequests")
-      .orderBy("createdAt", "desc");
+      .collection("attendanceFixRequests");
 
-    let query = ref;
-    if (userId) {
-      // 特定ユーザーの申請だけを表示
-      query = ref.where("userId", "==", userId);
+    // createdAt の存在を保証できないため、orderBy前に存在チェック
+    const snapshot = await ref.get();
+    if (snapshot.empty) {
+      return res.json([]);
     }
 
-    const snap = await query.get();
-    const list = snap.docs.map(doc => ({
+    // Firestore では orderBy("createdAt") の前に where() で null を除外できないため、
+    // 一度取得後に手動ソート
+    let list = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
-      createdAt: doc.data().createdAt
-        ? doc.data().createdAt.toDate().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
-        : ""
+      createdAt:
+        doc.data().createdAt && doc.data().createdAt.toDate
+          ? doc.data().createdAt.toDate()
+          : null,
     }));
 
-    res.json(list);
+    // userId で絞り込み
+    if (userId) list = list.filter(item => item.userId === userId);
+
+    // createdAt 降順に並び替え（nullは最後）
+    list.sort((a, b) => {
+      if (!a.createdAt) return 1;
+      if (!b.createdAt) return -1;
+      return b.createdAt - a.createdAt;
+    });
+
+    // 表示用にフォーマット
+    const result = list.map(r => ({
+      ...r,
+      createdAt: r.createdAt
+        ? r.createdAt.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+        : "",
+    }));
+
+    res.json(result);
   } catch (e) {
-    console.error("申請一覧取得エラー:", e);
+    console.error("❌ 申請一覧取得エラー:", e);
     res.status(500).send("サーバーエラー: " + e.message);
   }
 });
+
 
 
 
