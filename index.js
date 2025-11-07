@@ -2107,10 +2107,9 @@ app.post("/:store/admin/delete-staff", ensureStore, async (req, res) => {
     res.status(500).json({ error: "削除に失敗しました。" });
   }
 });
-// ==============================
-// 🧾 管理者用 打刻修正依頼一覧ページ（デザイン改良版）
-// ==============================
-// 🧾 管理者用：打刻修正申請一覧ページ
+
+
+// 🧾 管理者用：打刻修正申請一覧（画像デザイン準拠）
 app.get("/:store/admin/fix", ensureStore, async (req, res) => {
   const { store } = req;
 
@@ -2120,114 +2119,133 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${store} 打刻修正申請一覧</title>
+    <title>${store} 打刻修正申請</title>
     <style>
-      body { font-family: sans-serif; background:#f3f4f6; padding:16px; }
-      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:900px; margin:auto; }
-      h1 { color:#2563eb; text-align:center; margin-top:0; }
+      body { font-family: 'Noto Sans JP', sans-serif; background:#f3f4f6; padding:24px; margin:0; }
+      h1 { font-size:20px; color:#111827; margin-bottom:4px; }
+      .notice { color:#dc2626; font-size:13px; margin-bottom:16px; }
 
-      .filter-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
-      .filter-row input { padding:6px 10px; border:1px solid #ccc; border-radius:6px; width:200px; }
+      .card { background:white; border-radius:10px; padding:16px; box-shadow:0 2px 6px rgba(0,0,0,0.05); max-width:1000px; margin:auto; }
 
-      .table-wrapper { overflow-x:auto; margin-top:10px; }
-      table { width:100%; border-collapse:collapse; min-width:800px; }
-      th, td { border:1px solid #ddd; padding:8px; text-align:center; white-space:nowrap; }
-      th { background:#2563eb; color:white; }
-      tr:nth-child(even) { background:#f9fafb; }
+      .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+      .card-header h2 { font-size:16px; color:#111827; margin:0; }
+      .header-buttons { display:flex; gap:8px; }
+      .btn { border:none; border-radius:6px; padding:6px 12px; font-size:13px; cursor:pointer; }
+      .btn-primary { background:#2563eb; color:white; }
+      .btn-dark { background:#111827; color:white; }
+      .btn-light { background:#e5e7eb; color:#111827; }
 
-      .status { padding:4px 8px; border-radius:4px; color:white; }
-      .pending { background:#f59e0b; }
+      .table-wrapper { overflow-x:auto; margin-top:8px; }
+      table { width:100%; border-collapse:collapse; font-size:13px; min-width:800px; }
+      th, td { border-bottom:1px solid #e5e7eb; padding:8px; text-align:center; vertical-align:middle; white-space:nowrap; }
+      th { background:#f9fafb; color:#374151; font-weight:600; }
+
+      tr:hover { background:#f3f4f6; }
+
+      .status-badge { padding:4px 8px; border-radius:12px; font-size:12px; font-weight:500; color:white; }
+      .pending { background:#fbbf24; color:#111; }
       .approved { background:#16a34a; }
-      .rejected { background:#dc2626; }
 
-      .btn { border:none; padding:6px 10px; border-radius:6px; cursor:pointer; color:white; font-size:0.9rem; }
-      .btn-approve { background:#16a34a; }
-      .btn-reject { background:#dc2626; }
-      .btn-delete { background:#6b7280; }
+      .new-time { color:#16a34a; font-weight:600; }
+
+      .btn-approve { background:#16a34a; color:white; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; }
+      .btn-reject { background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; }
+
+      @media (max-width:600px) {
+        .btn { font-size:12px; padding:4px 8px; }
+      }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>打刻修正申請一覧</h1>
+    <h1>打刻時間修正申請</h1>
+    <div class="notice" id="pendingNotice"></div>
 
-      <div class="filter-row">
-        <input type="text" id="searchBox" placeholder="名前で検索..." />
+    <div class="card">
+      <div class="card-header">
+        <h2>修正申請一覧</h2>
+        <div class="header-buttons">
+          <button class="btn btn-light" id="myRequests">自分の申請</button>
+          <button class="btn btn-dark" id="allRequests">全ての申請</button>
+          <button class="btn btn-primary" id="newRequest">＋ 新規申請</button>
+        </div>
       </div>
 
       <div class="table-wrapper">
-        <table id="reqTable">
+        <table>
           <thead>
             <tr>
               <th>申請者</th>
-              <th>対象日</th>
+              <th>日付</th>
               <th>修正内容</th>
               <th>理由</th>
-              <th>申請日時</th>
-              <th>状態</th>
+              <th>ステータス</th>
               <th>操作</th>
             </tr>
           </thead>
-          <tbody id="reqBody"></tbody>
+          <tbody id="reqBody">
+            <tr><td colspan="6">読み込み中...</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
 
     <script>
       const store = "${store}";
-      let allRequests = [];
+      let allData = [];
 
       async function loadRequests() {
         const res = await fetch("/" + store + "/attendance/requests");
         const data = await res.json();
-        allRequests = data;
-        renderTable(allRequests);
+        allData = data;
+        renderTable(allData);
       }
 
       function renderTable(list) {
         const tbody = document.getElementById("reqBody");
         if (!list.length) {
-          tbody.innerHTML = '<tr><td colspan="7">申請はありません</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6">申請はありません</td></tr>';
+          document.getElementById("pendingNotice").innerText = "";
           return;
         }
 
+        // 承認待ち件数カウント
+        const pendingCount = list.filter(r => r.status === "pending").length;
+        document.getElementById("pendingNotice").innerText =
+          pendingCount > 0 ? "承認待ちの申請が" + pendingCount + "件あります" : "";
+
         tbody.innerHTML = list.map(r => {
           const after = r.after || {};
+          const before = r.before || {};
+          const statusClass = r.status === "approved" ? "approved" : "pending";
+          const statusText = r.status === "approved" ? "承認済み" : "承認待ち";
+
           return \`
             <tr>
               <td>\${r.name || "未登録"}</td>
               <td>\${r.date || ""}</td>
               <td style="text-align:left">
-                出勤: \${after.clockIn || "--"}<br>
-                退勤: \${after.clockOut || "--"}<br>
-                休憩開始: \${after.breakStart || "--"}<br>
-                休憩終了: \${after.breakEnd || "--"}
+                出勤: \${before.clockIn || "--"} → <span class="new-time">\${after.clockIn || "--"}</span><br>
+                退勤: \${before.clockOut || "--"} → <span class="new-time">\${after.clockOut || "--"}</span><br>
+                休憩開始: \${before.breakStart || "--"} → <span class="new-time">\${after.breakStart || "--"}</span><br>
+                休憩終了: \${before.breakEnd || "--"} → <span class="new-time">\${after.breakEnd || "--"}</span>
               </td>
               <td>\${r.message || ""}</td>
-              <td>\${r.createdAt || ""}</td>
-              <td><span class="status pending">承認待ち</span></td>
+              <td><span class="status-badge \${statusClass}">\${statusText}</span></td>
               <td>
-                <button class="btn btn-approve" onclick="approve('\${r.id}')">承認</button>
-                <button class="btn btn-reject" onclick="reject('\${r.id}')">却下</button>
-                <button class="btn btn-delete" onclick="del('\${r.id}')">削除</button>
+                \${r.status === "approved" 
+                  ? '<button class="btn btn-light" disabled>詳細</button>'
+                  : '<button class="btn-approve" onclick="approve(\\'\${r.id}\\')">✔</button> <button class="btn-reject" onclick="reject(\\'\${r.id}\\')">✖</button>'}
               </td>
             </tr>
           \`;
         }).join("");
       }
 
-      // 🔍 検索機能（名前で絞り込み）
-      document.getElementById("searchBox").addEventListener("input", (e) => {
-        const kw = e.target.value.trim();
-        const filtered = allRequests.filter(r => (r.name || "").includes(kw));
-        renderTable(filtered);
-      });
-
-      // ✅ 承認処理
       async function approve(id) {
-        if (!confirm("この修正を承認して勤務データに反映しますか？")) return;
+        if (!confirm("この修正を承認し勤務データへ反映しますか？")) return;
         await fetch("/" + store + "/admin/fix/approve", {
           method: "POST",
-          headers: {"Content-Type":"application/json"},
+          headers: {"Content-Type": "application/json"},
           body: JSON.stringify({ id })
         });
         alert("承認しました。");
@@ -2238,21 +2256,10 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
         if (!confirm("却下しますか？")) return;
         await fetch("/" + store + "/admin/fix/reject", {
           method: "POST",
-          headers: {"Content-Type":"application/json"},
+          headers: {"Content-Type": "application/json"},
           body: JSON.stringify({ id })
         });
         alert("却下しました。");
-        loadRequests();
-      }
-
-      async function del(id) {
-        if (!confirm("削除しますか？")) return;
-        await fetch("/" + store + "/admin/fix/delete", {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ id })
-        });
-        alert("削除しました。");
         loadRequests();
       }
 
@@ -2262,8 +2269,6 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
   </html>
   `);
 });
-
-
 
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
   const { store } = req.params;
