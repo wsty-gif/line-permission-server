@@ -682,44 +682,55 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
   `);
 });
 
-// ✅ Firestore申請保存API
+// 🔹 修正申請を保存
 app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   const { store } = req.params;
-  const { userId, name, date, message, newData } = req.body;
-  if (!userId || !date || !message)
-    return res.status(400).send("入力不足です。");
+  const { userId, name, date, message, before, after } = req.body;
 
-  await db.collection("companies").doc(store)
-    .collection("attendance_requests")
-    .add({
-      userId, name, date, message, newData,
-      status: "未対応",
-      createdAt: admin.firestore.Timestamp.now(),
-    });
-
-  res.send("修正申請を送信しました。");
-});
-
-// 修正申請の保存API
-app.post("/:store/attendance/request", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { userId, name, date, message } = req.body;
-  if (!userId || !date || !message)
-    return res.status(400).send("入力不足です。");
-
-  await db.collection("companies").doc(store)
-    .collection("attendance_requests")
-    .add({
+  try {
+    const ref = db.collection("attendanceRequests");
+    await ref.add({
+      store,
       userId,
       name,
       date,
       message,
-      status: "未対応",
-      createdAt: admin.firestore.Timestamp.now(),
+      before,
+      after,
+      status: "承認待ち",
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
-
-  res.send("修正申請を送信しました。");
+    res.json({ status: "ok" });
+  } catch (err) {
+    console.error("❌ Error saving request:", err);
+    res.status(500).json({ error: "保存に失敗しました" });
+  }
 });
+
+// 🔹 修正申請を取得
+app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId } = req.query;
+
+  try {
+    const snap = await db.collection("attendanceRequests")
+      .where("store", "==", store)
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const data = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error loading requests:", err);
+    res.status(500).json({ error: "データ取得に失敗しました" });
+  }
+});
+
 
 // 出退勤ステータス取得
 app.get("/:store/attendance/status", ensureStore, async (req, res) => {
