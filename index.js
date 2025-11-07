@@ -1667,7 +1667,10 @@ app.get("/:store/attendance/fix", ensureStore, (req, res) => {
       }
 
       async function loadRecords() {
-        const res = await fetch("/${store}/attendance/records?userId="+userId);
+        const jst = new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" });
+        const currentMonth = new Date(jst).toISOString().slice(0, 7); // 例: "2025-11"
+
+        const res = await fetch("/${store}/attendance/records?userId="+userId + "&month=" + currentMonth);
         allRecords = await res.json();
 
         const today = new Date()
