@@ -682,15 +682,17 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
   `);
 });
 
-// 🔹 修正申請を保存
+// 🔹 店舗ごとに修正申請を保存
 app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, date, message, before, after } = req.body;
 
   try {
-    const ref = db.collection("attendanceRequests");
+    const ref = db.collection("companies")
+      .doc(store)
+      .collection("attendanceRequests");
+
     await ref.add({
-      store,
       userId,
       name,
       date,
@@ -700,34 +702,36 @@ app.post("/:store/attendance/request", ensureStore, async (req, res) => {
       status: "承認待ち",
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
     res.json({ status: "ok" });
   } catch (err) {
-    console.error("❌ Error saving request:", err);
-    res.status(500).json({ error: "保存に失敗しました" });
+    console.error("❌ Error saving attendance request:", err);
+    res.status(500).json({ error: "保存に失敗しました。" });
   }
 });
 
-// 🔹 修正申請を取得（500対策付き）
+
+// 🔹 店舗ごとに修正申請を取得
 app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId } = req.query;
 
   try {
-    if (!userId) {
-      return res.status(400).json({ error: "userIdが必要です。" });
-    }
+    if (!userId) return res.status(400).json({ error: "userIdが必要です。" });
 
-    const ref = db.collection("attendanceRequests")
-      .where("store", "==", store)
-      .where("userId", "==", userId);
+    const ref = db.collection("companies")
+      .doc(store)
+      .collection("attendanceRequests");
 
     let snap;
     try {
-      snap = await ref.orderBy("createdAt", "desc").get();
+      snap = await ref
+        .where("userId", "==", userId)
+        .orderBy("createdAt", "desc")
+        .get();
     } catch (err) {
-      // createdAtがない場合はorderByなしで再取得
       console.warn("⚠️ orderBy失敗 → fallback (createdAtなし)");
-      snap = await ref.get();
+      snap = await ref.where("userId", "==", userId).get();
     }
 
     const data = snap.docs.map(doc => ({
@@ -738,9 +742,10 @@ app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error("❌ /attendance/requests error:", err);
-    res.status(500).json({ error: "サーバーエラー: " + err.message });
+    res.status(500).json({ error: "データ取得に失敗しました: " + err.message });
   }
 });
+
 
 
 
