@@ -1672,7 +1672,8 @@ app.get("/:store/attendance/fix", ensureStore, (req, res) => {
 
         const today = new Date()
           .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
-          .replace(/\//g, "-");
+          .split("/")
+          .join("-");
 
         const record = allRecords.find(r => r.date === today);
         const recText = record
