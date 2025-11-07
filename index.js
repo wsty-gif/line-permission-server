@@ -772,7 +772,7 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
 });
 
 // ==============================
-// 🕒 管理者勤怠管理画面（打刻データ連動版）
+// 🕒 管理者勤怠管理画面（修正版：モーダル編集＋全スタッフ表示）
 // ==============================
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
@@ -793,17 +793,15 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       select, input { padding:6px; border:1px solid #ccc; border-radius:6px; margin:4px; }
       button { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; color:white; }
       .blue { background:#2563eb; }
+      .green { background:#16a34a; }
+      .red { background:#dc2626; }
       table { width:100%; border-collapse:collapse; margin-top:12px; background:white; border-radius:8px; overflow:hidden; }
       th,td { padding:8px; border-bottom:1px solid #eee; text-align:center; font-size:14px; white-space:nowrap; }
       th { background:#2563eb; color:white; }
+      tr:hover { background:#e0edff; cursor:pointer; }
       .summary { text-align:right; margin-top:10px; }
-      @media(max-width:600px){
-        table,thead,tbody,tr,th,td{display:block;}
-        th{display:none;}
-        tr{margin-bottom:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.1);}
-        td{display:flex; justify-content:space-between; padding:6px;}
-        td::before{content:attr(data-label); font-weight:bold; color:#555;}
-      }
+      .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+      .modal-content { background:white; padding:20px; border-radius:8px; max-width:300px; width:90%; }
     </style>
   </head>
   <body>
@@ -819,20 +817,34 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
     <div class="summary" id="summary"></div>
 
-    <div class="table-wrapper">
-      <table id="records">
-        <thead>
-          <tr>
-            <th>日付</th>
-            <th>出勤</th>
-            <th>休憩開始</th>
-            <th>休憩終了</th>
-            <th>退勤</th>
-            <th>勤務時間</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+    <table id="records">
+      <thead>
+        <tr>
+          <th>名前</th>
+          <th>日付</th>
+          <th>出勤</th>
+          <th>休憩開始</th>
+          <th>休憩終了</th>
+          <th>退勤</th>
+          <th>勤務時間</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- 修正モーダル -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h3>時刻修正</h3>
+        <input type="hidden" id="editUserId">
+        <input type="hidden" id="editDate">
+        出勤:<input type="time" id="editIn"><br>
+        休憩開始:<input type="time" id="editBreakStart"><br>
+        休憩終了:<input type="time" id="editBreakEnd"><br>
+        退勤:<input type="time" id="editOut"><br>
+        <button class="green" onclick="saveEdit()">更新</button>
+        <button class="red" onclick="closeModal()">閉じる</button>
+      </div>
     </div>
 
     <script>
@@ -845,71 +857,93 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         const ym = now.toISOString().slice(0, 7);
         monthInput.value = ym;
         await loadStaff();
+        document.getElementById("staffSelect").value = "all";
+        loadRecords();
       }
 
       async function loadStaff() {
         const res = await fetch("/${store}/admin/staff");
         const staff = await res.json();
         const sel = document.getElementById("staffSelect");
-        staff.forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = s.id;
-          opt.text = s.name;
+        const optAll = document.createElement("option");
+        optAll.value = "all";
+        optAll.text = "全て";
+        sel.appendChild(optAll);
+        staff.forEach(s=>{
+          const opt=document.createElement("option");
+          opt.value=s.id; opt.text=s.name;
           sel.appendChild(opt);
         });
       }
 
-      function toTimeStr(ts) {
-        return ts ? new Date(ts).toLocaleTimeString("ja-JP", {hour:"2-digit",minute:"2-digit",timeZone:"Asia/Tokyo"}) : "--:--";
+      function toTimeStr(t){
+        if(!t) return "--:--";
+        const d=new Date(t);
+        return d.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Tokyo"});
       }
 
-      function calcWorkHours(inT, outT, breakS, breakE) {
-        if (!inT || !outT) return "";
-        const start = new Date(inT);
-        const end = new Date(outT);
-        let diff = (end - start) / (1000 * 60 * 60);
-        if (breakS && breakE) {
-          const bs = new Date(breakS);
-          const be = new Date(breakE);
-          diff -= (be - bs) / (1000 * 60 * 60);
-        }
-        return diff.toFixed(2) + "h";
+      function calcHours(a,b,c,d){
+        if(!a||!b)return"";
+        const s=new Date(a),e=new Date(b);
+        let diff=(e-s)/36e5;
+        if(c&&d)diff-=(new Date(d)-new Date(c))/36e5;
+        return diff.toFixed(2)+"h";
       }
 
-      async function loadRecords() {
-        const userId = document.getElementById("staffSelect").value;
-        const month = document.getElementById("monthSelect").value;
-        if (!userId) return alert("スタッフを選択してください。");
-
-        const res = await fetch("/${store}/admin/attendance/records?userId=" + userId + "&month=" + month);
-        const data = await res.json();
-        records = data;
-
-        const tbody = document.querySelector("#records tbody");
-        if (records.length === 0) {
-          tbody.innerHTML = "<tr><td colspan='6'>該当データなし</td></tr>";
-          document.getElementById("summary").innerText = "";
+      async function loadRecords(){
+        const userId=document.getElementById("staffSelect").value;
+        const month=document.getElementById("monthSelect").value;
+        const res=await fetch("/${store}/admin/attendance/records?userId="+userId+"&month="+month);
+        records=await res.json();
+        const tbody=document.querySelector("#records tbody");
+        if(!records.length){
+          tbody.innerHTML="<tr><td colspan='7'>該当データなし</td></tr>";
+          document.getElementById("summary").innerText="";
           return;
         }
-
-        let total = 0;
-        tbody.innerHTML = records.map(r => {
-          const work = calcWorkHours(r.clockIn, r.clockOut, r.breakStart, r.breakEnd);
-          if (work) total += parseFloat(work);
-          return \`
-            <tr>
-              <td data-label="日付">\${r.date}</td>
-              <td data-label="出勤">\${r.clockIn || "--:--"}</td>
-              <td data-label="休憩開始">\${r.breakStart || "--:--"}</td>
-              <td data-label="休憩終了">\${r.breakEnd || "--:--"}</td>
-              <td data-label="退勤">\${r.clockOut || "--:--"}</td>
-              <td data-label="勤務時間">\${work}</td>
-            </tr>
-          \`;
+        let total=0;
+        tbody.innerHTML=records.map((r,i)=>{
+          const work=calcHours(r.clockIn,r.clockOut,r.breakStart,r.breakEnd);
+          if(work)total+=parseFloat(work);
+          return \`<tr onclick="openModal('\${r.userId}','\${r.date}')">
+            <td>\${r.name}</td>
+            <td>\${r.date}</td>
+            <td>\${toTimeStr(r.clockIn)}</td>
+            <td>\${toTimeStr(r.breakStart)}</td>
+            <td>\${toTimeStr(r.breakEnd)}</td>
+            <td>\${toTimeStr(r.clockOut)}</td>
+            <td>\${work}</td></tr>\`;
         }).join("");
+        document.getElementById("summary").innerText="勤務日数:"+records.length+"日 / 総勤務時間:"+total.toFixed(1)+"h";
+      }
 
-        document.getElementById("summary").innerText =
-          "勤務日数: " + records.length + "日 / 総勤務時間: " + total.toFixed(1) + "h";
+      function openModal(userId,date){
+        const r=records.find(x=>x.userId===userId&&x.date===date);
+        if(!r)return;
+        document.getElementById("editUserId").value=userId;
+        document.getElementById("editDate").value=date;
+        document.getElementById("editIn").value=r.clockIn?new Date(r.clockIn).toLocaleTimeString("ja-JP",{hour12:false,timeZone:"Asia/Tokyo"}):"";
+        document.getElementById("editBreakStart").value=r.breakStart?new Date(r.breakStart).toLocaleTimeString("ja-JP",{hour12:false,timeZone:"Asia/Tokyo"}):"";
+        document.getElementById("editBreakEnd").value=r.breakEnd?new Date(r.breakEnd).toLocaleTimeString("ja-JP",{hour12:false,timeZone:"Asia/Tokyo"}):"";
+        document.getElementById("editOut").value=r.clockOut?new Date(r.clockOut).toLocaleTimeString("ja-JP",{hour12:false,timeZone:"Asia/Tokyo"}):"";
+        document.getElementById("modal").style.display="flex";
+      }
+      function closeModal(){document.getElementById("modal").style.display="none";}
+
+      async function saveEdit(){
+        const userId=document.getElementById("editUserId").value;
+        const date=document.getElementById("editDate").value;
+        const body={
+          userId,date,
+          clockIn:document.getElementById("editIn").value,
+          clockOut:document.getElementById("editOut").value,
+          breakStart:document.getElementById("editBreakStart").value,
+          breakEnd:document.getElementById("editBreakEnd").value
+        };
+        const res=await fetch("/${store}/admin/attendance/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        alert(await res.text());
+        closeModal();
+        loadRecords();
       }
 
       init();
