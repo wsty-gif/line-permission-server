@@ -707,17 +707,28 @@ app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   }
 });
 
-// 🔹 修正申請を取得
+// 🔹 修正申請を取得（500対策付き）
 app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId } = req.query;
 
   try {
-    const snap = await db.collection("attendanceRequests")
+    if (!userId) {
+      return res.status(400).json({ error: "userIdが必要です。" });
+    }
+
+    const ref = db.collection("attendanceRequests")
       .where("store", "==", store)
-      .where("userId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .get();
+      .where("userId", "==", userId);
+
+    let snap;
+    try {
+      snap = await ref.orderBy("createdAt", "desc").get();
+    } catch (err) {
+      // createdAtがない場合はorderByなしで再取得
+      console.warn("⚠️ orderBy失敗 → fallback (createdAtなし)");
+      snap = await ref.get();
+    }
 
     const data = snap.docs.map(doc => ({
       id: doc.id,
@@ -726,10 +737,11 @@ app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    console.error("❌ Error loading requests:", err);
-    res.status(500).json({ error: "データ取得に失敗しました" });
+    console.error("❌ /attendance/requests error:", err);
+    res.status(500).json({ error: "サーバーエラー: " + err.message });
   }
 });
+
 
 
 // 出退勤ステータス取得
