@@ -1271,7 +1271,7 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   </html>
   `);
 });
-// 🛠 打刻修正申請ページ
+// 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
 app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   const { store, storeConf } = req;
 
@@ -1298,8 +1298,10 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       td { color:#4b5563; }
       .empty { text-align:center; padding:16px; color:#9ca3af; }
       .btn-back { background:#9ca3af; color:white; border:none; border-radius:6px; padding:8px 16px; cursor:pointer; font-size:13px; margin-top:16px; display:block; margin-left:auto; }
+
+      /* モーダル */
       .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
-      .modal-content { background:white; border-radius:12px; padding:20px; width:90%; max-width:400px; max-height:80%; overflow-y:auto; }
+      .modal-content { background:white; border-radius:12px; padding:20px; width:90%; max-width:400px; max-height:90%; overflow-y:auto; }
       .modal-content h3 { text-align:center; margin-bottom:12px; font-size:16px; color:#111; }
       label { display:block; margin-top:10px; font-weight:bold; font-size:13px; }
       input, textarea { width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px; margin-top:4px; font-size:13px; }
@@ -1308,6 +1310,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       .btn-row { display:flex; justify-content:space-between; margin-top:16px; }
       .btn-cancel { background:#9ca3af; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
       .btn-send { background:#2563eb; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
+      .current-record { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; margin-top:8px; font-size:13px; color:#374151; line-height:1.6; }
     </style>
   </head>
   <body>
@@ -1334,8 +1337,13 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     <div id="modal" class="modal">
       <div class="modal-content">
         <h3>打刻時間修正申請</h3>
+
         <label>修正対象日</label>
-        <input type="date" id="reqDate" />
+        <input type="date" id="reqDate" onchange="loadCurrentRecord()">
+
+        <div class="current-record" id="currentRecord">
+          現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--
+        </div>
 
         <label>修正後の時刻</label>
         <div class="time-grid">
@@ -1356,7 +1364,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     </div>
 
     <script>
-      let userId, name;
+      let userId, name, allRecords = [];
 
       async function main() {
         await liff.init({ liffId: "${storeConf.liffId}" });
@@ -1364,6 +1372,14 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         const p = await liff.getProfile();
         userId = p.userId;
         name = p.displayName;
+        await loadRecords();
+      }
+
+      async function loadRecords() {
+        const now = new Date();
+        const ym = now.toISOString().slice(0, 7);
+        const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + ym);
+        allRecords = await res.json();
       }
 
       document.getElementById("btnNew").onclick = () => {
@@ -1372,6 +1388,21 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
 
       function closeModal() {
         document.getElementById("modal").style.display = "none";
+      }
+
+      function loadCurrentRecord() {
+        const date = document.getElementById("reqDate").value;
+        const record = allRecords.find(r => r.date === date);
+        const currentRecord = document.getElementById("currentRecord");
+
+        if (record) {
+          currentRecord.innerHTML = 
+            "現在の記録:<br>" +
+            "出勤: " + (record.clockIn || "--:--") + "　退勤: " + (record.clockOut || "--:--") + "<br>" +
+            "休憩開始: " + (record.breakStart || "--:--") + "　休憩終了: " + (record.breakEnd || "--:--");
+        } else {
+          currentRecord.innerHTML = "現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--";
+        }
       }
 
       async function submitFix() {
@@ -1383,7 +1414,6 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
           breakStart: document.getElementById("newBreakStart").value,
           breakEnd: document.getElementById("newBreakEnd").value
         };
-
         if (!date || !message) return alert("日付と理由を入力してください。");
 
         await fetch("/${store}/attendance/request", {
@@ -1402,7 +1432,6 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   </html>
   `);
 });
-
 
 // ==============================
 const PORT = process.env.PORT || 3000;
