@@ -708,23 +708,23 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         <div class="current-record" id="currentRecord">現在の記録: データ取得中...</div>
 
-        <label>修正後の日付・時間</label>
+        <label>修正後の日時</label>
         <div class="time-grid">
           <div>
-            <input type="date" id="newDateIn" placeholder="出勤日" />
-            <input type="time" id="newClockIn" placeholder="出勤" />
+            <span>出勤</span>
+            <input type="datetime-local" id="newClockIn" />
           </div>
           <div>
-            <input type="date" id="newDateOut" placeholder="退勤日" />
-            <input type="time" id="newClockOut" placeholder="退勤" />
+            <span>退勤</span>
+            <input type="datetime-local" id="newClockOut" />
           </div>
           <div>
-            <input type="date" id="newDateBreakStart" placeholder="休憩開始日" />
-            <input type="time" id="newBreakStart" placeholder="休憩開始" />
+            <span>休憩開始</span>
+            <input type="datetime-local" id="newBreakStart" />
           </div>
           <div>
-            <input type="date" id="newDateBreakEnd" placeholder="休憩終了日" />
-            <input type="time" id="newBreakEnd" placeholder="休憩終了" />
+            <span>休憩終了</span>
+            <input type="datetime-local" id="newBreakEnd" />
           </div>
         </div>
 
@@ -801,15 +801,12 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       const msg = document.getElementById("reqMessage").value;
 
       const newData = {
-        clockIn: document.getElementById("newClockIn").value,
+        clockIn: document.getElementById("newClockIn").value,       // "2025-01-01T15:00"
         clockOut: document.getElementById("newClockOut").value,
         breakStart: document.getElementById("newBreakStart").value,
         breakEnd: document.getElementById("newBreakEnd").value,
-        dateIn: document.getElementById("newDateIn").value,
-        dateOut: document.getElementById("newDateOut").value,
-        dateBreakStart: document.getElementById("newDateBreakStart").value,
-        dateBreakEnd: document.getElementById("newDateBreakEnd").value
       };
+
 
       if (!date || !msg) return alert("対象日と理由を入力してください。");
 
