@@ -1599,11 +1599,8 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   `);
 });
 // 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
-
-// ==============================
-// 🧾 従業員 打刻修正申請ページ（改良版）
-// ==============================
-app.get("/:store/attendance/fix", ensureStore, (req, res) => {
+// 🛠 打刻修正申請ページ
+app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   const { store, storeConf } = req;
 
   res.send(`
@@ -1611,50 +1608,94 @@ app.get("/:store/attendance/fix", ensureStore, (req, res) => {
   <html lang="ja">
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${store} 打刻時間修正申請</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>${store} 打刻修正申請</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body { font-family:sans-serif; background:#f9fafb; margin:0; padding:16px; }
-      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:500px; margin:auto; }
-      h1 { color:#2563eb; text-align:center; }
-      label { font-weight:bold; display:block; margin-top:10px; font-size:14px; }
-      input, textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; margin-top:4px; }
+      body { font-family:sans-serif; background:#f9fafb; margin:0; padding:20px; color:#333; }
+      .container { max-width:600px; margin:auto; }
+      h1 { font-size:20px; color:#111; margin-bottom:16px; }
+      .card { background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:20px; }
+      .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+      .card-header h2 { font-size:16px; font-weight:bold; margin:0; }
+      .btn-new { background:#111827; color:white; border:none; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:4px; }
+      .btn-new:hover { background:#1f2937; }
+      table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+      th,td { padding:8px; text-align:left; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+      th { color:#374151; font-weight:600; }
+      td { color:#4b5563; line-height:1.5; }
+      .empty { text-align:center; padding:16px; color:#9ca3af; }
+      .btn-back { background:#9ca3af; color:white; border:none; border-radius:6px; padding:8px 16px; cursor:pointer; font-size:13px; margin-top:16px; display:block; margin-left:auto; }
+      .status { display:inline-block; padding:2px 8px; border-radius:6px; font-size:12px; }
+      .waiting { background:#fef3c7; color:#92400e; }
+
+      /* モーダル */
+      .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+      .modal-content { background:white; border-radius:12px; padding:20px; width:90%; max-width:400px; max-height:90%; overflow-y:auto; }
+      .modal-content h3 { text-align:center; margin-bottom:12px; font-size:16px; color:#111; }
+      label { display:block; margin-top:10px; font-weight:bold; font-size:13px; }
+      input, textarea { width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px; margin-top:4px; font-size:13px; }
       textarea { height:80px; resize:none; }
-      .time-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
-      button { border:none; border-radius:6px; padding:10px 16px; cursor:pointer; color:white; font-size:14px; margin-top:16px; }
-      .btn-primary { background:#2563eb; width:100%; }
-      .btn-close { background:#9ca3af; width:100%; }
-      .current-record { background:#f3f4f6; padding:10px; border-radius:6px; font-size:13px; margin-top:8px; }
+      .time-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+      .btn-row { display:flex; justify-content:space-between; margin-top:16px; }
+      .btn-cancel { background:#9ca3af; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
+      .btn-send { background:#2563eb; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
+      .current-record { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; margin-top:8px; font-size:13px; color:#374151; line-height:1.6; }
+      .new-time { color:#16a34a; font-weight:bold; }
     </style>
   </head>
   <body>
-    <div class="card">
+    <div class="container">
       <h1>打刻時間修正申請</h1>
-      <div id="status">ログイン中...</div>
-
-      <label>修正対象日</label>
-      <input type="date" id="reqDate">
-
-      <div class="current-record" id="currentRecord">現在の記録: データ取得中...</div>
-
-      <label>修正後の出勤・退勤・休憩時刻</label>
-      <div class="time-grid">
-        <input type="datetime-local" id="newClockIn" placeholder="出勤日時" />
-        <input type="datetime-local" id="newClockOut" placeholder="退勤日時" />
-        <input type="datetime-local" id="newBreakStart" placeholder="休憩開始日時" />
-        <input type="datetime-local" id="newBreakEnd" placeholder="休憩終了日時" />
+      <div class="card">
+        <div class="card-header">
+          <h2>修正申請一覧</h2>
+          <button class="btn-new" id="btnNew">＋ 新規申請</button>
+        </div>
+        <table id="requestTable">
+          <thead>
+            <tr><th>修正内容</th><th>理由</th><th>ステータス</th></tr>
+          </thead>
+          <tbody id="requestBody">
+            <tr><td colspan="3" class="empty">申請はありません</td></tr>
+          </tbody>
+        </table>
       </div>
+      <button class="btn-back" onclick="history.back()">戻る</button>
+    </div>
 
-      <label>修正理由</label>
-      <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
+    <!-- 修正申請モーダル -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h3>打刻時間修正申請</h3>
 
-      <button class="btn-primary" onclick="submitRequest()">申請</button>
-      <button class="btn-close" onclick="location.href='/${store}/attendance'">戻る</button>
+        <label>修正対象日</label>
+        <input type="date" id="reqDate" onchange="loadCurrentRecord()">
+
+        <div class="current-record" id="currentRecord">
+          現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--
+        </div>
+
+        <label>修正後の時刻</label>
+        <div class="time-grid">
+          <div><small>出勤</small><input type="time" id="newClockIn"></div>
+          <div><small>退勤</small><input type="time" id="newClockOut"></div>
+          <div><small>休憩開始</small><input type="time" id="newBreakStart"></div>
+          <div><small>休憩終了</small><input type="time" id="newBreakEnd"></div>
+        </div>
+
+        <label>修正理由</label>
+        <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
+
+        <div class="btn-row">
+          <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+          <button class="btn-send" onclick="submitFix()">申請</button>
+        </div>
+      </div>
     </div>
 
     <script>
-      let userId, name, allRecords = [];
+      let userId, name, allRecords = [], allRequests = [];
 
       async function main() {
         await liff.init({ liffId: "${storeConf.liffId}" });
@@ -1662,68 +1703,96 @@ app.get("/:store/attendance/fix", ensureStore, (req, res) => {
         const p = await liff.getProfile();
         userId = p.userId;
         name = p.displayName;
-        document.getElementById("status").innerText = name + " さんログイン中";
         await loadRecords();
+        await loadRequests();
       }
 
       async function loadRecords() {
-        const res = await fetch("/${store}/attendance/records?userId="+userId);
+        const now = new Date();
+        const ym = now.toISOString().slice(0, 7);
+        const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + ym);
         allRecords = await res.json();
-
-        const today = new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" }).replace(/\//g, "-");
-        const record = allRecords.find(r => r.date === today);
-        const recText = record
-          ? \`出勤:\${record.clockIn||"--"} 退勤:\${record.clockOut||"--"} 休憩開始:\${record.breakStart||"--"} 休憩終了:\${record.breakEnd||"--"}\`
-          : "記録がありません";
-        document.getElementById("currentRecord").innerText = "現在の記録: " + recText;
-        document.getElementById("reqDate").value = today;
       }
 
-      async function submitRequest() {
+      async function loadRequests() {
+        const res = await fetch("/${store}/attendance/requests?userId=" + userId);
+        allRequests = await res.json();
+        renderRequestTable();
+      }
+
+      function renderRequestTable() {
+        const tbody = document.getElementById("requestBody");
+        if (!allRequests.length) {
+          tbody.innerHTML = '<tr><td colspan="3" class="empty">申請はありません</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = allRequests.map(function(r) {
+          const before = r.before || {};
+          const after = r.after || {};
+
+          return (
+            '<tr>' +
+              '<td>' +
+                '出勤: ' + (before.clockIn || "--:--") + ' → <span class="new-time">' + (after.clockIn || "--:--") + '</span><br/>' +
+                '退勤: ' + (before.clockOut || "--:--") + ' → <span class="new-time">' + (after.clockOut || "--:--") + '</span><br/>' +
+                '休憩開始: ' + (before.breakStart || "--:--") + ' → <span class="new-time">' + (after.breakStart || "--:--") + '</span><br/>' +
+                '休憩終了: ' + (before.breakEnd || "--:--") + ' → <span class="new-time">' + (after.breakEnd || "--:--") + '</span>' +
+              '</td>' +
+              '<td>' + (r.message || "") + '</td>' +
+              '<td><span class="status waiting">承認待ち</span></td>' +
+            '</tr>'
+          );
+        }).join("");
+      }
+
+      document.getElementById("btnNew").onclick = () => {
+        document.getElementById("modal").style.display = "flex";
+      };
+
+      function closeModal() {
+        document.getElementById("modal").style.display = "none";
+      }
+
+      function loadCurrentRecord() {
         const date = document.getElementById("reqDate").value;
-        const msg = document.getElementById("reqMessage").value.trim();
+        const record = allRecords.find(r => r.date === date);
+        const currentRecord = document.getElementById("currentRecord");
 
-        if (!date) return alert("修正対象日を入力してください。");
-        if (!msg) return alert("修正理由を入力してください。");
+        if (record) {
+          currentRecord.innerHTML = 
+            "現在の記録:<br>" +
+            "出勤: " + (record.clockIn || "--:--") + "　退勤: " + (record.clockOut || "--:--") + "<br>" +
+            "休憩開始: " + (record.breakStart || "--:--") + "　休憩終了: " + (record.breakEnd || "--:--");
+        } else {
+          currentRecord.innerHTML = "現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--";
+        }
+      }
 
-        // ✅ 各入力欄の値を取得
-        const data = {
+      async function submitFix() {
+        const date = document.getElementById("reqDate").value;
+        const message = document.getElementById("reqMessage").value;
+        const newData = {
           clockIn: document.getElementById("newClockIn").value,
           clockOut: document.getElementById("newClockOut").value,
           breakStart: document.getElementById("newBreakStart").value,
           breakEnd: document.getElementById("newBreakEnd").value
         };
+        if (!date || !message) return alert("日付と理由を入力してください。");
 
-        // ✅ 入力されたものだけ抽出（空は送らない）
-        const filtered = {};
-        for (const key in data) {
-          if (data[key]) filtered[key] = data[key];
-        }
+        const before = allRecords.find(r => r.date === date) || {};
+        const payload = { userId, name, date, message, before, after: newData };
 
-        if (Object.keys(filtered).length === 0)
-          return alert("修正内容が入力されていません。");
-
-        const body = {
-          userId,
-          name,
-          date,
-          message: msg,
-          after: filtered,  // 入力分だけ送信
-          createdAt: new Date().toISOString()
-        };
-
-        const res = await fetch("/${store}/attendance/request", {
+        await fetch("/${store}/attendance/request", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
+          body: JSON.stringify(payload)
         });
 
-        if (res.ok) {
-          alert("修正申請を送信しました。");
-          location.href = "/${store}/attendance";
-        } else {
-          alert("送信に失敗しました。");
-        }
+        // ローカルにも即反映
+        allRequests.unshift({ before, after: newData, message, status: "承認待ち" });
+        renderRequestTable();
+        closeModal();
       }
 
       main();
@@ -1732,7 +1801,6 @@ app.get("/:store/attendance/fix", ensureStore, (req, res) => {
   </html>
   `);
 });
-
 
 // 🔍 スタッフ検索API（初期表示＋フィルタ対応）
 app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
