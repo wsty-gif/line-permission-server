@@ -682,55 +682,6 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
   `);
 });
 
-// ==============================
-// 📝 打刻修正申請一覧ページ
-// ==============================
-app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
-  const { store } = req.params;
-
-  res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>${store} 打刻修正申請</title>
-    <style>
-      body { font-family:sans-serif; background:#f9fafb; margin:0; padding:16px; }
-      .card { background:white; border-radius:8px; padding:16px; max-width:480px; margin:0 auto; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
-      h1 { color:#2563eb; text-align:center; margin-top:0; }
-      .btn-new { display:flex; align-items:center; justify-content:center; background:#2563eb; color:white; border:none; border-radius:6px; padding:8px 12px; font-size:14px; cursor:pointer; }
-      .table-box { background:white; border-radius:8px; margin-top:12px; border:1px solid #e5e7eb; }
-      table { width:100%; border-collapse:collapse; font-size:13px; }
-      th,td { border-bottom:1px solid #eee; padding:8px; text-align:center; }
-      th { background:#2563eb; color:white; }
-      tr:nth-child(even){ background:#f9fafb; }
-      .empty { text-align:center; color:#9ca3af; padding:20px; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>打刻時間修正申請</h1>
-      <div class="table-box">
-        <table>
-          <thead>
-            <tr><th>日付</th><th>修正内容</th><th>理由</th><th>ステータス</th><th>操作</th></tr>
-          </thead>
-          <tbody id="reqBody">
-            <tr><td colspan="5" class="empty">申請はありません</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div style="text-align:center;margin-top:12px;">
-        <button class="btn-new" onclick="location.href='/${store}/attendance'">← 勤怠画面へ戻る</button>
-      </div>
-    </div>
-  </body>
-  </html>
-  `);
-});
-
-
 // ✅ Firestore申請保存API
 app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   const { store } = req.params;
@@ -1320,10 +1271,9 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   </html>
   `);
 });
-
 // 🛠 打刻修正申請ページ
 app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
-  const { store } = req;
+  const { store, storeConf } = req;
 
   res.send(`
   <!DOCTYPE html>
@@ -1332,53 +1282,76 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>${store} 打刻修正申請</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body { font-family: sans-serif; background:#f9fafb; margin:0; padding:16px; }
-      .card { background:white; border-radius:8px; padding:20px; max-width:500px; margin:auto; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
-      h1 { color:#2563eb; text-align:center; margin-bottom:16px; }
-      label { font-weight:bold; display:block; margin-top:12px; }
-      input, textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-top:4px; font-size:14px; }
-      textarea { height:100px; resize:none; }
-      .time-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+      body { font-family:sans-serif; background:#f9fafb; margin:0; padding:20px; color:#333; }
+      .container { max-width:600px; margin:auto; }
+      h1 { font-size:20px; color:#111; margin-bottom:16px; }
+      .card { background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:20px; }
+      .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+      .card-header h2 { font-size:16px; font-weight:bold; margin:0; }
+      .btn-new { background:#111827; color:white; border:none; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:4px; }
+      .btn-new:hover { background:#1f2937; }
+      table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+      th,td { padding:10px 8px; text-align:left; border-bottom:1px solid #e5e7eb; }
+      th { color:#374151; font-weight:600; }
+      td { color:#4b5563; }
+      .empty { text-align:center; padding:16px; color:#9ca3af; }
+      .btn-back { background:#9ca3af; color:white; border:none; border-radius:6px; padding:8px 16px; cursor:pointer; font-size:13px; margin-top:16px; display:block; margin-left:auto; }
+      .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+      .modal-content { background:white; border-radius:12px; padding:20px; width:90%; max-width:400px; max-height:80%; overflow-y:auto; }
+      .modal-content h3 { text-align:center; margin-bottom:12px; font-size:16px; color:#111; }
+      label { display:block; margin-top:10px; font-weight:bold; font-size:13px; }
+      input, textarea { width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px; margin-top:4px; font-size:13px; }
+      textarea { height:80px; resize:none; }
+      .time-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
       .btn-row { display:flex; justify-content:space-between; margin-top:16px; }
-      button { padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-size:14px; }
-      .btn-back { background:#9ca3af; color:white; }
-      .btn-send { background:#2563eb; color:white; }
+      .btn-cancel { background:#9ca3af; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
+      .btn-send { background:#2563eb; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
     </style>
   </head>
   <body>
-    <div class="card">
+    <div class="container">
       <h1>打刻時間修正申請</h1>
-
-      <label>修正対象日</label>
-      <input type="date" id="reqDate">
-
-      <label>修正後の時刻</label>
-      <div class="time-grid">
-        <div>
-          <small>出勤</small>
-          <input type="time" id="newClockIn">
+      <div class="card">
+        <div class="card-header">
+          <h2>修正申請一覧</h2>
+          <button class="btn-new" id="btnNew">＋ 新規申請</button>
         </div>
-        <div>
-          <small>退勤</small>
-          <input type="time" id="newClockOut">
-        </div>
-        <div>
-          <small>休憩開始</small>
-          <input type="time" id="newBreakStart">
-        </div>
-        <div>
-          <small>休憩終了</small>
-          <input type="time" id="newBreakEnd">
-        </div>
+        <table id="requestTable">
+          <thead>
+            <tr><th>日付</th><th>修正内容</th><th>理由</th><th>ステータス</th><th>操作</th></tr>
+          </thead>
+          <tbody id="requestBody">
+            <tr><td colspan="5" class="empty">申請はありません</td></tr>
+          </tbody>
+        </table>
       </div>
+      <button class="btn-back" onclick="history.back()">戻る</button>
+    </div>
 
-      <label>修正理由</label>
-      <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
+    <!-- 修正申請モーダル -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h3>打刻時間修正申請</h3>
+        <label>修正対象日</label>
+        <input type="date" id="reqDate" />
 
-      <div class="btn-row">
-        <button class="btn-back" onclick="history.back()">戻る</button>
-        <button class="btn-send" onclick="submitFix()">申請</button>
+        <label>修正後の時刻</label>
+        <div class="time-grid">
+          <div><small>出勤</small><input type="time" id="newClockIn"></div>
+          <div><small>退勤</small><input type="time" id="newClockOut"></div>
+          <div><small>休憩開始</small><input type="time" id="newBreakStart"></div>
+          <div><small>休憩終了</small><input type="time" id="newBreakEnd"></div>
+        </div>
+
+        <label>修正理由</label>
+        <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
+
+        <div class="btn-row">
+          <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+          <button class="btn-send" onclick="submitFix()">申請</button>
+        </div>
       </div>
     </div>
 
@@ -1386,11 +1359,19 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       let userId, name;
 
       async function main() {
-        await liff.init({ liffId: "${process.env.STORE_A_LIFF_ID}" });
+        await liff.init({ liffId: "${storeConf.liffId}" });
         if (!liff.isLoggedIn()) return liff.login();
         const p = await liff.getProfile();
         userId = p.userId;
         name = p.displayName;
+      }
+
+      document.getElementById("btnNew").onclick = () => {
+        document.getElementById("modal").style.display = "flex";
+      };
+
+      function closeModal() {
+        document.getElementById("modal").style.display = "none";
       }
 
       async function submitFix() {
@@ -1403,7 +1384,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
           breakEnd: document.getElementById("newBreakEnd").value
         };
 
-        if (!date || !message) return alert("日付と理由は必須です。");
+        if (!date || !message) return alert("日付と理由を入力してください。");
 
         await fetch("/${store}/attendance/request", {
           method: "POST",
@@ -1412,7 +1393,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         });
 
         alert("修正申請を送信しました。");
-        history.back();
+        closeModal();
       }
 
       main();
@@ -1421,6 +1402,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   </html>
   `);
 });
+
 
 // ==============================
 const PORT = process.env.PORT || 3000;
