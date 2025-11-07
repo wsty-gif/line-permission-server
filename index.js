@@ -582,7 +582,9 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
             <td><button class='btn-request' onclick='openModal("\${r.date}")'>申請</button></td>
           </tr>\`).join("");
 
-        const today=new Date().toLocaleDateString("ja-JP",{timeZone:"Asia/Tokyo"}).replace(/\//g,"-");
+        const now=new Date();
+        const jst=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Tokyo"}));
+        const today = jst.toISOString().slice(0,10);
         const rec=data.find(r=>r.date===today);
         document.getElementById("timeIn").innerText=(rec?.clockIn?.slice(-8, -3))||"--:--";
         document.getElementById("timeOut").innerText=(rec?.clockOut?.slice(-8, -3))||"--:--";
