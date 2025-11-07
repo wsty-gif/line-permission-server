@@ -843,45 +843,63 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
   `);
 });
 
-// 🔹 店舗ごとに修正申請を保存
-// 打刻修正申請を受け取って Firestore に保存
+// 🧾 打刻修正申請の登録
 app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   try {
     const { store } = req;
     const { userId, name, date, message, newData } = req.body;
 
-    if (!userId || !date || !newData) {
-      return res.status(400).send("userId, date, newData は必須です");
+    if (!userId || !date) return res.status(400).send("userId と date は必須です");
+
+    const companyRef = db.collection("companies").doc(store);
+
+    // 🟦 ① 現在の勤怠データを取得
+    const recordRef = companyRef.collection("attendanceRecords");
+    const snapshot = await recordRef
+      .where("userId", "==", userId)
+      .where("date", "==", date)
+      .limit(1)
+      .get();
+
+    let beforeData = {};
+    if (!snapshot.empty) {
+      const rec = snapshot.docs[0].data();
+      beforeData = {
+        clockIn: rec.clockIn || "",
+        clockOut: rec.clockOut || "",
+        breakStart: rec.breakStart || "",
+        breakEnd: rec.breakEnd || ""
+      };
+    } else {
+      // 該当データが存在しない場合は空の before
+      beforeData = {
+        clockIn: "",
+        clockOut: "",
+        breakStart: "",
+        breakEnd: ""
+      };
     }
 
-    const doc = {
+    // 🟩 ② 修正申請を登録
+    const reqRef = companyRef.collection("attendanceFixRequests");
+    await reqRef.add({
       userId,
-      name: name || "",
+      name,
       date,
-      message: message || "",
-      before: {}, // 管理者が比較表示するための空枠
-      after: {
-        clockIn: newData.clockIn || "",
-        clockOut: newData.clockOut || "",
-        breakStart: newData.breakStart || "",
-        breakEnd: newData.breakEnd || ""
-      },
+      message,
+      before: beforeData,     // ← 現在のデータを保存
+      after: newData,         // ← 修正後データ
       status: "pending",
       createdAt: admin.firestore.FieldValue.serverTimestamp()
-    };
+    });
 
-    await db
-      .collection("companies")
-      .doc(store)
-      .collection("attendanceFixRequests")
-      .add(doc);
-
-    res.status(200).send("OK");
-  } catch (err) {
-    console.error("修正申請の保存エラー:", err);
-    res.status(500).send("サーバーエラー: " + err.message);
+    res.json({ success: true });
+  } catch (e) {
+    console.error("❌ 修正申請エラー:", e);
+    res.status(500).send("修正申請エラー: " + e.message);
   }
 });
+
 
 
 // 🧾 打刻修正申請一覧（管理者・従業員共通）
