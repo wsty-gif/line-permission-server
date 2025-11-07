@@ -708,12 +708,24 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         <div class="current-record" id="currentRecord">現在の記録: データ取得中...</div>
 
-        <label>修正後の時間</label>
+        <label>修正後の日付・時間</label>
         <div class="time-grid">
-          <input type="time" id="newClockIn" placeholder="出勤" />
-          <input type="time" id="newClockOut" placeholder="退勤" />
-          <input type="time" id="newBreakStart" placeholder="休憩開始" />
-          <input type="time" id="newBreakEnd" placeholder="休憩終了" />
+          <div>
+            <input type="date" id="newDateIn" placeholder="出勤日" />
+            <input type="time" id="newClockIn" placeholder="出勤" />
+          </div>
+          <div>
+            <input type="date" id="newDateOut" placeholder="退勤日" />
+            <input type="time" id="newClockOut" placeholder="退勤" />
+          </div>
+          <div>
+            <input type="date" id="newDateBreakStart" placeholder="休憩開始日" />
+            <input type="time" id="newBreakStart" placeholder="休憩開始" />
+          </div>
+          <div>
+            <input type="date" id="newDateBreakEnd" placeholder="休憩終了日" />
+            <input type="time" id="newBreakEnd" placeholder="休憩終了" />
+          </div>
         </div>
 
         <label>修正理由</label>
@@ -725,6 +737,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </div>
       </div>
     </div>
+
 
     <script>
       let userId, name, allRecords = [];
@@ -783,24 +796,32 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         document.getElementById("reqDate").value = today;
       }
 
-      async function submitRequest(){
-        const date=document.getElementById("reqDate").value;
-        const msg=document.getElementById("reqMessage").value;
-        const newData={
-          clockIn:document.getElementById("newClockIn").value,
-          clockOut:document.getElementById("newClockOut").value,
-          breakStart:document.getElementById("newBreakStart").value,
-          breakEnd:document.getElementById("newBreakEnd").value
-        };
-        if(!date||!msg)return alert("日付と理由を入力してください。");
-        await fetch("/${store}/attendance/request",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({userId,name,date,message:msg,newData})
-        });
-        alert("修正申請を送信しました。");
-        closeModal();
-      }
+    async function submitRequest() {
+      const date = document.getElementById("reqDate").value;
+      const msg = document.getElementById("reqMessage").value;
+
+      const newData = {
+        clockIn: document.getElementById("newClockIn").value,
+        clockOut: document.getElementById("newClockOut").value,
+        breakStart: document.getElementById("newBreakStart").value,
+        breakEnd: document.getElementById("newBreakEnd").value,
+        dateIn: document.getElementById("newDateIn").value,
+        dateOut: document.getElementById("newDateOut").value,
+        dateBreakStart: document.getElementById("newDateBreakStart").value,
+        dateBreakEnd: document.getElementById("newDateBreakEnd").value
+      };
+
+      if (!date || !msg) return alert("対象日と理由を入力してください。");
+
+      await fetch("/${store}/attendance/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, name, date, message: msg, newData })
+      });
+
+      alert("修正申請を送信しました。");
+      closeModal();
+    }
 
       async function loadRecords(){
         const month=document.getElementById("monthSelect").value;
@@ -2061,6 +2082,85 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
     console.error("❌ update fix error:", err);
     res.status(500).json({ error: "更新に失敗しました" });
   }
+});
+
+app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store) {
+    return res.status(403).send("権限がありません。");
+  }
+
+  const { store } = req;
+  const { requestId } = req.body;
+
+  // ① 修正申請ドキュメント取得
+  const reqRef = db.collection("companies")
+    .doc(store)
+    .collection("attendanceFixRequests")
+    .doc(requestId);
+
+  const reqSnap = await reqRef.get();
+  if (!reqSnap.exists) {
+    return res.status(404).send("修正申請が見つかりません。");
+  }
+
+  const reqData = reqSnap.data();
+
+  // ② 勤怠本体（attendance）の該当日のドキュメントを更新する
+
+  const userId = reqData.userId;
+  const date = reqData.date; // "2025-11-06" など
+
+  // 勤怠ドキュメントIDは「userId_日付」で保存している前提
+  const attendanceId = `${userId}_${date}`;
+
+  const attendanceRef = db.collection("companies")
+    .doc(store)
+    .collection("attendance")
+    .doc(attendanceId);
+
+  const attendanceSnap = await attendanceRef.get();
+  const current = attendanceSnap.exists ? attendanceSnap.data() : {
+    userId,
+    name: reqData.name || "",
+    date,
+  };
+
+  // after(修正後) から、入力されている項目だけを拾って上書き
+  const updatedFields = {};
+  const after = reqData.after || {};
+
+  // ★ここは、実際にリクエストに保存しているフィールド名に合わせてください
+  if (after.clockIn) {
+    updatedFields.clockIn = after.clockIn;           // 例: "2025/11/6 21:00:00"
+  }
+  if (after.clockOut) {
+    updatedFields.clockOut = after.clockOut;
+  }
+  if (after.breakStart) {
+    updatedFields.breakStart = after.breakStart;
+  }
+  if (after.breakEnd) {
+    updatedFields.breakEnd = after.breakEnd;
+  }
+
+  // 勤怠データ更新（merge: true で既存フィールドとマージ）
+  await attendanceRef.set(
+    {
+      ...current,
+      ...updatedFields,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  // ③ 修正申請のステータス更新（承認済み）
+  await reqRef.update({
+    status: "approved",
+    approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // ④ 画面に戻る（必要に応じてURLは調整）
+  res.redirect(`/${store}/admin/attendance/fix`);
 });
 
 
