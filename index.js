@@ -135,110 +135,157 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// ==============================
-// 🧑‍💼 管理者画面（権限管理・名前リアルタイム検索）
-// ==============================
 app.get("/:store/admin", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
 
-  const snapshot = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .get();
-
-  const users = snapshot.docs.map(d => ({
-    id: d.id,
-    name: d.data().name || "（未入力）",
-    approved: d.data().approved,
-  }));
-
   res.send(`
-  <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font-family: 'Segoe UI', sans-serif; background:#f9fafb; margin:0; padding:20px; }
-    h1 { color:#2563eb; margin-bottom:8px; text-align:center; }
-    .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
-    .search-box { flex:1; display:flex; justify-content:center; margin-top:10px; }
-    input[type="text"] {
-      padding:8px; border:1px solid #ccc; border-radius:6px; width:90%; max-width:280px;
-    }
-    table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; }
-    th,td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
-    th { background:#2563eb; color:white; font-weight:500; }
-    tr:hover { background:#f3f4f6; }
-    button {
-      background:#2563eb; color:white; border:none; padding:6px 10px;
-      border-radius:4px; cursor:pointer; font-size:13px;
-    }
-    button:hover { background:#1d4ed8; }
-    .link-btn { text-decoration:none; color:#2563eb; font-size:14px; margin-left:8px; }
-    @media(max-width:600px){
-      table,thead,tbody,tr,th,td{display:block;}
-      th{display:none;}
-      tr{margin-bottom:10px; background:white; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);}
-      td{display:flex; justify-content:space-between; padding:8px;}
-      td::before{content:attr(data-label); font-weight:bold; color:#555;}
-    }
-  </style>
-  </head><body>
-    <h1>${store} 権限管理</h1>
-    <div class="top-bar">
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="名前で検索...">
-      </div>
-      <div>
-        <a href="/${store}/admin/attendance" class="link-btn">🕒 勤怠管理</a>
-        <a href="/logout" class="link-btn">ログアウト</a>
-      </div>
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${store} 管理者TOP</title>
+    <style>
+      body {
+        font-family: 'Noto Sans JP', sans-serif;
+        background:#f9fafb;
+        margin:0;
+        padding:20px;
+      }
+      h1 {
+        text-align:center;
+        color:#2563eb;
+        margin-bottom:20px;
+      }
+      .nav {
+        display:flex;
+        justify-content:center;
+        gap:10px;
+        flex-wrap:wrap;
+        margin-bottom:16px;
+      }
+      .nav a {
+        background:#2563eb;
+        color:white;
+        text-decoration:none;
+        padding:10px 18px;
+        border-radius:6px;
+        transition:background 0.2s;
+      }
+      .nav a:hover {
+        background:#1e40af;
+      }
+      .search {
+        text-align:center;
+        margin-top:10px;
+      }
+      input[type="text"] {
+        padding:8px;
+        border:1px solid #ccc;
+        border-radius:6px;
+        width:80%;
+        max-width:300px;
+      }
+      table {
+        width:90%;
+        margin:20px auto;
+        border-collapse:collapse;
+        background:white;
+        border-radius:8px;
+        overflow:hidden;
+        font-size:14px;
+      }
+      th, td {
+        padding:8px;
+        border-bottom:1px solid #eee;
+        text-align:center;
+      }
+      th {
+        background:#2563eb;
+        color:white;
+      }
+      tr:nth-child(even){
+        background:#f9fafb;
+      }
+      footer {
+        margin-top:30px;
+        text-align:center;
+        color:#6b7280;
+        font-size:13px;
+      }
+      .empty {
+        color:#6b7280;
+        padding:12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>${store} 管理画面</h1>
+
+    <!-- ✅ ボタン群 -->
+    <div class="nav">
+      <a href="/${store}/admin/attendance">勤怠管理</a>
+      <a href="/${store}/admin/fix">打刻修正依頼</a>
     </div>
 
-    <table id="userTable">
+    <!-- ✅ 検索欄 -->
+    <div class="search">
+      <input type="text" id="searchInput" placeholder="名前で検索..." />
+    </div>
+
+    <!-- ✅ 検索結果表示 -->
+    <table id="staffTable">
       <thead>
-        <tr><th>名前</th><th>状態</th><th>操作</th></tr>
+        <tr><th>名前</th><th>ユーザーID</th><th>承認状態</th></tr>
       </thead>
-      <tbody id="userBody"></tbody>
+      <tbody id="staffBody"><tr><td colspan="3" class="empty">検索結果がここに表示されます</td></tr></tbody>
     </table>
 
+    <footer>© ${new Date().getFullYear()} ${store} 管理システム</footer>
+
     <script>
-      const users = ${JSON.stringify(users)};
-      const tbody = document.getElementById("userBody");
-      const input = document.getElementById("searchInput");
+      const store = "${store}";
+      let timer = null;
 
-      function render(list){
-        tbody.innerHTML = list.map(u => \`
-          <tr>
-            <td data-label="名前">\${u.name}</td>
-            <td data-label="状態">\${u.approved ? "✅ 承認済み" : "⏳ 未承認"}</td>
-            <td data-label="操作">
-              <form method="POST" action="/${store}/approve" style="display:inline">
-                <input type="hidden" name="id" value="\${u.id}">
-                <button>承認</button>
-              </form>
-              <form method="POST" action="/${store}/revoke" style="display:inline">
-                <input type="hidden" name="id" value="\${u.id}">
-                <button style="background:#dc2626;">解除</button>
-              </form>
-            </td>
-          </tr>\`).join("");
-      }
-
-      input.addEventListener("input", e=>{
-        const keyword = e.target.value.trim().toLowerCase();
-        const filtered = keyword
-          ? users.filter(u => (u.name || "").toLowerCase().includes(keyword))
-          : users;
-        render(filtered);
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => searchStaff(e.target.value), 300);
       });
 
-      render(users);
+      async function searchStaff(keyword) {
+        const tbody = document.getElementById("staffBody");
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">検索中...</td></tr>';
+
+        try {
+          const res = await fetch(\`/${store}/admin/search-staff?keyword=\${encodeURIComponent(keyword)}\`);
+          const data = await res.json();
+          if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="empty">該当するスタッフはいません</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = data.map(s => 
+            \`<tr>
+              <td>\${s.name}</td>
+              <td>\${s.id}</td>
+              <td>\${s.approved ? "✅ 承認済み" : "⏳ 承認待ち"}</td>
+            </tr>\`
+          ).join("");
+        } catch(err) {
+          console.error(err);
+          tbody.innerHTML = '<tr><td colspan="3" class="empty">データ取得に失敗しました</td></tr>';
+        }
+      }
     </script>
-  </body></html>
+  </body>
+  </html>
   `);
 });
+
+
 
 // ==============================
 // 🔄 承認・解除処理（リッチメニュー切り替え）
@@ -1658,6 +1705,32 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   </html>
   `);
 });
+
+// 🔍 スタッフ検索API（Ajax対応）
+app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { keyword = "" } = req.query;
+
+  try {
+    const snap = await db.collection("companies").doc(store)
+      .collection("permissions")
+      .get();
+
+    const result = snap.docs
+      .map(doc => ({
+        id: doc.id,
+        name: doc.data().name || "未登録",
+        approved: doc.data().approved || false
+      }))
+      .filter(s => s.name.includes(keyword));
+
+    res.json(result);
+  } catch (err) {
+    console.error("❌ search-staff error:", err);
+    res.status(500).json({ error: "検索に失敗しました。" });
+  }
+});
+
 
 // ==============================
 const PORT = process.env.PORT || 3000;
