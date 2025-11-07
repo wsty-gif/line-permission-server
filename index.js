@@ -885,40 +885,40 @@ app.post("/:store/attendance/request", ensureStore, async (req, res) => {
 
 
 
-// 🔹 店舗ごとに修正申請を取得
+// 🧾 打刻修正申請一覧（従業員・管理者共通）取得
 app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { userId } = req.query;
-
   try {
-    if (!userId) return res.status(400).json({ error: "userIdが必要です。" });
+    const { store } = req;
+    const { userId } = req.query;
 
-    const ref = db.collection("companies")
+    const ref = db
+      .collection("companies")
       .doc(store)
-      .collection("attendanceRequests");
+      .collection("attendanceFixRequests")
+      .orderBy("createdAt", "desc");
 
-    let snap;
-    try {
-      snap = await ref
-        .where("userId", "==", userId)
-        .orderBy("createdAt", "desc")
-        .get();
-    } catch (err) {
-      console.warn("⚠️ orderBy失敗 → fallback (createdAtなし)");
-      snap = await ref.where("userId", "==", userId).get();
+    let query = ref;
+    if (userId) {
+      // 特定ユーザーの申請だけを表示
+      query = ref.where("userId", "==", userId);
     }
 
-    const data = snap.docs.map(doc => ({
+    const snap = await query.get();
+    const list = snap.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
+      createdAt: doc.data().createdAt
+        ? doc.data().createdAt.toDate().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+        : ""
     }));
 
-    res.json(data);
-  } catch (err) {
-    console.error("❌ /attendance/requests error:", err);
-    res.status(500).json({ error: "データ取得に失敗しました: " + err.message });
+    res.json(list);
+  } catch (e) {
+    console.error("申請一覧取得エラー:", e);
+    res.status(500).send("サーバーエラー: " + e.message);
   }
 });
+
 
 
 
