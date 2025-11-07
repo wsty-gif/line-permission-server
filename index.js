@@ -536,7 +536,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </div>
       </div>
 
-      <button id="btnFix" class="btn-request" style="background:#3b82f6;">打刻修正</button>
+      <button id="btnRequest" class="btn-request">打刻修正申請</button>
 
       <div class="filter-row">
         <label for="monthSelect">対象月</label>
@@ -606,20 +606,25 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       }
 
       document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("btnIn").onclick = () => sendAction("clockIn");
-        document.getElementById("btnOut").onclick = () => sendAction("clockOut");
-        document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
-        document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
-        document.getElementById("btnRequest").onclick = () => openModal();
+        const btnRequest = document.getElementById("btnRequest");
+        if (btnRequest) {
+          btnRequest.onclick = () => openModal();
+        }
 
-        // ✅ 打刻修正ページへの遷移ボタン
         const btnFix = document.getElementById("btnFix");
         if (btnFix) {
           btnFix.onclick = () => {
             window.location.href = "/${store}/attendance/fix";
           };
         }
+
+        document.getElementById("btnIn").onclick = () => sendAction("clockIn");
+        document.getElementById("btnOut").onclick = () => sendAction("clockOut");
+        document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
+        document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
       });
+
+
 
 
       function closeModal() {
