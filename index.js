@@ -1324,6 +1324,107 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   `);
 });
 
+// 🛠 打刻修正申請ページ
+app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
+  const { store } = req;
+
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>${store} 打刻修正申請</title>
+    <style>
+      body { font-family: sans-serif; background:#f9fafb; margin:0; padding:16px; }
+      .card { background:white; border-radius:8px; padding:20px; max-width:500px; margin:auto; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+      h1 { color:#2563eb; text-align:center; margin-bottom:16px; }
+      label { font-weight:bold; display:block; margin-top:12px; }
+      input, textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-top:4px; font-size:14px; }
+      textarea { height:100px; resize:none; }
+      .time-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+      .btn-row { display:flex; justify-content:space-between; margin-top:16px; }
+      button { padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-size:14px; }
+      .btn-back { background:#9ca3af; color:white; }
+      .btn-send { background:#2563eb; color:white; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>打刻時間修正申請</h1>
+
+      <label>修正対象日</label>
+      <input type="date" id="reqDate">
+
+      <label>修正後の時刻</label>
+      <div class="time-grid">
+        <div>
+          <small>出勤</small>
+          <input type="time" id="newClockIn">
+        </div>
+        <div>
+          <small>退勤</small>
+          <input type="time" id="newClockOut">
+        </div>
+        <div>
+          <small>休憩開始</small>
+          <input type="time" id="newBreakStart">
+        </div>
+        <div>
+          <small>休憩終了</small>
+          <input type="time" id="newBreakEnd">
+        </div>
+      </div>
+
+      <label>修正理由</label>
+      <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
+
+      <div class="btn-row">
+        <button class="btn-back" onclick="history.back()">戻る</button>
+        <button class="btn-send" onclick="submitFix()">申請</button>
+      </div>
+    </div>
+
+    <script>
+      let userId, name;
+
+      async function main() {
+        await liff.init({ liffId: "${process.env.STORE_A_LIFF_ID}" });
+        if (!liff.isLoggedIn()) return liff.login();
+        const p = await liff.getProfile();
+        userId = p.userId;
+        name = p.displayName;
+      }
+
+      async function submitFix() {
+        const date = document.getElementById("reqDate").value;
+        const message = document.getElementById("reqMessage").value;
+        const newData = {
+          clockIn: document.getElementById("newClockIn").value,
+          clockOut: document.getElementById("newClockOut").value,
+          breakStart: document.getElementById("newBreakStart").value,
+          breakEnd: document.getElementById("newBreakEnd").value
+        };
+
+        if (!date || !message) return alert("日付と理由は必須です。");
+
+        await fetch("/${store}/attendance/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, name, date, message, newData })
+        });
+
+        alert("修正申請を送信しました。");
+        history.back();
+      }
+
+      main();
+    </script>
+  </body>
+  </html>
+  `);
+});
+
 // ==============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
