@@ -2110,190 +2110,159 @@ app.post("/:store/admin/delete-staff", ensureStore, async (req, res) => {
 // ==============================
 // 🧾 管理者用 打刻修正依頼一覧ページ（デザイン改良版）
 // ==============================
+// 🧾 管理者用：打刻修正申請一覧ページ
 app.get("/:store/admin/fix", ensureStore, async (req, res) => {
-  if (!req.session.loggedIn || req.session.store !== req.store)
-    return res.redirect(`/${req.store}/login`);
-
-  const { store } = req.params;
-
-  // Firestoreから修正申請データ取得
-  const snap = await db.collection("companies").doc(store)
-    .collection("attendanceRequests")
-    .orderBy("createdAt", "desc")
-    .get();
-
-  const requests = snap.docs.map(d => ({
-    id: d.id,
-    ...d.data(),
-    createdAt: d.data().createdAt
-      ? d.data().createdAt.toDate().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
-      : "未記録"
-  }));
-
-  // 承認待ち件数カウント
-  const waitingCount = requests.filter(r => r.status === "承認待ち").length;
+  const { store } = req;
 
   res.send(`
   <!DOCTYPE html>
   <html lang="ja">
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>${store} 打刻修正依頼</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${store} 打刻修正申請一覧</title>
     <style>
-      body { font-family: 'Noto Sans JP', sans-serif; background:#f9fafb; margin:0; padding:20px; }
-      h1 { color:#2563eb; margin-bottom:6px; }
-      .notice { color:#dc2626; margin-bottom:20px; font-size:14px; }
+      body { font-family: sans-serif; background:#f3f4f6; padding:16px; }
+      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:900px; margin:auto; }
+      h1 { color:#2563eb; text-align:center; margin-top:0; }
 
-      .container {
-        background:white;
-        border-radius:12px;
-        padding:16px;
-        box-shadow:0 2px 6px rgba(0,0,0,0.1);
-        overflow-x:auto;
-      }
+      .filter-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+      .filter-row input { padding:6px 10px; border:1px solid #ccc; border-radius:6px; width:200px; }
 
-      .header-row {
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        flex-wrap:wrap;
-        margin-bottom:12px;
-      }
+      .table-wrapper { overflow-x:auto; margin-top:10px; }
+      table { width:100%; border-collapse:collapse; min-width:800px; }
+      th, td { border:1px solid #ddd; padding:8px; text-align:center; white-space:nowrap; }
+      th { background:#2563eb; color:white; }
+      tr:nth-child(even) { background:#f9fafb; }
 
-      .header-row h2 {
-        margin:0;
-        font-size:16px;
-        color:#111827;
-      }
+      .status { padding:4px 8px; border-radius:4px; color:white; }
+      .pending { background:#f59e0b; }
+      .approved { background:#16a34a; }
+      .rejected { background:#dc2626; }
 
-      .btn-group {
-        display:flex;
-        gap:8px;
-        flex-wrap:wrap;
-      }
-
-      button {
-        border:none;
-        border-radius:6px;
-        padding:6px 12px;
-        cursor:pointer;
-        font-size:13px;
-      }
-
-      .btn-primary { background:#111827; color:white; }
-      .btn-outline { background:white; border:1px solid #d1d5db; color:#111827; }
-      .btn-approve { background:#16a34a; color:white; }
-      .btn-reject { background:#dc2626; color:white; }
-
-      table {
-        width:100%;
-        border-collapse:collapse;
-        min-width:800px;
-        font-size:14px;
-      }
-
-      th, td {
-        padding:10px;
-        border-bottom:1px solid #e5e7eb;
-        text-align:center;
-        vertical-align:middle;
-      }
-
-      th {
-        background:#f3f4f6;
-        color:#374151;
-        font-weight:600;
-      }
-
-      tr:hover { background:#f9fafb; }
-
-      .status {
-        border-radius:12px;
-        padding:4px 10px;
-        font-size:12px;
-        font-weight:600;
-        display:inline-block;
-      }
-
-      .waiting { background:#fef3c7; color:#92400e; }
-      .approved { background:#dcfce7; color:#166534; }
-      .rejected { background:#fee2e2; color:#991b1b; }
-
-      .new-time { color:#16a34a; font-weight:bold; }
-
-      @media(max-width:600px){
-        th, td { font-size:12px; padding:6px; }
-        button { font-size:12px; padding:4px 8px; }
-      }
+      .btn { border:none; padding:6px 10px; border-radius:6px; cursor:pointer; color:white; font-size:0.9rem; }
+      .btn-approve { background:#16a34a; }
+      .btn-reject { background:#dc2626; }
+      .btn-delete { background:#6b7280; }
     </style>
   </head>
   <body>
-    <h1>打刻時間修正申請</h1>
-    <div class="notice">承認待ちの申請が${waitingCount}件あります</div>
+    <div class="card">
+      <h1>打刻修正申請一覧</h1>
 
-    <div class="container">
-      <div class="header-row">
-        <h2>修正申請一覧</h2>
-        <div class="btn-group">
-          <button class="btn-outline">自分の申請</button>
-          <button class="btn-primary">全ての申請</button>
-          <button class="btn-primary">＋ 新規申請</button>
-        </div>
+      <div class="filter-row">
+        <input type="text" id="searchBox" placeholder="名前で検索..." />
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>申請者</th>
-            <th>日付</th>
-            <th>修正内容</th>
-            <th>理由</th>
-            <th>ステータス</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${requests.length ? requests.map(r => `
+      <div class="table-wrapper">
+        <table id="reqTable">
+          <thead>
             <tr>
-              <td>${r.name || "未登録"}<br><small style="color:#dc2626;">${r.status || "承認待ち"}</small></td>
-              <td>${r.date || "-"}</td>
-              <td style="text-align:left;">
-                出勤: ${r.before?.clockIn || "--:--"} → <span class="new-time">${r.after?.clockIn || "--:--"}</span><br>
-                退勤: ${r.before?.clockOut || "--:--"} → <span class="new-time">${r.after?.clockOut || "--:--"}</span><br>
-                休憩開始: ${r.before?.breakStart || "--:--"} → <span class="new-time">${r.after?.breakStart || "--:--"}</span><br>
-                休憩終了: ${r.before?.breakEnd || "--:--"} → <span class="new-time">${r.after?.breakEnd || "--:--"}</span>
-              </td>
-              <td>${r.message || ""}</td>
-              <td><span class="status ${r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting"}">${r.status || "承認待ち"}</span></td>
-              <td>
-                <button class="btn-approve" onclick="updateStatus('${r.id}','承認')">✔</button>
-                <button class="btn-reject" onclick="updateStatus('${r.id}','却下')">✖</button>
-              </td>
+              <th>申請者</th>
+              <th>対象日</th>
+              <th>修正内容</th>
+              <th>理由</th>
+              <th>申請日時</th>
+              <th>状態</th>
+              <th>操作</th>
             </tr>
-          `).join("") : `
-            <tr><td colspan="6" style="color:#9ca3af;">申請はありません</td></tr>
-          `}
-        </tbody>
-      </table>
+          </thead>
+          <tbody id="reqBody"></tbody>
+        </table>
+      </div>
     </div>
 
     <script>
-      async function updateStatus(id, status) {
-        if (!confirm("この申請を" + status + "にしますか？")) return;
-        await fetch("/${store}/admin/fix/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, status })
-        });
-        alert("更新しました");
-        location.reload();
+      const store = "${store}";
+      let allRequests = [];
+
+      async function loadRequests() {
+        const res = await fetch("/" + store + "/attendance/requests");
+        const data = await res.json();
+        allRequests = data;
+        renderTable(allRequests);
       }
+
+      function renderTable(list) {
+        const tbody = document.getElementById("reqBody");
+        if (!list.length) {
+          tbody.innerHTML = '<tr><td colspan="7">申請はありません</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = list.map(r => {
+          const after = r.after || {};
+          return \`
+            <tr>
+              <td>\${r.name || "未登録"}</td>
+              <td>\${r.date || ""}</td>
+              <td style="text-align:left">
+                出勤: \${after.clockIn || "--"}<br>
+                退勤: \${after.clockOut || "--"}<br>
+                休憩開始: \${after.breakStart || "--"}<br>
+                休憩終了: \${after.breakEnd || "--"}
+              </td>
+              <td>\${r.message || ""}</td>
+              <td>\${r.createdAt || ""}</td>
+              <td><span class="status pending">承認待ち</span></td>
+              <td>
+                <button class="btn btn-approve" onclick="approve('\${r.id}')">承認</button>
+                <button class="btn btn-reject" onclick="reject('\${r.id}')">却下</button>
+                <button class="btn btn-delete" onclick="del('\${r.id}')">削除</button>
+              </td>
+            </tr>
+          \`;
+        }).join("");
+      }
+
+      // 🔍 検索機能（名前で絞り込み）
+      document.getElementById("searchBox").addEventListener("input", (e) => {
+        const kw = e.target.value.trim();
+        const filtered = allRequests.filter(r => (r.name || "").includes(kw));
+        renderTable(filtered);
+      });
+
+      // ✅ 承認処理
+      async function approve(id) {
+        if (!confirm("この修正を承認して勤務データに反映しますか？")) return;
+        await fetch("/" + store + "/admin/fix/approve", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ id })
+        });
+        alert("承認しました。");
+        loadRequests();
+      }
+
+      async function reject(id) {
+        if (!confirm("却下しますか？")) return;
+        await fetch("/" + store + "/admin/fix/reject", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ id })
+        });
+        alert("却下しました。");
+        loadRequests();
+      }
+
+      async function del(id) {
+        if (!confirm("削除しますか？")) return;
+        await fetch("/" + store + "/admin/fix/delete", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ id })
+        });
+        alert("削除しました。");
+        loadRequests();
+      }
+
+      loadRequests();
     </script>
   </body>
   </html>
   `);
 });
+
 
 
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
