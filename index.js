@@ -884,64 +884,60 @@ app.post("/:store/attendance/request", ensureStore, async (req, res) => {
 });
 
 
-
-// 🧾 打刻修正申請一覧（従業員・管理者共通）取得
+// 🧾 打刻修正申請一覧（管理者・従業員共通）
 app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
   try {
     const { store } = req;
     const { userId } = req.query;
 
-    let ref = db
+    const ref = db
       .collection("companies")
       .doc(store)
       .collection("attendanceFixRequests");
 
-    // createdAt の存在を保証できないため、orderBy前に存在チェック
     const snapshot = await ref.get();
-    if (snapshot.empty) {
-      return res.json([]);
-    }
+    if (snapshot.empty) return res.json([]);
 
-    // Firestore では orderBy("createdAt") の前に where() で null を除外できないため、
-    // 一度取得後に手動ソート
-    let list = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt:
-        doc.data().createdAt && doc.data().createdAt.toDate
-          ? doc.data().createdAt.toDate()
-          : null,
-    }));
-
-    // userId で絞り込み
-    if (userId) list = list.filter(item => item.userId === userId);
-
-    // createdAt 降順に並び替え（nullは最後）
-    list.sort((a, b) => {
-      if (!a.createdAt) return 1;
-      if (!b.createdAt) return -1;
-      return b.createdAt - a.createdAt;
+    let list = snapshot.docs.map(doc => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        name: d.name || "",
+        userId: d.userId || "",
+        date: d.date || "",
+        message: d.message || "",
+        status: d.status || "pending",
+        createdAt: d.createdAt && d.createdAt.toDate
+          ? d.createdAt.toDate().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+          : "",
+        // ✅ 修正前・修正後のデータを両方返す
+        before: {
+          clockIn: d.before?.clockIn || "",
+          clockOut: d.before?.clockOut || "",
+          breakStart: d.before?.breakStart || "",
+          breakEnd: d.before?.breakEnd || "",
+        },
+        after: {
+          clockIn: d.after?.clockIn || "",
+          clockOut: d.after?.clockOut || "",
+          breakStart: d.after?.breakStart || "",
+          breakEnd: d.after?.breakEnd || "",
+        }
+      };
     });
 
-    // 表示用にフォーマット
-    const result = list.map(r => ({
-      ...r,
-      createdAt: r.createdAt
-        ? r.createdAt.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
-        : "",
-    }));
+    // userId指定があれば絞り込み
+    if (userId) list = list.filter(r => r.userId === userId);
 
-    res.json(result);
+    // 作成日時降順ソート
+    list.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt));
+
+    res.json(list);
   } catch (e) {
-    console.error("❌ 申請一覧取得エラー:", e);
+    console.error("❌ requests取得エラー:", e);
     res.status(500).send("サーバーエラー: " + e.message);
   }
 });
-
-
-
-
-
 
 // 出退勤ステータス取得
 app.get("/:store/attendance/status", ensureStore, async (req, res) => {
