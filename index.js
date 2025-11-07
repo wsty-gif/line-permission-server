@@ -1670,7 +1670,10 @@ app.get("/:store/attendance/fix", ensureStore, (req, res) => {
         const res = await fetch("/${store}/attendance/records?userId="+userId);
         allRecords = await res.json();
 
-        const today = new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" }).replace(/\//g, "-");
+        const today = new Date()
+          .toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
+          .replace(/\//g, "-");
+
         const record = allRecords.find(r => r.date === today);
         const recText = record
           ? \`出勤:\${record.clockIn||"--"} 退勤:\${record.clockOut||"--"} 休憩開始:\${record.breakStart||"--"} 休憩終了:\${record.breakEnd||"--"}\`
