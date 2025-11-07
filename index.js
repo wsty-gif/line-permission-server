@@ -1272,6 +1272,7 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   `);
 });
 // 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
+// 🛠 打刻修正申請ページ
 app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   const { store, storeConf } = req;
 
@@ -1293,11 +1294,13 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       .btn-new { background:#111827; color:white; border:none; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:4px; }
       .btn-new:hover { background:#1f2937; }
       table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
-      th,td { padding:10px 8px; text-align:left; border-bottom:1px solid #e5e7eb; }
+      th,td { padding:8px; text-align:left; border-bottom:1px solid #e5e7eb; vertical-align:top; }
       th { color:#374151; font-weight:600; }
-      td { color:#4b5563; }
+      td { color:#4b5563; line-height:1.5; }
       .empty { text-align:center; padding:16px; color:#9ca3af; }
       .btn-back { background:#9ca3af; color:white; border:none; border-radius:6px; padding:8px 16px; cursor:pointer; font-size:13px; margin-top:16px; display:block; margin-left:auto; }
+      .status { display:inline-block; padding:2px 8px; border-radius:6px; font-size:12px; }
+      .waiting { background:#fef3c7; color:#92400e; }
 
       /* モーダル */
       .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
@@ -1311,6 +1314,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       .btn-cancel { background:#9ca3af; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
       .btn-send { background:#2563eb; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
       .current-record { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; margin-top:8px; font-size:13px; color:#374151; line-height:1.6; }
+      .new-time { color:#16a34a; font-weight:bold; }
     </style>
   </head>
   <body>
@@ -1323,10 +1327,10 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         </div>
         <table id="requestTable">
           <thead>
-            <tr><th>日付</th><th>修正内容</th><th>理由</th><th>ステータス</th><th>操作</th></tr>
+            <tr><th>修正内容</th><th>理由</th><th>ステータス</th></tr>
           </thead>
           <tbody id="requestBody">
-            <tr><td colspan="5" class="empty">申請はありません</td></tr>
+            <tr><td colspan="3" class="empty">申請はありません</td></tr>
           </tbody>
         </table>
       </div>
@@ -1364,7 +1368,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     </div>
 
     <script>
-      let userId, name, allRecords = [];
+      let userId, name, allRecords = [], allRequests = [];
 
       async function main() {
         await liff.init({ liffId: "${storeConf.liffId}" });
@@ -1373,6 +1377,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         userId = p.userId;
         name = p.displayName;
         await loadRecords();
+        await loadRequests();
       }
 
       async function loadRecords() {
@@ -1380,6 +1385,38 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         const ym = now.toISOString().slice(0, 7);
         const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + ym);
         allRecords = await res.json();
+      }
+
+      async function loadRequests() {
+        const res = await fetch("/${store}/attendance/requests?userId=" + userId);
+        allRequests = await res.json();
+        renderRequestTable();
+      }
+
+      function renderRequestTable() {
+        const tbody = document.getElementById("requestBody");
+        if (!allRequests.length) {
+          tbody.innerHTML = '<tr><td colspan="3" class="empty">申請はありません</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = allRequests.map(function(r) {
+          const before = r.before || {};
+          const after = r.after || {};
+
+          return (
+            '<tr>' +
+              '<td>' +
+                '出勤: ' + (before.clockIn || "--:--") + ' → <span class="new-time">' + (after.clockIn || "--:--") + '</span><br/>' +
+                '退勤: ' + (before.clockOut || "--:--") + ' → <span class="new-time">' + (after.clockOut || "--:--") + '</span><br/>' +
+                '休憩開始: ' + (before.breakStart || "--:--") + ' → <span class="new-time">' + (after.breakStart || "--:--") + '</span><br/>' +
+                '休憩終了: ' + (before.breakEnd || "--:--") + ' → <span class="new-time">' + (after.breakEnd || "--:--") + '</span>' +
+              '</td>' +
+              '<td>' + (r.message || "") + '</td>' +
+              '<td><span class="status waiting">承認待ち</span></td>' +
+            '</tr>'
+          );
+        }).join("");
       }
 
       document.getElementById("btnNew").onclick = () => {
@@ -1416,13 +1453,18 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         };
         if (!date || !message) return alert("日付と理由を入力してください。");
 
+        const before = allRecords.find(r => r.date === date) || {};
+        const payload = { userId, name, date, message, before, after: newData };
+
         await fetch("/${store}/attendance/request", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, name, date, message, newData })
+          body: JSON.stringify(payload)
         });
 
-        alert("修正申請を送信しました。");
+        // ローカルにも即反映
+        allRequests.unshift({ before, after: newData, message, status: "承認待ち" });
+        renderRequestTable();
         closeModal();
       }
 
