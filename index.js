@@ -803,6 +803,215 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   res.send("打刻を記録しました（JST表示対応）");
 });
 
+app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${store} 勤怠管理</title>
+    <style>
+      body { font-family:sans-serif; background:#f9fafb; margin:0; padding:16px; }
+      h1 { color:#2563eb; text-align:center; }
+      select, input { padding:6px; border:1px solid #ccc; border-radius:6px; margin:4px; }
+      button { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; color:white; }
+      .blue { background:#2563eb; }
+      .green { background:#16a34a; }
+      .red { background:#dc2626; }
+      table { width:100%; border-collapse:collapse; margin-top:12px; background:white; border-radius:8px; overflow:hidden; }
+      th,td { padding:8px; border-bottom:1px solid #eee; text-align:center; font-size:14px; white-space:nowrap; }
+      th { background:#2563eb; color:white; }
+      .summary { text-align:right; margin-top:10px; }
+      .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+      .modal-content { background:white; padding:20px; border-radius:8px; max-width:320px; width:90%; }
+      .table-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      @media(max-width:600px){
+        table,thead,tbody,tr,th,td{display:block;}
+        th{display:none;}
+        tr{margin-bottom:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+        td{display:flex; justify-content:space-between; padding:6px;}
+        td::before{content:attr(data-label); font-weight:bold; color:#555;}
+      }
+    </style>
+  </head>
+  <body>
+    <h1>${store} 勤怠管理</h1>
+
+    <div>
+      <label>対象月：</label>
+      <input type="month" id="monthSelect">
+      <label>スタッフ：</label>
+      <select id="staffSelect"></select>
+      <button class="blue" onclick="loadRecords()">表示</button>
+    </div>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="table-wrapper">
+      <table id="records">
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>出勤</th>
+            <th>退勤</th>
+            <th>休憩開始</th>
+            <th>休憩終了</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- 修正モーダル -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h3>時刻修正</h3>
+        <input type="hidden" id="editDate">
+        出勤:<input type="time" id="editIn"><br>
+        休憩開始:<input type="time" id="editBreakStart"><br>
+        休憩終了:<input type="time" id="editBreakEnd"><br>
+        退勤:<input type="time" id="editOut"><br>
+        <button class="green" onclick="saveEdit()">更新</button>
+        <button class="red" onclick="closeModal()">閉じる</button>
+      </div>
+    </div>
+
+    <script>
+      const store = "${store}";
+      let records = [];
+
+      async function init() {
+        const now = new Date();
+        const monthInput = document.getElementById("monthSelect");
+        const ym = now.toISOString().slice(0, 7);
+        monthInput.value = ym;
+        await loadStaff();
+      }
+
+      async function loadStaff() {
+        const res = await fetch("/${store}/admin/staff");
+        const staff = await res.json();
+        const sel = document.getElementById("staffSelect");
+        staff.forEach(s=>{
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.text = s.name;
+          sel.appendChild(opt);
+        });
+      }
+
+      function formatDateTime(ts){
+        if(!ts) return "-";
+        try{
+          const d = new Date(ts);
+          return d.toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"});
+        }catch(e){ return "-"; }
+      }
+
+      async function loadRecords(){
+        const userId = document.getElementById("staffSelect").value;
+        const month = document.getElementById("monthSelect").value;
+        if(!userId) return alert("スタッフを選択してください。");
+
+        const res = await fetch("/${store}/admin/attendance/records?userId="+userId+"&month="+month);
+        records = await res.json();
+
+        const tbody = document.querySelector("#records tbody");
+        if(records.length===0){
+          tbody.innerHTML = "<tr><td colspan='6'>該当データなし</td></tr>";
+          document.getElementById("summary").innerText="";
+          return;
+        }
+
+        tbody.innerHTML = records.map(r=>\`
+          <tr>
+            <td data-label="日付">\${r.date}</td>
+            <td data-label="出勤">\${r.clockIn?formatDateTime(r.clockIn):"-"}</td>
+            <td data-label="退勤">\${r.clockOut?formatDateTime(r.clockOut):"-"}</td>
+            <td data-label="休憩開始">\${r.breakStart?formatDateTime(r.breakStart):"-"}</td>
+            <td data-label="休憩終了">\${r.breakEnd?formatDateTime(r.breakEnd):"-"}</td>
+            <td data-label="操作"><button class='blue' onclick='openModal("\${r.date}")'>修正</button></td>
+          </tr>\`).join("");
+
+        const worked = records.filter(r=>r.clockIn && r.clockOut);
+        document.getElementById("summary").innerText = "総勤務日数: "+worked.length+"日";
+        applyStateToButtonsAndLabels();
+        updateButtonState(); // ✅ DBデータに応じてボタン制御
+
+      }
+        // ✅ ボタンの状態を更新
+        function updateButtonState() {
+          const inBtn = document.getElementById("btnIn");
+          const breakStartBtn = document.getElementById("btnBreakStart");
+          const breakEndBtn = document.getElementById("btnBreakEnd");
+          const outBtn = document.getElementById("btnOut");
+
+          // すべて一旦無効化
+          [inBtn, breakStartBtn, breakEndBtn, outBtn].forEach(btn => btn.disabled = true);
+
+          // 現在の状態を確認
+          if (!currentState.clockIn) {
+            // 出勤していない → 出勤ボタンのみ有効
+            inBtn.disabled = false;
+          } else if (currentState.clockIn && !currentState.breakStart) {
+            // 出勤済み → 休憩開始だけ有効
+            breakStartBtn.disabled = false;
+          } else if (currentState.breakStart && !currentState.breakEnd) {
+            // 休憩中 → 休憩終了だけ有効
+            breakEndBtn.disabled = false;
+          } else if (currentState.breakEnd && !currentState.clockOut) {
+            // 休憩終了 → 退勤だけ有効
+            outBtn.disabled = false;
+          } else if (currentState.clockOut) {
+            // すべて完了 → 全ボタン無効
+            [inBtn, breakStartBtn, breakEndBtn, outBtn].forEach(btn => btn.disabled = true);
+          }
+        }
+      function openModal(date){
+        const r = records.find(x=>x.date===date);
+        document.getElementById("editDate").value = date;
+        document.getElementById("editIn").value = r.clockInTime || "";
+        document.getElementById("editBreakStart").value = r.breakStartTime || "";
+        document.getElementById("editBreakEnd").value = r.breakEndTime || "";
+        document.getElementById("editOut").value = r.clockOutTime || "";
+        document.getElementById("modal").style.display="flex";
+      }
+
+      function closeModal(){ document.getElementById("modal").style.display="none"; }
+
+      async function saveEdit(){
+        const userId = document.getElementById("staffSelect").value;
+        const date = document.getElementById("editDate").value;
+        const inT = document.getElementById("editIn").value;
+        const outT = document.getElementById("editOut").value;
+        if(inT && outT && inT>outT){ alert("出勤時間は退勤時間より前にしてください。"); return; }
+
+        const body = {
+          userId, date,
+          clockIn: inT, clockOut: outT,
+          breakStart: document.getElementById("editBreakStart").value,
+          breakEnd: document.getElementById("editBreakEnd").value
+        };
+        const res = await fetch("/${store}/admin/attendance/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        alert(await res.text());
+        closeModal();
+        loadRecords();
+      }
+
+      init();
+    </script>
+  </body>
+  </html>
+  `);
+});
+
 // ==============================
 // ⏱ 管理者勤怠修正API（出勤＞退勤のバリデーション付き）
 // ==============================
