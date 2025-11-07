@@ -1856,6 +1856,114 @@ app.post("/:store/admin/delete-staff", ensureStore, async (req, res) => {
   }
 });
 
+// ==============================
+// 🧾 管理者用 打刻修正依頼一覧ページ
+// ==============================
+app.get("/:store/admin/fix", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const { store } = req.params;
+
+  // Firestoreから修正申請を取得
+  const snap = await db.collection("companies").doc(store)
+    .collection("attendanceRequests")
+    .orderBy("createdAt", "desc")
+    .get();
+
+  const requests = snap.docs.map(d => ({
+    id: d.id,
+    ...d.data(),
+    createdAt: d.data().createdAt
+      ? d.data().createdAt.toDate().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+      : "未記録"
+  }));
+
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>${store} 打刻修正依頼一覧</title>
+    <style>
+      body { font-family:sans-serif; background:#f9fafb; margin:0; padding:20px; }
+      h1 { color:#2563eb; text-align:center; margin-bottom:16px; }
+      table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; font-size:14px; }
+      th, td { border-bottom:1px solid #eee; padding:8px; text-align:center; }
+      th { background:#2563eb; color:white; }
+      tr:nth-child(even){ background:#f9fafb; }
+      .status { border-radius:8px; padding:4px 8px; font-size:12px; }
+      .waiting { background:#fef3c7; color:#92400e; }
+      .approved { background:#dcfce7; color:#166534; }
+      .rejected { background:#fee2e2; color:#991b1b; }
+      button { padding:4px 8px; border:none; border-radius:4px; cursor:pointer; color:white; }
+      .btn-approve { background:#16a34a; }
+      .btn-reject { background:#dc2626; }
+    </style>
+  </head>
+  <body>
+    <h1>${store} 打刻修正依頼一覧</h1>
+    <table>
+      <thead>
+        <tr><th>名前</th><th>日付</th><th>修正内容</th><th>理由</th><th>申請日時</th><th>状態</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        ${requests.map(r => `
+          <tr>
+            <td>${r.name || "未登録"}</td>
+            <td>${r.date || "不明"}</td>
+            <td>
+              出勤: ${r.before?.clockIn || "--"} → <b>${r.after?.clockIn || "--"}</b><br>
+              退勤: ${r.before?.clockOut || "--"} → <b>${r.after?.clockOut || "--"}</b>
+            </td>
+            <td>${r.message || ""}</td>
+            <td>${r.createdAt}</td>
+            <td><span class="status waiting">${r.status}</span></td>
+            <td>
+              <button class="btn-approve" onclick="updateStatus('${r.id}','承認')">承認</button>
+              <button class="btn-reject" onclick="updateStatus('${r.id}','却下')">却下</button>
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+
+    <script>
+      async function updateStatus(id, status) {
+        if(!confirm("この申請を" + status + "にしますか？")) return;
+        await fetch("/${store}/admin/fix/update", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ id, status })
+        });
+        alert("更新しました");
+        location.reload();
+      }
+    </script>
+  </body>
+  </html>
+  `);
+});
+
+app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { id, status } = req.body;
+
+  try {
+    await db.collection("companies").doc(store)
+      .collection("attendanceRequests").doc(id)
+      .update({
+        status,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ update fix error:", err);
+    res.status(500).json({ error: "更新に失敗しました" });
+  }
+});
 
 
 // ==============================
