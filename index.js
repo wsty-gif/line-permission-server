@@ -452,326 +452,6 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
   }
 });
 // ==============================
-// 🕒 従業員用：勤怠打刻 + 月別一覧
-// ==============================
-app.get("/:store/attendance", ensureStore, (req, res) => {
-  const { store, storeConf } = req;
-
-  res.send(`<!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${store} 勤怠打刻</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-      body { font-family: sans-serif; background: #f9fafb; padding: 16px; margin:0; }
-      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:480px; margin:16px auto; }
-      h1 { color:#2563eb; text-align:center; margin-top:0; }
-
-      .status { text-align:center; margin-bottom:8px; }
-
-      .today-box { margin-top:12px; }
-      .today-title { font-weight:bold; margin-bottom:6px; }
-
-      .grid-2x2 {
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:8px;
-      }
-      .action-card {
-        background:#f3f4f6;
-        border-radius:8px;
-        padding:8px;
-        text-align:center;
-      }
-      .action-title { font-size:14px; margin-bottom:4px; }
-      .action-time { font-size:16px; font-weight:bold; margin-bottom:6px; }
-
-      .action-btn {
-        width:100%;
-        padding:8px;
-        border:none;
-        border-radius:6px;
-        color:#fff;
-        font-size:14px;
-        cursor:pointer;
-      }
-      .btn-in { background:#16a34a; }
-      .btn-out { background:#dc2626; }
-      .btn-break-start { background:#f59e0b; }
-      .btn-break-end { background:#2563eb; }
-
-      .month-box { margin-top:16px; text-align:left; }
-      .month-box label { margin-right:8px; }
-
-      .table-wrapper { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:8px; }
-      table { width:100%; border-collapse:collapse; min-width:600px; background:#fff; }
-      th,td { border:1px solid #e5e7eb; padding:6px; font-size:13px; text-align:center; white-space:nowrap; }
-      th { background:#2563eb; color:#fff; }
-      tr:nth-child(even) { background:#f9fafb; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>${store} 勤怠管理</h1>
-      <div id="status" class="status">LINEログイン中...</div>
-
-      <div class="today-box">
-        <div class="today-title" id="todayLabel">今日の打刻</div>
-        <div class="grid-2x2">
-          <div class="action-card">
-            <div class="action-title">出勤</div>
-            <div class="action-time" id="timeIn">--:--</div>
-            <button id="btnIn" class="action-btn btn-in">出勤</button>
-          </div>
-          <div class="action-card">
-            <div class="action-title">退勤</div>
-            <div class="action-time" id="timeOut">--:--</div>
-            <button id="btnOut" class="action-btn btn-out">退勤</button>
-          </div>
-          <div class="action-card">
-            <div class="action-title">休憩開始</div>
-            <div class="action-time" id="timeBreakStart">--:--</div>
-            <button id="btnBreakStart" class="action-btn btn-break-start">休憩開始</button>
-          </div>
-          <div class="action-card">
-            <div class="action-title">休憩終了</div>
-            <div class="action-time" id="timeBreakEnd">--:--</div>
-            <button id="btnBreakEnd" class="action-btn btn-break-end">休憩終了</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="month-box">
-        <label for="monthSelect">対象月</label>
-        <input type="month" id="monthSelect">
-      </div>
-
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>日付</th>
-              <th>出勤</th>
-              <th>退勤</th>
-              <th>休憩開始</th>
-              <th>休憩終了</th>
-            </tr>
-          </thead>
-          <tbody id="recordsBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <script>
-      let userId = null;
-      let name = null;
-
-      // JST 基準の現在日時を返す
-      function nowJST() {
-        const now = new Date();
-        // ブラウザは既にJSTなのでそのまま使う想定
-        return now;
-      }
-
-      function pad2(n) {
-        return n < 10 ? "0" + n : "" + n;
-      }
-
-      function formatDateJST(d) {
-        const y = d.getFullYear();
-        const m = pad2(d.getMonth() + 1);
-        const day = pad2(d.getDate());
-        return y + "/" + m + "/" + day;
-      }
-
-      async function main() {
-        try {
-          await liff.init({ liffId: "${storeConf.liffId}" });
-          if (!liff.isLoggedIn()) {
-            liff.login();
-            return;
-          }
-
-          const p = await liff.getProfile();
-          userId = p.userId;
-          name = p.displayName || "";
-
-          const statusEl = document.getElementById("status");
-          if (statusEl) {
-            statusEl.innerText = name + " さんログイン中";
-          }
-
-          const today = nowJST();
-          const ym = today.toISOString().slice(0, 7); // YYYY-MM
-          const monthInput = document.getElementById("monthSelect");
-          monthInput.value = ym;
-          monthInput.addEventListener("change", function () {
-            loadRecords();
-          });
-
-          document.getElementById("btnIn").addEventListener("click", function() {
-            sendAction("clockIn");
-          });
-          document.getElementById("btnOut").addEventListener("click", function() {
-            sendAction("clockOut");
-          });
-          document.getElementById("btnBreakStart").addEventListener("click", function() {
-            sendAction("breakStart");
-          });
-          document.getElementById("btnBreakEnd").addEventListener("click", function() {
-            sendAction("breakEnd");
-          });
-
-          await loadRecords();
-        } catch (e) {
-          console.error(e);
-          const statusEl = document.getElementById("status");
-          if (statusEl) {
-            statusEl.innerText = "LIFF初期化に失敗しました: " + e.message;
-          }
-        }
-      }
-
-      async function sendAction(action) {
-        if (!userId) {
-          alert("ユーザー情報取得中です。少し待ってから再度お試しください。");
-          return;
-        }
-        const res = await fetch("/${store}/attendance/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: userId, name: name, action: action })
-        });
-        const msg = await res.text();
-        alert(msg);
-        await loadRecords();
-      }
-
-      async function loadRecords() {
-        if (!userId) return;
-
-        const month = document.getElementById("monthSelect").value;
-        if (!month) return;
-
-        const res = await fetch("/${store}/attendance/records?userId=" +
-          encodeURIComponent(userId) + "&month=" + encodeURIComponent(month));
-        const data = await res.json();
-
-        const tbody = document.getElementById("recordsBody");
-        if (!tbody) return;
-
-        tbody.innerHTML = data.map(function(r) {
-          const date = r.date || "--";
-          const cin  = r.clockIn  || "--:--";
-          const cout = r.clockOut || "--:--";
-          const bIn  = r.breakStart || "--:--";
-          const bOut = r.breakEnd   || "--:--";
-          return "<tr>"
-            + "<td>" + date + "</td>"
-            + "<td>" + cin + "</td>"
-            + "<td>" + cout + "</td>"
-            + "<td>" + bIn + "</td>"
-            + "<td>" + bOut + "</td>"
-            + "</tr>";
-        }).join("");
-
-        // 今日の行を探してボタン下の時刻に反映
-        const today = nowJST();
-        const todayStr = formatDateJST(today); // "YYYY/MM/DD"
-        const todayRow = data.find(function(r) {
-          return r.date.replace(/-/g, "/") === todayStr.replace(/-/g, "/");
-        });
-
-
-        document.getElementById("timeIn").innerText =
-          (todayRow && todayRow.clockIn) ? formatToHHMM(todayRow.clockIn) : "--:--";
-        document.getElementById("timeOut").innerText =
-          (todayRow && todayRow.clockOut) ? formatToHHMM(todayRow.clockOut) : "--:--";
-        document.getElementById("timeBreakStart").innerText =
-          (todayRow && todayRow.breakStart) ? formatToHHMM(todayRow.breakStart) : "--:--";
-        document.getElementById("timeBreakEnd").innerText =
-          (todayRow && todayRow.breakEnd) ? formatToHHMM(todayRow.breakEnd) : "--:--";
-
-        function formatToHHMM(timestampStr) {
-          if (!timestampStr) return "--:--";
-          // Firestoreの文字列 "2025年11月6日 20:19:39 UTC+9" → Dateに変換
-          const date = new Date(timestampStr.replace("UTC+9", "+09:00"));
-          if (isNaN(date)) return "--:--";
-          return date.getHours().toString().padStart(2, "0") + ":" +
-                date.getMinutes().toString().padStart(2, "0");
-        }
-
-
-        const todayLabel = document.getElementById("todayLabel");
-        if (todayLabel) {
-          todayLabel.innerText = "今日の打刻（" + todayStr + "）";
-        }
-      }
-
-      main();
-    </script>
-  </body>
-  </html>`);
-});
-
-
-// 出退勤ステータス取得
-app.get("/:store/attendance/status", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { userId } = req.query;
-  const today = new Date().toISOString().split("T")[0];
-  const doc = await db.collection("companies").doc(store)
-    .collection("attendance").doc(`${userId}_${today}`).get();
-  res.json(doc.exists ? doc.data() : {});
-});
-
-// 🧾 打刻処理（日本時間対応版）
-// 🧾 打刻処理（修正版）
-// 🧾 打刻処理（日本時間で正確に保存）
-app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { userId, name, action } = req.body;
-
-  // ✅ JSTでの日付文字列（勤怠1日単位のキー用）
-  const now = new Date(); // ← UTCベースで取得（これが重要）
-  const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const currentDate = jstNow.toISOString().split("T")[0]; // "YYYY-MM-DD"
-
-  // Firestore参照
-  const ref = db.collection("companies").doc(store)
-    .collection("attendance").doc(userId)
-    .collection("records").doc(currentDate);
-
-  const snap = await ref.get();
-  const data = snap.exists ? snap.data() : {};
-
-  // ✅ Firestore Timestamp は「UTCのまま」保存する
-  const ts = admin.firestore.Timestamp.fromDate(now);
-
-  // 二重打刻チェック
-  if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
-  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
-  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
-  if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
-
-  // 各アクションに対応
-  if (action === "clockIn") data.clockIn = ts;
-  if (action === "breakStart") data.breakStart = ts;
-  if (action === "breakEnd") data.breakEnd = ts;
-  if (action === "clockOut") data.clockOut = ts;
-
-  data.userId = userId;
-  data.name = name;
-  data.date = currentDate;
-
-  await ref.set(data, { merge: true });
-
-  res.send("打刻を記録しました（JST表示対応）");
-});
-
-// ==============================
 // 🕒 従業員勤怠打刻画面（修正申請付き）
 // ==============================
 app.get("/:store/attendance", ensureStore, (req, res) => {
@@ -996,6 +676,59 @@ app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   res.send("修正申請を送信しました。");
 });
 
+// 出退勤ステータス取得
+app.get("/:store/attendance/status", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId } = req.query;
+  const today = new Date().toISOString().split("T")[0];
+  const doc = await db.collection("companies").doc(store)
+    .collection("attendance").doc(`${userId}_${today}`).get();
+  res.json(doc.exists ? doc.data() : {});
+});
+
+// 🧾 打刻処理（日本時間対応版）
+// 🧾 打刻処理（修正版）
+// 🧾 打刻処理（日本時間で正確に保存）
+app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, name, action } = req.body;
+
+  // ✅ JSTでの日付文字列（勤怠1日単位のキー用）
+  const now = new Date(); // ← UTCベースで取得（これが重要）
+  const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const currentDate = jstNow.toISOString().split("T")[0]; // "YYYY-MM-DD"
+
+  // Firestore参照
+  const ref = db.collection("companies").doc(store)
+    .collection("attendance").doc(userId)
+    .collection("records").doc(currentDate);
+
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : {};
+
+  // ✅ Firestore Timestamp は「UTCのまま」保存する
+  const ts = admin.firestore.Timestamp.fromDate(now);
+
+  // 二重打刻チェック
+  if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
+  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
+  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
+  if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
+
+  // 各アクションに対応
+  if (action === "clockIn") data.clockIn = ts;
+  if (action === "breakStart") data.breakStart = ts;
+  if (action === "breakEnd") data.breakEnd = ts;
+  if (action === "clockOut") data.clockOut = ts;
+
+  data.userId = userId;
+  data.name = name;
+  data.date = currentDate;
+
+  await ref.set(data, { merge: true });
+
+  res.send("打刻を記録しました（JST表示対応）");
+});
 
 // ==============================
 // ⏱ 管理者勤怠修正API（出勤＞退勤のバリデーション付き）
