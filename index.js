@@ -771,6 +771,9 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   res.send("打刻を記録しました（JST表示対応）");
 });
 
+// ==============================
+// 🕒 従業員勤怠打刻画面（打刻修正申請付き完全版）
+// ==============================
 app.get("/:store/attendance", ensureStore, (req, res) => {
   const { store, storeConf } = req;
 
@@ -778,30 +781,31 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
   <!DOCTYPE html>
   <html lang="ja">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${store} 勤怠打刻</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body { font-family: sans-serif; background: #f9fafb; padding: 16px; }
-      .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 480px; margin: auto; }
-      h1 { color: #2563eb; text-align: center; }
-      .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
-      .action-card { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 10px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-      .action-btn { width: 100%; padding: 8px; margin-top: 6px; border: none; border-radius: 6px; color: white; font-size: 1rem; cursor: pointer; }
-      .btn-in { background: #16a34a; }
-      .btn-out { background: #dc2626; }
-      .btn-break-start { background: #f59e0b; }
-      .btn-break-end { background: #2563eb; }
-      .btn-request { background: #6b7280; margin-top: 12px; }
-      .action-time { margin-top: 4px; font-weight: bold; color: #333; }
-      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-      th, td { border-bottom: 1px solid #ddd; padding: 6px; font-size: 14px; text-align: center; white-space: nowrap; }
-      th { background: #2563eb; color: white; }
-      .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; }
-      .modal-content { background: white; padding: 20px; border-radius: 8px; max-width: 320px; width: 90%; }
-      .modal-content textarea { width: 100%; height: 80px; margin-top: 6px; border: 1px solid #ccc; border-radius: 6px; padding: 6px; }
-      .modal-content input[type="date"] { width: 100%; margin-top: 6px; padding: 6px; border: 1px solid #ccc; border-radius: 6px; }
+      body { font-family:sans-serif; background:#f9fafb; padding:16px; }
+      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:480px; margin:auto; }
+      h1 { color:#2563eb; text-align:center; margin-bottom:10px; }
+      .grid-2x2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+      .action-card { background:#fff; border:1px solid #ccc; border-radius:8px; padding:10px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+      .action-btn { width:100%; padding:8px; margin-top:6px; border:none; border-radius:6px; color:white; font-size:1rem; cursor:pointer; }
+      .btn-in { background:#16a34a; }
+      .btn-out { background:#dc2626; }
+      .btn-break-start { background:#f59e0b; }
+      .btn-break-end { background:#2563eb; }
+      .btn-request { background:#6b7280; margin-top:10px; }
+      .action-time { margin-top:4px; font-weight:bold; color:#333; }
+      table { width:100%; border-collapse:collapse; margin-top:20px; }
+      th,td { border-bottom:1px solid #ddd; padding:6px; font-size:14px; text-align:center; white-space:nowrap; }
+      th { background:#2563eb; color:white; }
+
+      .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+      .modal-content { background:white; padding:20px; border-radius:8px; max-width:320px; width:90%; }
+      .modal-content textarea { width:100%; height:80px; margin-top:6px; border:1px solid #ccc; border-radius:6px; padding:6px; }
+      .modal-content input[type="date"] { width:100%; margin-top:6px; padding:6px; border:1px solid #ccc; border-radius:6px; }
     </style>
   </head>
   <body>
@@ -832,10 +836,8 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </div>
       </div>
 
-      <!-- 修正申請ボタン -->
       <button class="action-btn btn-request" id="btnRequest">打刻時間修正申請</button>
 
-      <!-- 勤怠一覧 -->
       <table>
         <thead>
           <tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩開始</th><th>休憩終了</th></tr>
@@ -849,7 +851,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       <div class="modal-content">
         <h3>打刻修正申請</h3>
         <label>対象日：</label>
-        <input type="date" id="reqDate" />
+        <input type="date" id="reqDate">
         <label>修正内容：</label>
         <textarea id="reqMessage" placeholder="例：11/6 出勤時間を9:00に修正してください"></textarea>
         <button class="btn-request" onclick="submitRequest()">送信</button>
@@ -870,7 +872,6 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         loadRecords();
       }
 
-      // 打刻送信
       async function sendAction(action) {
         await fetch("/${store}/attendance/submit", {
           method: "POST",
@@ -885,8 +886,8 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
       document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
 
-      // 修正申請モーダル
-      document.getElementById("btnRequest").onclick = () => document.getElementById("modal").style.display = "flex";
+      document.getElementById("btnRequest").onclick = () => 
+        document.getElementById("modal").style.display = "flex";
       function closeModal() { document.getElementById("modal").style.display = "none"; }
 
       async function submitRequest() {
@@ -899,22 +900,22 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, name, date, message: msg })
         });
-        alert("修正申請を送信しました。");
+        alert("申請を送信しました。");
         closeModal();
       }
 
       async function loadRecords() {
-        const month = new Date().toISOString().slice(0, 7);
-        const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
+        const month = new Date().toISOString().slice(0,7);
+        const res = await fetch("/${store}/attendance/records?userId="+userId+"&month="+month);
         const data = await res.json();
         const tbody = document.getElementById("recordsBody");
         tbody.innerHTML = data.map(r =>
           "<tr>" +
-            "<td>" + (r.date || "--") + "</td>" +
-            "<td>" + (r.clockIn || "--:--") + "</td>" +
-            "<td>" + (r.clockOut || "--:--") + "</td>" +
-            "<td>" + (r.breakStart || "--:--") + "</td>" +
-            "<td>" + (r.breakEnd || "--:--") + "</td>" +
+          "<td>" + (r.date || "--") + "</td>" +
+          "<td>" + (r.clockIn || "--:--") + "</td>" +
+          "<td>" + (r.clockOut || "--:--") + "</td>" +
+          "<td>" + (r.breakStart || "--:--") + "</td>" +
+          "<td>" + (r.breakEnd || "--:--") + "</td>" +
           "</tr>"
         ).join("");
       }
@@ -926,8 +927,9 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
   `);
 });
 
-
-// 🔹 修正申請を Firestore に保存するAPI
+// ==============================
+// 📨 修正申請受信API
+// ==============================
 app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, date, message } = req.body;
@@ -936,10 +938,7 @@ app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   await db.collection("companies").doc(store)
     .collection("attendance_requests")
     .add({
-      userId,
-      name,
-      date,
-      message,
+      userId, name, date, message,
       status: "未対応",
       createdAt: admin.firestore.Timestamp.now(),
     });
