@@ -536,7 +536,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </div>
       </div>
 
-      <button id="btnRequest" class="btn-request">打刻修正申請</button>
+      <button id="btnFix" class="btn-request">打刻修正申請</button>
 
       <div class="filter-row">
         <label for="monthSelect">対象月</label>
@@ -606,10 +606,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       }
 
       document.addEventListener("DOMContentLoaded", () => {
-        const btnRequest = document.getElementById("btnRequest");
-        if (btnRequest) {
-          btnRequest.onclick = () => openModal();
-        }
+
 
         const btnFix = document.getElementById("btnFix");
         if (btnFix) {
