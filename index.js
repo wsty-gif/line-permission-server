@@ -134,6 +134,7 @@ app.get("/logout", (req, res) => {
     res.redirect(`/${store}/login`);
   });
 });
+
 app.get("/:store/admin", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
@@ -177,16 +178,52 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       .nav a:hover {
         background:#1e40af;
       }
-      .search {
-        text-align:center;
+      .filters {
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        gap:12px;
+        flex-wrap:wrap;
         margin-top:10px;
       }
       input[type="text"] {
         padding:8px;
         border:1px solid #ccc;
         border-radius:6px;
-        width:80%;
-        max-width:300px;
+        width:200px;
+      }
+      .switch {
+        position:relative;
+        display:inline-block;
+        width:46px;
+        height:24px;
+      }
+      .switch input { display:none; }
+      .slider {
+        position:absolute;
+        cursor:pointer;
+        top:0; left:0;
+        right:0; bottom:0;
+        background-color:#ccc;
+        border-radius:24px;
+        transition:.3s;
+      }
+      .slider:before {
+        position:absolute;
+        content:"";
+        height:18px;
+        width:18px;
+        left:3px;
+        bottom:3px;
+        background-color:white;
+        border-radius:50%;
+        transition:.3s;
+      }
+      input:checked + .slider {
+        background-color:#2563eb;
+      }
+      input:checked + .slider:before {
+        transform:translateX(22px);
       }
       table {
         width:95%;
@@ -206,9 +243,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         background:#2563eb;
         color:white;
       }
-      tr:nth-child(even){
-        background:#f9fafb;
-      }
+      tr:nth-child(even){ background:#f9fafb; }
       tr:hover {
         background:#e0f2fe;
         cursor:pointer;
@@ -223,10 +258,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       .btn-approve { background:#16a34a; }
       .btn-revoke { background:#f59e0b; }
       .btn-delete { background:#dc2626; }
-      .empty {
-        color:#6b7280;
-        padding:12px;
-      }
+      .empty { color:#6b7280; padding:12px; }
       footer {
         margin-top:30px;
         text-align:center;
@@ -244,12 +276,19 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       <a href="/${store}/admin/fix">打刻修正依頼</a>
     </div>
 
-    <!-- ✅ 検索欄 -->
-    <div class="search">
+    <!-- ✅ 検索・フィルタ -->
+    <div class="filters">
       <input type="text" id="searchInput" placeholder="名前で検索..." />
+      <label>
+        <span style="font-size:14px;">承認済みのみ</span>
+        <label class="switch">
+          <input type="checkbox" id="approvedOnly">
+          <span class="slider"></span>
+        </label>
+      </label>
     </div>
 
-    <!-- ✅ 検索結果表示 -->
+    <!-- ✅ スタッフ一覧 -->
     <table id="staffTable">
       <thead>
         <tr><th>名前</th><th>承認状態</th><th>承認</th><th>解除</th><th>削除</th></tr>
@@ -264,39 +303,45 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       let timer = null;
       let staffData = [];
 
-      // 初期読み込み
       document.addEventListener("DOMContentLoaded", async () => {
-        await loadStaff("");
+        await loadStaff();
         document.getElementById("searchInput").addEventListener("input", handleSearch);
+        document.getElementById("approvedOnly").addEventListener("change", renderFiltered);
       });
 
-      // 🔍 入力検索
       function handleSearch(e) {
         clearTimeout(timer);
-        timer = setTimeout(() => loadStaff(e.target.value), 300);
+        timer = setTimeout(() => renderFiltered(), 300);
       }
 
-      // 🔄 スタッフデータ取得
-      async function loadStaff(keyword = "") {
+      async function loadStaff() {
         const tbody = document.getElementById("staffBody");
         tbody.innerHTML = '<tr><td colspan="5" class="empty">読み込み中...</td></tr>';
         try {
-          const res = await fetch(\`/${store}/admin/search-staff?keyword=\${encodeURIComponent(keyword)}\`);
+          const res = await fetch(\`/${store}/admin/search-staff\`);
           staffData = await res.json();
-          if (!staffData.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty">該当するスタッフはいません</td></tr>';
-            return;
-          }
-          renderTable(staffData);
+          renderFiltered();
         } catch (err) {
           console.error(err);
           tbody.innerHTML = '<tr><td colspan="5" class="empty">データ取得に失敗しました</td></tr>';
         }
       }
 
-      // 📄 テーブル描画
+      function renderFiltered() {
+        const keyword = document.getElementById("searchInput").value;
+        const approvedOnly = document.getElementById("approvedOnly").checked;
+        const filtered = staffData.filter(s =>
+          s.name.includes(keyword) && (!approvedOnly || s.approved)
+        );
+        renderTable(filtered);
+      }
+
       function renderTable(data) {
         const tbody = document.getElementById("staffBody");
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty">該当するスタッフがいません</td></tr>';
+          return;
+        }
         tbody.innerHTML = data.map(s => \`
           <tr onclick="viewAttendance('\${s.id}')">
             <td>\${s.name}</td>
@@ -308,12 +353,10 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         ).join("");
       }
 
-      // ✅ 勤怠ページ遷移
       function viewAttendance(userId) {
         window.location.href = \`/${store}/admin/attendance?userId=\${userId}\`;
       }
 
-      // ✅ ステータス変更
       async function updateStatus(userId, approve) {
         if(!confirm(approve ? "このスタッフを承認しますか？" : "承認を解除しますか？")) return;
         await fetch(\`/${store}/admin/update-staff\`, {
@@ -321,10 +364,9 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, approve })
         });
-        loadStaff(document.getElementById("searchInput").value);
+        await loadStaff();
       }
 
-      // 🗑 削除処理
       async function deleteStaff(userId) {
         if(!confirm("このスタッフを削除しますか？")) return;
         await fetch(\`/${store}/admin/delete-staff\`, {
@@ -332,13 +374,14 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId })
         });
-        loadStaff(document.getElementById("searchInput").value);
+        await loadStaff();
       }
     </script>
   </body>
   </html>
   `);
 });
+
 
 // ==============================
 // 🔄 承認・解除処理（リッチメニュー切り替え）
