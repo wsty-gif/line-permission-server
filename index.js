@@ -604,16 +604,23 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         await fetch("/${store}/attendance/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,name,action})});
         loadRecords();
       }
-      document.getElementById("btnIn").onclick = () => sendAction("clockIn");
-      document.getElementById("btnOut").onclick = () => sendAction("clockOut");
-      document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
-      document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
-      document.getElementById("btnRequest").onclick = () => openModal();
 
-      // ✅ 打刻修正ページへの遷移ボタン（追加）
-      document.getElementById("btnFix").onclick = function () {
-        window.location.href = "/${store}/attendance/fix";
-      };
+      document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("btnIn").onclick = () => sendAction("clockIn");
+        document.getElementById("btnOut").onclick = () => sendAction("clockOut");
+        document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
+        document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
+        document.getElementById("btnRequest").onclick = () => openModal();
+
+        // ✅ 打刻修正ページへの遷移ボタン
+        const btnFix = document.getElementById("btnFix");
+        if (btnFix) {
+          btnFix.onclick = () => {
+            window.location.href = "/${store}/attendance/fix";
+          };
+        }
+      });
+
 
       function closeModal() {
         document.getElementById("modal").style.display = "none";
