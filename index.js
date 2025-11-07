@@ -844,32 +844,45 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 });
 
 // 🔹 店舗ごとに修正申請を保存
+// 打刻修正申請を受け取って Firestore に保存
 app.post("/:store/attendance/request", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { userId, name, date, message, before, after } = req.body;
-
   try {
-    const ref = db.collection("companies")
-      .doc(store)
-      .collection("attendanceRequests");
+    const { store } = req;
+    const { userId, name, date, message, newData } = req.body;
 
-    await ref.add({
+    if (!userId || !date || !newData) {
+      return res.status(400).send("userId, date, newData は必須です");
+    }
+
+    const doc = {
       userId,
-      name,
+      name: name || "",
       date,
-      message,
-      before,
-      after,
-      status: "承認待ち",
+      message: message || "",
+      before: {}, // 管理者が比較表示するための空枠
+      after: {
+        clockIn: newData.clockIn || "",
+        clockOut: newData.clockOut || "",
+        breakStart: newData.breakStart || "",
+        breakEnd: newData.breakEnd || ""
+      },
+      status: "pending",
       createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    };
 
-    res.json({ status: "ok" });
+    await db
+      .collection("companies")
+      .doc(store)
+      .collection("attendanceFixRequests")
+      .add(doc);
+
+    res.status(200).send("OK");
   } catch (err) {
-    console.error("❌ Error saving attendance request:", err);
-    res.status(500).json({ error: "保存に失敗しました。" });
+    console.error("修正申請の保存エラー:", err);
+    res.status(500).send("サーバーエラー: " + err.message);
   }
 });
+
 
 
 // 🔹 店舗ごとに修正申請を取得
