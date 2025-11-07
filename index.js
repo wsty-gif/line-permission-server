@@ -134,7 +134,6 @@ app.get("/logout", (req, res) => {
     res.redirect(`/${store}/login`);
   });
 });
-
 app.get("/:store/admin", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
@@ -190,7 +189,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         max-width:300px;
       }
       table {
-        width:90%;
+        width:95%;
         margin:20px auto;
         border-collapse:collapse;
         background:white;
@@ -210,15 +209,29 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       tr:nth-child(even){
         background:#f9fafb;
       }
+      tr:hover {
+        background:#e0f2fe;
+        cursor:pointer;
+      }
+      button {
+        padding:4px 8px;
+        border:none;
+        border-radius:4px;
+        cursor:pointer;
+        color:white;
+      }
+      .btn-approve { background:#16a34a; }
+      .btn-revoke { background:#f59e0b; }
+      .btn-delete { background:#dc2626; }
+      .empty {
+        color:#6b7280;
+        padding:12px;
+      }
       footer {
         margin-top:30px;
         text-align:center;
         color:#6b7280;
         font-size:13px;
-      }
-      .empty {
-        color:#6b7280;
-        padding:12px;
       }
     </style>
   </head>
@@ -239,9 +252,9 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
     <!-- ✅ 検索結果表示 -->
     <table id="staffTable">
       <thead>
-        <tr><th>名前</th><th>ユーザーID</th><th>承認状態</th></tr>
+        <tr><th>名前</th><th>承認状態</th><th>承認</th><th>解除</th><th>削除</th></tr>
       </thead>
-      <tbody id="staffBody"><tr><td colspan="3" class="empty">検索結果がここに表示されます</td></tr></tbody>
+      <tbody id="staffBody"><tr><td colspan="5" class="empty">読み込み中...</td></tr></tbody>
     </table>
 
     <footer>© ${new Date().getFullYear()} ${store} 管理システム</footer>
@@ -249,43 +262,83 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
     <script>
       const store = "${store}";
       let timer = null;
+      let staffData = [];
 
-      document.getElementById("searchInput").addEventListener("input", (e) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => searchStaff(e.target.value), 300);
+      // 初期読み込み
+      document.addEventListener("DOMContentLoaded", async () => {
+        await loadStaff("");
+        document.getElementById("searchInput").addEventListener("input", handleSearch);
       });
 
-      async function searchStaff(keyword) {
-        const tbody = document.getElementById("staffBody");
-        tbody.innerHTML = '<tr><td colspan="3" class="empty">検索中...</td></tr>';
+      // 🔍 入力検索
+      function handleSearch(e) {
+        clearTimeout(timer);
+        timer = setTimeout(() => loadStaff(e.target.value), 300);
+      }
 
+      // 🔄 スタッフデータ取得
+      async function loadStaff(keyword = "") {
+        const tbody = document.getElementById("staffBody");
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">読み込み中...</td></tr>';
         try {
           const res = await fetch(\`/${store}/admin/search-staff?keyword=\${encodeURIComponent(keyword)}\`);
-          const data = await res.json();
-          if (!data.length) {
-            tbody.innerHTML = '<tr><td colspan="3" class="empty">該当するスタッフはいません</td></tr>';
+          staffData = await res.json();
+          if (!staffData.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">該当するスタッフはいません</td></tr>';
             return;
           }
-
-          tbody.innerHTML = data.map(s => 
-            \`<tr>
-              <td>\${s.name}</td>
-              <td>\${s.id}</td>
-              <td>\${s.approved ? "✅ 承認済み" : "⏳ 承認待ち"}</td>
-            </tr>\`
-          ).join("");
-        } catch(err) {
+          renderTable(staffData);
+        } catch (err) {
           console.error(err);
-          tbody.innerHTML = '<tr><td colspan="3" class="empty">データ取得に失敗しました</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" class="empty">データ取得に失敗しました</td></tr>';
         }
+      }
+
+      // 📄 テーブル描画
+      function renderTable(data) {
+        const tbody = document.getElementById("staffBody");
+        tbody.innerHTML = data.map(s => \`
+          <tr onclick="viewAttendance('\${s.id}')">
+            <td>\${s.name}</td>
+            <td>\${s.approved ? "✅ 承認済み" : "⏳ 承認待ち"}</td>
+            <td><button class="btn-approve" onclick="event.stopPropagation(); updateStatus('\${s.id}', true)">承認</button></td>
+            <td><button class="btn-revoke" onclick="event.stopPropagation(); updateStatus('\${s.id}', false)">解除</button></td>
+            <td><button class="btn-delete" onclick="event.stopPropagation(); deleteStaff('\${s.id}')">削除</button></td>
+          </tr>\`
+        ).join("");
+      }
+
+      // ✅ 勤怠ページ遷移
+      function viewAttendance(userId) {
+        window.location.href = \`/${store}/admin/attendance?userId=\${userId}\`;
+      }
+
+      // ✅ ステータス変更
+      async function updateStatus(userId, approve) {
+        if(!confirm(approve ? "このスタッフを承認しますか？" : "承認を解除しますか？")) return;
+        await fetch(\`/${store}/admin/update-staff\`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, approve })
+        });
+        loadStaff(document.getElementById("searchInput").value);
+      }
+
+      // 🗑 削除処理
+      async function deleteStaff(userId) {
+        if(!confirm("このスタッフを削除しますか？")) return;
+        await fetch(\`/${store}/admin/delete-staff\`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId })
+        });
+        loadStaff(document.getElementById("searchInput").value);
       }
     </script>
   </body>
   </html>
   `);
 });
-
-
 
 // ==============================
 // 🔄 承認・解除処理（リッチメニュー切り替え）
@@ -1706,7 +1759,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   `);
 });
 
-// 🔍 スタッフ検索API（Ajax対応）
+// 🔍 スタッフ検索API（初期表示＋フィルタ対応）
 app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { keyword = "" } = req.query;
@@ -1730,6 +1783,36 @@ app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
     res.status(500).json({ error: "検索に失敗しました。" });
   }
 });
+
+// ✅ 承認/解除 更新API
+app.post("/:store/admin/update-staff", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, approve } = req.body;
+  try {
+    await db.collection("companies").doc(store)
+      .collection("permissions").doc(userId)
+      .update({ approved: approve });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ update-staff error:", err);
+    res.status(500).json({ error: "更新に失敗しました。" });
+  }
+});
+
+// 🗑 スタッフ削除API
+app.post("/:store/admin/delete-staff", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId } = req.body;
+  try {
+    await db.collection("companies").doc(store)
+      .collection("permissions").doc(userId).delete();
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ delete-staff error:", err);
+    res.status(500).json({ error: "削除に失敗しました。" });
+  }
+});
+
 
 
 // ==============================
