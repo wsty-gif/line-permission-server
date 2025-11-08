@@ -1754,7 +1754,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
 
       async function loadRequests() {
         try {
-          const res = await fetch(`/storeA/attendance/requests?userId=${userId}`);
+          const res = await fetch("/${store}/attendance/requests?userId=${userId}");
           if (!res.ok) throw new Error("fetch failed");
           const data = await res.json();
 
@@ -2099,15 +2099,17 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
 
     <script>
       async function updateRequestStatus(id, status) {
+        if (!confirm(status === "approved" ? "承認しますか？" : "却下しますか？")) return;
+
         const res = await fetch("/${store}/admin/fix/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, status }),
+          body: JSON.stringify({ id, status })
         });
 
         if (res.ok) {
           alert(status === "approved" ? "承認しました" : "却下しました");
-          location.reload();
+          location.reload(); // 従業員画面も即時更新
         } else {
           alert("更新に失敗しました");
         }
@@ -2130,39 +2132,56 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
 });
 
 
-// ✅ 管理者が申請を承認または却下
+// ✅ 管理者：打刻修正申請の承認・却下
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
   const { store } = req;
-  const { id, status } = req.body; // status: "approved" または "rejected"
+  const { id, status } = req.body; // "approved" or "rejected"
 
   try {
-    const ref = db.collection("companies").doc(store).collection("attendanceRequests").doc(id);
-    const doc = await ref.get();
-    if (!doc.exists) return res.status(404).json({ error: "申請が見つかりません" });
+    const requestRef = db.collection("companies").doc(store).collection("attendanceRequests").doc(id);
+    const requestDoc = await requestRef.get();
+    if (!requestDoc.exists) return res.status(404).json({ error: "申請が見つかりません" });
 
-    const data = doc.data();
+    const requestData = requestDoc.data();
+    const { userId, date, after } = requestData;
 
-    // 🔹 Firestoreのstatusを更新
-    await ref.update({
+    // 🔹 ステータスを更新（承認 or 却下）
+    await requestRef.update({
       status: status === "approved" ? "承認済み" : "却下",
-      updatedAt: new Date(),
+      updatedAt: new Date()
     });
 
-    // 🔹 リアルタイム反映用：従業員側画面でも参照している同じコレクションを更新
-    const userRef = db.collection("companies").doc(store)
-      .collection("attendanceRequests").doc(id);
-    await userRef.update({
-      status: status === "approved" ? "承認済み" : "却下",
-      updatedAt: new Date(),
-    });
+    // 🔹 承認された場合、勤務データへ自動反映
+    if (status === "approved" && after && userId && date) {
+      const attendanceRef = db
+        .collection("companies")
+        .doc(store)
+        .collection("attendance")
+        .doc(userId)
+        .collection("records")
+        .doc(date);
 
+      await attendanceRef.set(
+        {
+          clockIn: after.clockIn ? new Date(after.clockIn) : null,
+          clockOut: after.clockOut ? new Date(after.clockOut) : null,
+          breakStart: after.breakStart ? new Date(after.breakStart) : null,
+          breakEnd: after.breakEnd ? new Date(after.breakEnd) : null,
+          updatedAt: new Date()
+        },
+        { merge: true }
+      );
+    }
+
+    // 🔹 承認・却下後に従業員画面でも同期されるよう同一コレクション更新
+    // （従業員側も attendanceRequests を参照している）
+    console.log(`[${store}] Request ${id} => ${status}`);
     res.json({ ok: true });
   } catch (e) {
-    console.error("update fix request error:", e);
-    res.status(500).json({ error: "更新に失敗しました" });
+    console.error("fix/update error:", e);
+    res.status(500).json({ error: "管理者更新に失敗しました" });
   }
 });
-
 
 app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store) {
