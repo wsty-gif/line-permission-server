@@ -983,6 +983,14 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       .table-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
     </style>
   </head>
+
+  <div style="text-align:center; margin-top:24px;">
+    <button onclick="location.href='/${store}/admin'" 
+      style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
+      ← TOPに戻る
+    </button>
+  </div>
+
   <body>
     <h1>${store} 勤怠管理</h1>
 
@@ -2092,6 +2100,13 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
           `}
         </tbody>
       </table>
+    </div>
+
+    <div style="text-align:center; margin-top:24px;">
+      <button onclick="location.href='/${store}/admin'" 
+        style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
+        ← TOPに戻る
+      </button>
     </div>
 
     <script>
