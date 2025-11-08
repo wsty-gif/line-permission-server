@@ -881,35 +881,28 @@ app.post("/:store/attendance/request", ensureStore, async (req, res) => {
   }
 });
 
-
 app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId } = req.query;
+  if (!userId) return res.status(400).send("userId missing");
+
   try {
-    const { userId } = req.query;
-    const { store } = req.params;
+    const snapshot = await db
+      .collection(`companies/${store}/attendanceRequests`)
+      .where("userId", "==", userId)
+      .get();
 
-    if (!userId) {
-      return res.status(400).json({ error: "userIdが指定されていません。" });
-    }
-
-    const colRef = collection(db, `companies/${store}/attendanceRequests`);
-    const q = query(colRef, where("userId", "==", userId));
-    const snapshot = await getDocs(q);
-
-    const result = snapshot.docs.map((doc) => ({
+    const requests = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    res.json(result);
+    res.json(requests);
   } catch (err) {
-    console.error("❌ attendance/requests Error:", err);
-    res.status(500).json({ error: err.message });
+    console.error("attendance/requests Error:", err);
+    res.status(500).send("Internal Server Error");
   }
 });
-
-
-
-
 
 // 出退勤ステータス取得
 app.get("/:store/attendance/status", ensureStore, async (req, res) => {
