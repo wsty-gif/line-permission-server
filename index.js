@@ -1737,7 +1737,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         userId = profile.userId;
         name = profile.displayName;
 
-        document.getElementById("status").innerText = "${profile.displayName} さん";
+        // document.getElementById("status").innerText = "${profile.displayName} さん";
 
         // ✅ userId 確定後に初めて呼び出す
         await loadRequests();
