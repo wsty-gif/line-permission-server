@@ -2052,6 +2052,12 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
       }
     </style>
   </head>
+  <div style="text-align:center; margin-top:24px;">
+    <button onclick="location.href='/${store}/admin'" 
+      style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
+      ← TOPに戻る
+    </button>
+  </div>
   <body>
     <h1>打刻時間修正申請</h1>
     <div class="notice">承認待ちの申請が${waitingCount}件あります</div>
@@ -2101,14 +2107,6 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
         </tbody>
       </table>
     </div>
-
-    <div style="text-align:center; margin-top:24px;">
-      <button onclick="location.href='/${store}/admin'" 
-        style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
-        ← TOPに戻る
-      </button>
-    </div>
-
     <script>
       async function updateStatus(id, status) {
         if (!confirm("この申請を" + status + "にしますか？")) return;
