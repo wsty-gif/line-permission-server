@@ -796,32 +796,38 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         document.getElementById("reqDate").value = today;
       }
 
-    async function submitRequest() {
-      const date = document.getElementById("reqDate").value;
-      const msg = document.getElementById("reqMessage").value;
+      async function submitRequest() {
+        const date = document.getElementById("reqDate").value;
+        const msg = document.getElementById("reqMessage").value;
 
-      const newData = {
-        clockIn: document.getElementById("newClockIn").value,
-        clockOut: document.getElementById("newClockOut").value,
-        breakStart: document.getElementById("newBreakStart").value,
-        breakEnd: document.getElementById("newBreakEnd").value,
-        dateIn: document.getElementById("newDateIn").value,
-        dateOut: document.getElementById("newDateOut").value,
-        dateBreakStart: document.getElementById("newDateBreakStart").value,
-        dateBreakEnd: document.getElementById("newDateBreakEnd").value
-      };
+        // 修正後データ（日付＋時刻形式）
+        const newData = {
+          clockIn: document.getElementById("newClockIn").value,
+          clockOut: document.getElementById("newClockOut").value,
+          breakStart: document.getElementById("newBreakStart").value,
+          breakEnd: document.getElementById("newBreakEnd").value
+        };
 
-      if (!date || !msg) return alert("対象日と理由を入力してください。");
+        if (!date || !msg) {
+          alert("対象日と理由を入力してください。");
+          return;
+        }
 
-      await fetch("/${store}/attendance/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, name, date, message: msg, newData })
-      });
+        await fetch("/" + store + "/attendance/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            name,
+            date,
+            message: msg,
+            newData
+          }),
+        });
 
-      alert("修正申請を送信しました。");
-      closeModal();
-    }
+        alert("修正申請を送信しました。");
+        closeModal();
+      }
 
       async function loadRecords(){
         const month=document.getElementById("monthSelect").value;
@@ -1697,13 +1703,26 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
           現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--
         </div>
 
-        <label>修正後の時刻</label>
+        <label>修正後の日時</label>
         <div class="time-grid">
-          <div><small>出勤</small><input type="time" id="newClockIn"></div>
-          <div><small>退勤</small><input type="time" id="newClockOut"></div>
-          <div><small>休憩開始</small><input type="time" id="newBreakStart"></div>
-          <div><small>休憩終了</small><input type="time" id="newBreakEnd"></div>
+          <div>
+            <label>出勤</label>
+            <input type="datetime-local" id="newClockIn" />
+          </div>
+          <div>
+            <label>退勤</label>
+            <input type="datetime-local" id="newClockOut" />
+          </div>
+          <div>
+            <label>休憩開始</label>
+            <input type="datetime-local" id="newBreakStart" />
+          </div>
+          <div>
+            <label>休憩終了</label>
+            <input type="datetime-local" id="newBreakEnd" />
+          </div>
         </div>
+
 
         <label>修正理由</label>
         <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
