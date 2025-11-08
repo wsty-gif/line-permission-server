@@ -882,40 +882,31 @@ app.post("/:store/attendance/request", ensureStore, async (req, res) => {
 });
 
 
-// 🔹 店舗ごとに修正申請を取得
 app.get("/:store/attendance/requests", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { userId } = req.query;
-
   try {
-    if (!userId) return res.status(400).json({ error: "userIdが必要です。" });
+    const { userId } = req.query;
+    const { store } = req.params;
 
-    const ref = db.collection("companies")
-      .doc(store)
-      .collection("attendanceRequests");
-
-    let snap;
-    try {
-      snap = await ref
-        .where("userId", "==", userId)
-        .orderBy("createdAt", "desc")
-        .get();
-    } catch (err) {
-      console.warn("⚠️ orderBy失敗 → fallback (createdAtなし)");
-      snap = await ref.where("userId", "==", userId).get();
+    if (!userId) {
+      return res.status(400).json({ error: "userIdが指定されていません。" });
     }
 
-    const data = snap.docs.map(doc => ({
+    const colRef = collection(db, `companies/${store}/attendanceRequests`);
+    const q = query(colRef, where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+
+    const result = snapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
 
-    res.json(data);
+    res.json(result);
   } catch (err) {
-    console.error("❌ /attendance/requests error:", err);
-    res.status(500).json({ error: "データ取得に失敗しました: " + err.message });
+    console.error("❌ attendance/requests Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 
 
@@ -1741,10 +1732,14 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       async function main() {
         await liff.init({ liffId: "${storeConf.liffId}" });
         if (!liff.isLoggedIn()) return liff.login();
-        const p = await liff.getProfile();
-        userId = p.userId;
-        name = p.displayName;
-        await loadRecords();
+
+        const profile = await liff.getProfile();
+        userId = profile.userId;
+        name = profile.displayName;
+
+        document.getElementById("status").innerText = "${profile.displayName} さん";
+
+        // ✅ userId 確定後に初めて呼び出す
         await loadRequests();
       }
 
