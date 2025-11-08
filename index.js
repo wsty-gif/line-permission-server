@@ -1756,7 +1756,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
           return;
         }
 
-        const res = await fetch("/${store}/attendance/requests?userId=${encodeURIComponent(userId)}");
+        const res = await fetch("/${store}/attendance/requests?userId=" + encodeURIComponent(userId));
         if (!res.ok) throw new Error("データ取得に失敗しました");
         const data = await res.json();
 
