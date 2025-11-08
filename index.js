@@ -566,7 +566,7 @@ app.get("/:store/apply", ensureStore, (req, res) => {
 });
 
 app.post("/:store/apply/submit", ensureStore, async (req, res) => {
-  const { store } = req.params;
+  const { store, lineClient, storeConf } = req;
   const { userId, name } = req.body;
 
   if (!userId || !name)
@@ -576,24 +576,22 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
     await db.collection("companies").doc(store).collection("permissions").doc(userId)
       .set({ name, approved: false, requestedAt: new Date() }, { merge: true });
 
+    // 🔹 申請直後に BEFORE メニューを設定
+    if (storeConf.richmenuBefore) {
+      await lineClient.linkRichMenuToUser(userId, storeConf.richmenuBefore);
+    }
+
     res.send(`
     <html><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-    body { font-family:sans-serif; background:#f9fafb; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
-    .box { background:#fff; padding:24px; border-radius:10px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:360px; }
-    h2 { color:#16a34a; }
-    </style></head><body>
-    <div class="box">
-        <h2>申請を受け付けました！</h2>
-        <p>管理者の承認をお待ちください。</p>
-    </div>
-    </body></html>`);
+    <style>body{font-family:sans-serif;text-align:center;padding-top:30vh;}h2{color:#16a34a;}</style></head>
+    <body><h2>申請を受け付けました！</h2><p>管理者の承認をお待ちください。</p></body></html>`);
   } catch (error) {
     console.error("Firestore保存失敗:", error);
     res.status(500).send("申請処理中にエラーが発生しました。");
   }
 });
+
 // ==============================
 // 🕒 従業員勤怠打刻画面（修正申請付き）
 // ==============================
@@ -1867,20 +1865,41 @@ app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
   }
 });
 
-// ✅ 承認/解除 更新API
+// ==============================
+// ✅ スタッフ承認・解除API（リッチメニュー切替対応）
+// ==============================
 app.post("/:store/admin/update-staff", ensureStore, async (req, res) => {
-  const { store } = req.params;
+  const { store, lineClient, storeConf } = req;
   const { userId, approve } = req.body;
+
   try {
-    await db.collection("companies").doc(store)
-      .collection("permissions").doc(userId)
-      .update({ approved: approve });
-    res.json({ success: true });
+    const ref = db.collection("companies").doc(store).collection("permissions").doc(userId);
+    await ref.set({ approved: approve }, { merge: true });
+
+    // 🔹 リッチメニュー切り替え処理
+    if (approve && storeConf.richmenuAfter) {
+      await lineClient.linkRichMenuToUser(userId, storeConf.richmenuAfter);
+      console.log(`✅ ${userId} → AFTERメニューに切り替え`);
+      await lineClient.pushMessage(userId, {
+        type: "text",
+        text: "✅ 管理者により承認されました。メニューが更新されました。",
+      });
+    } else if (!approve && storeConf.richmenuBefore) {
+      await lineClient.linkRichMenuToUser(userId, storeConf.richmenuBefore);
+      console.log(`↩️ ${userId} → BEFOREメニューに戻しました`);
+      await lineClient.pushMessage(userId, {
+        type: "text",
+        text: "⚠️ 管理者により承認が解除されました。",
+      });
+    }
+
+    res.json({ status: "ok" });
   } catch (err) {
-    console.error("❌ update-staff error:", err);
+    console.error("❌ 承認/解除処理エラー:", err);
     res.status(500).json({ error: "更新に失敗しました。" });
   }
 });
+
 
 // 🗑 スタッフ削除API
 app.post("/:store/admin/delete-staff", ensureStore, async (req, res) => {
