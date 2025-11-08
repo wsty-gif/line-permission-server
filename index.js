@@ -1734,14 +1734,16 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         if (!liff.isLoggedIn()) return liff.login();
 
         const profile = await liff.getProfile();
-        userId = profile.userId;
-        name = profile.displayName;
+        const userId = profile.userId;
+        const name = profile.displayName;
 
-        // document.getElementById("status").innerText = "${profile.displayName} さん";
+        // 🔹 ここが正しい記述方法
+        document.getElementById("status").innerText = name + " さん";
 
-        // ✅ userId 確定後に初めて呼び出す
-        await loadRequests();
+        // ✅ userId確定後に呼び出す
+        await loadRequests(userId);
       }
+
 
       async function loadRecords() {
         const now = new Date();
