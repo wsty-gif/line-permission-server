@@ -1638,6 +1638,18 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>${store} 打刻修正申請</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- Firebase フロントエンド SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyAachnx-Pwdmhg8oS9W7R9GEWsx_RYKSAg",
+        authDomain: "wsty-39f48.firebaseapp.com",
+        projectId: "wsty-39f48",
+      };
+      firebase.initializeApp(firebaseConfig);
+    </script>
+
     <style>
       body { font-family:sans-serif; background:#f9fafb; margin:0; padding:20px; color:#333; }
       .container { max-width:600px; margin:auto; }
@@ -1942,6 +1954,18 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!-- Firebase フロントエンド SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyAachnx-Pwdmhg8oS9W7R9GEWsx_RYKSAg",
+        authDomain: "wsty-39f48.firebaseapp.com",
+        projectId: "wsty-39f48",
+      };
+      firebase.initializeApp(firebaseConfig);
+    </script>
+
     <title>${store} 打刻修正依頼</title>
     <style>
       body { font-family: 'Noto Sans JP', sans-serif; background:#f9fafb; margin:0; padding:20px; }
