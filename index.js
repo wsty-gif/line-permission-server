@@ -1754,10 +1754,25 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         allRecords = await res.json();
       }
 
+      let unsubscribeRequests = null;
+
+      // ✅ リアルタイム反映対応版
       async function loadRequests() {
-        const res = await fetch("/${store}/attendance/requests?userId=" + userId);
-        allRequests = await res.json();
-        renderRequestTable();
+        const store = location.pathname.split("/")[1]; // "storeA" など
+        const uid = userId;
+
+        if (unsubscribeRequests) unsubscribeRequests(); // リスナーをリセット
+
+        const db = firebase.firestore();
+        const ref = db.collection("companies").doc(store).collection("attendanceFixRequests")
+          .where("userId", "==", uid)
+          .orderBy("createdAt", "desc");
+
+        unsubscribeRequests = ref.onSnapshot(snapshot => {
+          const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          allRequests = data;
+          renderRequestTable();
+        });
       }
 
       function renderRequestTable() {
