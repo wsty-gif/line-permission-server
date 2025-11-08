@@ -1727,23 +1727,19 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     </div>
 
     <script>
-      let userId, name, allRecords = [], allRequests = [];
+      let userId, name; // ← 関数の外に宣言（★重要）
 
       async function main() {
         await liff.init({ liffId: "${storeConf.liffId}" });
         if (!liff.isLoggedIn()) return liff.login();
 
         const profile = await liff.getProfile();
-        const userId = profile.userId;
-        const name = profile.displayName;
+        userId = profile.userId;     // ← constを外し、上のグローバル変数に代入
+        name = profile.displayName;
 
-        // 🔹 ここが正しい記述方法
         document.getElementById("status").innerText = name + " さん";
-
-        // ✅ userId確定後に呼び出す
-        await loadRequests(userId);
+        await loadRequests();        // ← 引数不要（グローバル変数から参照）
       }
-
 
       async function loadRecords() {
         const now = new Date();
@@ -1753,25 +1749,24 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       }
 
       // 🔹 Firestoreのstatusをリアルタイムで取得するように変更
-// Firestoreから申請データを取得して一覧に反映
-async function loadRequests() {
-  try {
-    const res = await fetch("/${store}/attendance/requests?userId=${encodeURIComponent(userId)}");
-    if (!res.ok) throw new Error("データ取得に失敗しました");
-    const data = await res.json();
+      // Firestoreから申請データを取得して一覧に反映
+      async function loadRequests() {
+        if (!userId) {
+          console.error("userIdが未定義です。");
+          return;
+        }
 
-    allRequests = data.map((r) => ({
-      ...r,
-      status: r.status || "承認待ち"
-    }));
+        const res = await fetch("/${store}/attendance/requests?userId=${encodeURIComponent(userId)}");
+        if (!res.ok) throw new Error("データ取得に失敗しました");
+        const data = await res.json();
 
-    renderRequestTable();
-  } catch (err) {
-    console.error("loadRequests error:", err);
-  }
-}
+        allRequests = data.map((r) => ({
+          ...r,
+          status: r.status || "承認待ち"
+        }));
 
-
+        renderRequestTable();
+      }
 
       function renderRequestTable() {
         const tbody = document.getElementById("requestBody");
