@@ -1852,6 +1852,60 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   `);
 });
 
+app.post("/:store/attendance/fix", async (req, res) => {
+  try {
+    const { store } = req.params;
+    const { requestId, action } = req.body; // action: "承認" or "却下"
+
+    const companyRef = db.collection("companies").doc(store);
+    const fixRef = companyRef.collection("attendanceRequests").doc(requestId);
+    const fixDoc = await fixRef.get();
+
+    if (!fixDoc.exists) {
+      return res.status(404).json({ error: "修正申請が見つかりません。" });
+    }
+
+    const fixData = fixDoc.data();
+    const { userId, name, date, after } = fixData;
+
+    // ❶ 却下処理の場合はステータスのみ更新
+    if (action === "却下") {
+      await fixRef.update({
+        status: "却下",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return res.json({ success: true, message: "修正申請を却下しました。" });
+    }
+
+    // ❷ 承認処理
+    const toTimestamp = (v) => (v ? admin.firestore.Timestamp.fromDate(new Date(v)) : null);
+
+    const updateData = {
+      userId,
+      name,
+      date,
+      clockIn: after?.clockIn || "",
+      clockOut: after?.clockOut || "",
+      breakStart: after?.breakStart || "",
+      breakEnd: after?.breakEnd || "",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const recordRef = companyRef.collection("attendance").doc(userId).collection("records").doc(date);
+    await recordRef.set(updateData, { merge: true });
+
+    await fixRef.update({
+      status: "承認",
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.json({ success: true, message: "勤怠データを更新しました。" });
+  } catch (e) {
+    console.error("❌ 修正承認/却下エラー:", e);
+    res.status(500).json({ error: "修正処理中にエラーが発生しました。" });
+  }
+});
+
 // 🔍 スタッフ検索API（初期表示＋フィルタ対応）
 app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
   const { store } = req.params;
