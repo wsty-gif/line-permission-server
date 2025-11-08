@@ -624,7 +624,29 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       .btn-out { background:#dc2626; }
       .btn-break-start { background:#f59e0b; }
       .btn-break-end { background:#2563eb; }
-      .btn-request { background:#6b7280; margin-top:10px; width:100%; }
+      .btn-fix {
+        display: block;
+        width: 100%;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 20px;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+      }
+      .btn-fix:hover {
+        background: #1e40af;
+        transform: translateY(-2px);
+      }
+      .btn-fix:active {
+        background: #1d4ed8;
+        transform: translateY(0);
+      }
 
       .filter-row { margin-top:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
       .filter-row label { font-size:0.9rem; }
@@ -677,7 +699,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         </div>
       </div>
 
-      <button id="btnFix" class="btn-request">打刻修正申請</button>
+      <button id="btnFix" class="btn-fix">打刻修正を申請する</button>
 
       <div class="filter-row">
         <label for="monthSelect">対象月</label>
