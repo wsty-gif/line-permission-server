@@ -1788,8 +1788,13 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
                 '休憩終了: ' + (before.breakEnd || "--:--") + ' → <span class="new-time">' + (after.breakEnd || "--:--") + '</span>' +
               '</td>' +
               '<td>' + (r.message || "") + '</td>' +
-              '<td><span class="status ${r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting"}">${r.status || "承認待ち"}</span></td>' +
-            '</tr>'
+              '<td><span class="status ' +
+                (r.status === "承認" ? "approved" :
+                r.status === "却下" ? "rejected" :
+                "waiting") +
+                '">' + (r.status || "承認待ち") + '</span></td>' +
+              '</tr>'
+
           );
         }).join("");
       }
