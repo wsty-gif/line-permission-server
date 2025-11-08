@@ -1753,10 +1753,22 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       }
 
       async function loadRequests() {
-        const res = await fetch("/${store}/attendance/requests?userId=" + userId);
-        allRequests = await res.json();
-        renderRequestTable();
+        try {
+          const res = await fetch(`/storeA/attendance/requests?userId=${userId}`);
+          if (!res.ok) throw new Error("fetch failed");
+          const data = await res.json();
+
+          allRequests = data.map(r => ({
+            ...r,
+            status: r.status || "承認待ち"
+          }));
+
+          renderRequestTable();
+        } catch (e) {
+          console.error("loadRequests error:", e);
+        }
       }
+
 
       function renderRequestTable() {
         const tbody = document.getElementById("requestBody");
@@ -2074,8 +2086,8 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
               <td>${r.message || ""}</td>
               <td><span class="status ${r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting"}">${r.status || "承認待ち"}</span></td>
               <td>
-                <button class="btn-approve" onclick="updateStatus('${r.id}','承認')">✔</button>
-                <button class="btn-reject" onclick="updateStatus('${r.id}','却下')">✖</button>
+                <button class="btn-approve" onclick="updateRequestStatus('${r.id}','承認')">✔</button>
+                <button class="btn-reject" onclick="updateRequestStatus('${r.id}','却下')">✖</button>
               </td>
             </tr>
           `).join("") : `
@@ -2086,6 +2098,21 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
     </div>
 
     <script>
+      async function updateRequestStatus(id, status) {
+        const res = await fetch("/${store}/admin/fix/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, status }),
+        });
+
+        if (res.ok) {
+          alert(status === "approved" ? "承認しました" : "却下しました");
+          location.reload();
+        } else {
+          alert("更新に失敗しました");
+        }
+      }
+
       async function updateStatus(id, status) {
         if (!confirm("この申請を" + status + "にしますか？")) return;
         await fetch("/${store}/admin/fix/update", {
@@ -2103,24 +2130,39 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
 });
 
 
+// ✅ 管理者が申請を承認または却下
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { id, status } = req.body;
+  const { store } = req;
+  const { id, status } = req.body; // status: "approved" または "rejected"
 
   try {
-    await db.collection("companies").doc(store)
-      .collection("attendanceRequests").doc(id)
-      .update({
-        status,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+    const ref = db.collection("companies").doc(store).collection("attendanceRequests").doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ error: "申請が見つかりません" });
 
-    res.json({ success: true });
-  } catch (err) {
-    console.error("❌ update fix error:", err);
+    const data = doc.data();
+
+    // 🔹 Firestoreのstatusを更新
+    await ref.update({
+      status: status === "approved" ? "承認済み" : "却下",
+      updatedAt: new Date(),
+    });
+
+    // 🔹 リアルタイム反映用：従業員側画面でも参照している同じコレクションを更新
+    const userRef = db.collection("companies").doc(store)
+      .collection("attendanceRequests").doc(id);
+    await userRef.update({
+      status: status === "approved" ? "承認済み" : "却下",
+      updatedAt: new Date(),
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("update fix request error:", e);
     res.status(500).json({ error: "更新に失敗しました" });
   }
 });
+
 
 app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store) {
