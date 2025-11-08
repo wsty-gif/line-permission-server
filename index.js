@@ -797,8 +797,6 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       async function submitRequest() {
         const date = document.getElementById("reqDate").value;
         const msg = document.getElementById("reqMessage").value;
-
-        // 修正後データ（日付＋時刻形式）
         const newData = {
           clockIn: document.getElementById("newClockIn").value,
           clockOut: document.getElementById("newClockOut").value,
@@ -819,13 +817,17 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
             name,
             date,
             message: msg,
-            newData
+            after: newData
           }),
         });
 
         alert("修正申請を送信しました。");
         closeModal();
+
+        // 🔹 Firestoreから最新データを再取得
+        await loadRequests();
       }
+
 
       async function loadRecords(){
         const month=document.getElementById("monthSelect").value;
@@ -1752,11 +1754,25 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         allRecords = await res.json();
       }
 
+      // 🔹 Firestoreのstatusをリアルタイムで取得するように変更
       async function loadRequests() {
-        const res = await fetch("/${store}/attendance/requests?userId=" + userId);
-        allRequests = await res.json();
-        renderRequestTable();
+        try {
+          const res = await fetch("/${store}/attendance/requests?userId=${userId}");
+          if (!res.ok) throw new Error("fetch failed");
+          const data = await res.json();
+
+          // Firestore上のstatusをそのまま使用
+          allRequests = data.map(r => ({
+            ...r,
+            status: r.status || "承認待ち"
+          }));
+
+          renderRequestTable();
+        } catch (e) {
+          console.error("loadRequests error:", e);
+        }
       }
+
 
       function renderRequestTable() {
         const tbody = document.getElementById("requestBody");
