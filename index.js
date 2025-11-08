@@ -794,39 +794,40 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         document.getElementById("reqDate").value = today;
       }
 
-      async function submitRequest() {
-        const date = document.getElementById("reqDate").value;
-        const msg = document.getElementById("reqMessage").value;
-        const newData = {
-          clockIn: document.getElementById("newClockIn").value,
-          clockOut: document.getElementById("newClockOut").value,
-          breakStart: document.getElementById("newBreakStart").value,
-          breakEnd: document.getElementById("newBreakEnd").value
-        };
+async function submitRequest() {
+  const date = document.getElementById("reqDate").value;
+  const msg = document.getElementById("reqMessage").value;
+  const newData = {
+    clockIn: document.getElementById("newClockIn").value,
+    clockOut: document.getElementById("newClockOut").value,
+    breakStart: document.getElementById("newBreakStart").value,
+    breakEnd: document.getElementById("newBreakEnd").value
+  };
 
-        if (!date || !msg) {
-          alert("対象日と理由を入力してください。");
-          return;
-        }
+  if (!date || !msg) {
+    alert("対象日と理由を入力してください。");
+    return;
+  }
 
-        await fetch("/" + store + "/attendance/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId,
-            name,
-            date,
-            message: msg,
-            after: newData
-          }),
-        });
+  await fetch("/${store}/attendance/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId,
+      name,
+      date,
+      message: msg,
+      after: newData,
+    }),
+  });
 
-        alert("修正申請を送信しました。");
-        closeModal();
+  alert("修正申請を送信しました。");
+  closeModal();
 
-        // 🔹 Firestoreから最新データを再取得
-        await loadRequests();
-      }
+  // 🔹 Firestoreから最新ステータスを再取得して反映
+  await loadRequests();
+}
+
 
 
       async function loadRecords(){
@@ -1755,23 +1756,24 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       }
 
       // 🔹 Firestoreのstatusをリアルタイムで取得するように変更
-      async function loadRequests() {
-        try {
-          const res = await fetch("/${store}/attendance/requests?userId=${userId}");
-          if (!res.ok) throw new Error("fetch failed");
-          const data = await res.json();
+// Firestoreから申請データを取得して一覧に反映
+async function loadRequests() {
+  try {
+    const res = await fetch("/${store}/attendance/requests?userId=${encodeURIComponent(userId)}");
+    if (!res.ok) throw new Error("データ取得に失敗しました");
+    const data = await res.json();
 
-          // Firestore上のstatusをそのまま使用
-          allRequests = data.map(r => ({
-            ...r,
-            status: r.status || "承認待ち"
-          }));
+    allRequests = data.map((r) => ({
+      ...r,
+      status: r.status || "承認待ち"
+    }));
 
-          renderRequestTable();
-        } catch (e) {
-          console.error("loadRequests error:", e);
-        }
-      }
+    renderRequestTable();
+  } catch (err) {
+    console.error("loadRequests error:", err);
+  }
+}
+
 
 
       function renderRequestTable() {
@@ -1794,7 +1796,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
                 '休憩終了: ' + (before.breakEnd || "--:--") + ' → <span class="new-time">' + (after.breakEnd || "--:--") + '</span>' +
               '</td>' +
               '<td>' + (r.message || "") + '</td>' +
-              '<td><span class="status waiting">承認待ち</span></td>' +
+              '<td><span class="status ${r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting"}">${r.status || "承認待ち"}</span></td>' +
             '</tr>'
           );
         }).join("");
