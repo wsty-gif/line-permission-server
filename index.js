@@ -1665,7 +1665,8 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   </head>
   <body>
     <div class="container">
-      <h1>打刻時間修正申請</h1>
+<h1>打刻時間修正申請</h1>
+<div id="status" style="text-align:center; margin-bottom:10px; color:#4b5563;"></div>
       <div class="card">
         <div class="card-header">
           <h2>修正申請一覧</h2>
