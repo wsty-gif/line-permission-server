@@ -1638,18 +1638,6 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>${store} 打刻修正申請</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <!-- Firebase フロントエンド SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js"></script>
-    <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyAachnx-Pwdmhg8oS9W7R9GEWsx_RYKSAg",
-        authDomain: "wsty-39f48.firebaseapp.com",
-        projectId: "wsty-39f48",
-      };
-      firebase.initializeApp(firebaseConfig);
-    </script>
-
     <style>
       body { font-family:sans-serif; background:#f9fafb; margin:0; padding:20px; color:#333; }
       .container { max-width:600px; margin:auto; }
@@ -1766,25 +1754,10 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         allRecords = await res.json();
       }
 
-      let unsubscribeRequests = null;
-
-      // ✅ リアルタイム反映対応版
       async function loadRequests() {
-        const store = location.pathname.split("/")[1]; // "storeA" など
-        const uid = userId;
-
-        if (unsubscribeRequests) unsubscribeRequests(); // リスナーをリセット
-
-        const db = firebase.firestore();
-        const ref = db.collection("companies").doc(store).collection("attendanceFixRequests")
-          .where("userId", "==", uid)
-          .orderBy("createdAt", "desc");
-
-        unsubscribeRequests = ref.onSnapshot(snapshot => {
-          const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          allRequests = data;
-          renderRequestTable();
-        });
+        const res = await fetch("/${store}/attendance/requests?userId=" + userId);
+        allRequests = await res.json();
+        renderRequestTable();
       }
 
       function renderRequestTable() {
@@ -1954,18 +1927,6 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <!-- Firebase フロントエンド SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js"></script>
-    <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyAachnx-Pwdmhg8oS9W7R9GEWsx_RYKSAg",
-        authDomain: "wsty-39f48.firebaseapp.com",
-        projectId: "wsty-39f48",
-      };
-      firebase.initializeApp(firebaseConfig);
-    </script>
-
     <title>${store} 打刻修正依頼</title>
     <style>
       body { font-family: 'Noto Sans JP', sans-serif; background:#f9fafb; margin:0; padding:20px; }
@@ -2116,6 +2077,19 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
         alert("更新しました");
         location.reload();
       }
+
+      async function approveRequest(id) {
+        if (!confirm("この申請を承認し、勤怠データを更新しますか？")) return;
+        const res = await fetch("/" + store + "/admin/fix/approve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId: id })
+        });
+        const msg = await res.text();
+        alert(msg);
+        loadRequests(); // 再読み込み
+      }
+
     </script>
   </body>
   </html>
@@ -2221,6 +2195,75 @@ app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) =
   res.redirect(`/${store}/admin/attendance/fix`);
 });
 
+// ✅ 管理者による打刻修正申請の承認＆自動反映
+app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
+  try {
+    const { store } = req;
+    const { requestId } = req.body;
+
+    if (!requestId) {
+      return res.status(400).send("requestId が指定されていません");
+    }
+
+    const companyRef = db.collection("companies").doc(store);
+    const fixRef = companyRef.collection("attendanceFixRequests").doc(requestId);
+    const fixDoc = await fixRef.get();
+
+    if (!fixDoc.exists) {
+      return res.status(404).send("修正申請が見つかりません");
+    }
+
+    const fixData = fixDoc.data();
+    const { userId, name, date, after } = fixData;
+
+    // ✅ Firestore Timestamp化ヘルパー
+    const toTimestamp = (value) => {
+      if (!value) return null;
+      const parsed = new Date(value.replace("T", " "));
+      return admin.firestore.Timestamp.fromDate(parsed);
+    };
+
+    // ✅ 更新用データを準備
+    const updateData = {
+      userId,
+      name,
+      date,
+      clockIn: after?.clockIn || "",
+      clockOut: after?.clockOut || "",
+      breakStart: after?.breakStart || "",
+      breakEnd: after?.breakEnd || "",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    // ✅ 該当日データを検索して更新 or 新規作成
+    const recordRef = companyRef.collection("attendanceRecords");
+    const snapshot = await recordRef
+      .where("userId", "==", userId)
+      .where("date", "==", date)
+      .limit(1)
+      .get();
+
+    if (!snapshot.empty) {
+      // 既存レコード更新
+      const docId = snapshot.docs[0].id;
+      await recordRef.doc(docId).set(updateData, { merge: true });
+    } else {
+      // 新規作成
+      await recordRef.add(updateData);
+    }
+
+    // ✅ 申請ステータスを更新
+    await fixRef.update({
+      status: "approved",
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.json({ success: true, message: "修正内容を勤怠データに反映しました。" });
+  } catch (e) {
+    console.error("❌ 承認エラー:", e);
+    res.status(500).send("承認エラー: " + e.message);
+  }
+});
 
 // ==============================
 const PORT = process.env.PORT || 3000;
