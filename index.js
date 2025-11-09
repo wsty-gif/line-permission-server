@@ -1799,28 +1799,42 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
           return;
         }
 
-        tbody.innerHTML = allRequests.map(function(r) {
+        const formatDateTime = (value) => {
+          if (!value) return "--:--";
+          if (value.includes("T")) {
+            const [date, time] = value.split("T");
+            return date.replace(/-/g, "/") + " " + time.slice(0, 5);
+          }
+          if (value.includes(":")) {
+            return value.replace(/:(\d{2})$/, ""); // 秒削除
+          }
+          return value;
+        };
+
+        // 🔹 バッククォートではなく通常文字列連結に変更して構文エラー回避
+        let html = "";
+        allRequests.forEach((r) => {
           const before = r.before || {};
           const after = r.after || {};
+          const statusClass =
+            r.status === "承認" ? "approved" :
+            r.status === "却下" ? "rejected" : "waiting";
+          const statusText = r.status || "承認待ち";
 
-          return (
-            '<tr>' +
-              '<td>' +
-                '出勤: ' + (before.clockIn || "--:--") + ' → <span class="new-time">' + (after.clockIn || "--:--") + '</span><br/>' +
-                '退勤: ' + (before.clockOut || "--:--") + ' → <span class="new-time">' + (after.clockOut || "--:--") + '</span><br/>' +
-                '休憩開始: ' + (before.breakStart || "--:--") + ' → <span class="new-time">' + (after.breakStart || "--:--") + '</span><br/>' +
-                '休憩終了: ' + (before.breakEnd || "--:--") + ' → <span class="new-time">' + (after.breakEnd || "--:--") + '</span>' +
-              '</td>' +
-              '<td>' + (r.message || "") + '</td>' +
-              '<td><span class="status ' +
-                (r.status === "承認" ? "approved" :
-                r.status === "却下" ? "rejected" :
-                "waiting") +
-                '">' + (r.status || "承認待ち") + '</span></td>' +
-              '</tr>'
+          html +=
+            "<tr>" +
+              "<td>" +
+                "出勤: " + formatDateTime(before.clockIn) + " → <span class='new-time'>" + formatDateTime(after.clockIn) + "</span><br/>" +
+                "退勤: " + formatDateTime(before.clockOut) + " → <span class='new-time'>" + formatDateTime(after.clockOut) + "</span><br/>" +
+                "休憩開始: " + formatDateTime(before.breakStart) + " → <span class='new-time'>" + formatDateTime(after.breakStart) + "</span><br/>" +
+                "休憩終了: " + formatDateTime(before.breakEnd) + " → <span class='new-time'>" + formatDateTime(after.breakEnd) + "</span>" +
+              "</td>" +
+              "<td>" + (r.message || "") + "</td>" +
+              "<td><span class='status " + statusClass + "'>" + statusText + "</span></td>" +
+            "</tr>";
+        });
 
-          );
-        }).join("");
+        tbody.innerHTML = html;
       }
 
       document.getElementById("btnNew").onclick = () => {
