@@ -2068,18 +2068,14 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
 
   const { store } = req.params;
 
+  // ✅ クエリで「承認待ちのみ」フラグ取得
+  const onlyWaiting = req.query.waiting === "1";
+
   // Firestoreから修正申請データ取得
   const snap = await db.collection("companies").doc(store)
     .collection("attendanceRequests")
     .orderBy("createdAt", "desc")
     .get();
-
-  // 🔹「T」を削除し、「2025/11/10 10:39」形式に変換する関数
-  function formatDateTimeStr(value) {
-    if (!value) return "--:--";
-    if (typeof value !== "string") return value;
-    return value.replace("T", " ").replace(/-/g, "/");
-  }
 
   const requests = snap.docs.map(d => ({
     id: d.id,
@@ -2091,6 +2087,11 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
 
   // 承認待ち件数カウント
   const waitingCount = requests.filter(r => r.status === "承認待ち").length;
+
+  // ✅ フィルタ済みリスト（承認待ちのみ or 全件）
+  const filtered = onlyWaiting
+    ? requests.filter(r => r.status === "承認待ち")
+    : requests;
 
   res.send(`
   <!DOCTYPE html>
@@ -2126,10 +2127,17 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
         color:#111827;
       }
 
-      .btn-group {
+      /* 🔹 承認待ちのみ スイッチ */
+      .filter-toggle {
         display:flex;
-        gap:8px;
-        flex-wrap:wrap;
+        align-items:center;
+        gap:6px;
+        font-size:13px;
+        color:#374151;
+      }
+      .filter-toggle input {
+        width:40px;
+        height:20px;
       }
 
       button {
@@ -2140,8 +2148,6 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
         font-size:13px;
       }
 
-      .btn-primary { background:#111827; color:white; }
-      .btn-outline { background:white; border:1px solid #d1d5db; color:#111827; }
       .btn-approve { background:#16a34a; color:white; }
       .btn-reject { background:#dc2626; color:white; }
 
@@ -2180,48 +2186,6 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
       .rejected { background:#fee2e2; color:#991b1b; }
 
       .new-time { color:#16a34a; font-weight:bold; }
-      /* ---- フィルタスイッチ ---- */
-      .filter-bar {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        margin-bottom: 12px;
-      }
-
-      .switch {
-        position: relative;
-        display: inline-block;
-        width: 46px;
-        height: 24px;
-        margin-left: 6px;
-      }
-      .switch input { display: none; }
-
-      .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #ccc;
-        border-radius: 24px;
-        transition: .3s;
-      }
-      .slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        border-radius: 50%;
-        transition: .3s;
-      }
-      input:checked + .slider {
-        background-color: #2563eb;
-      }
-      input:checked + .slider:before {
-        transform: translateX(22px);
-      }
 
       @media(max-width:600px){
         th, td { font-size:12px; padding:6px; }
@@ -2229,29 +2193,25 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
       }
     </style>
   </head>
-  <div style="text-align:center; margin-top:24px;">
-    <button onclick="location.href='/${store}/admin'" 
-      style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
-      ← TOPに戻る
-    </button>
-  </div>
   <body>
+    <div style="text-align:center; margin-bottom:12px;">
+      <button onclick="location.href='/${store}/admin'"
+        style="background:#6b7280; color:white; border:none; border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">
+        ← TOPに戻る
+      </button>
+    </div>
+
     <h1>打刻時間修正申請</h1>
     <div class="notice">承認待ちの申請が${waitingCount}件あります</div>
 
     <div class="container">
       <div class="header-row">
         <h2>修正申請一覧</h2>
-        <!-- フィルタスイッチを配置 -->
-        <div class="filter-bar">
-          <label style="font-size:14px;">
-            承認待ちのみ
-            <label class="switch">
-              <input type="checkbox" id="pendingOnly" onchange="renderRequests()">
-              <span class="slider"></span>
-            </label>
-          </label>
-        </div>
+        <!-- 🔹 承認待ちのみスイッチ -->
+        <label class="filter-toggle">
+          <input type="checkbox" id="onlyWaiting" ${onlyWaiting ? "checked" : ""} onchange="toggleWaiting()">
+          承認待ちのみ
+        </label>
       </div>
 
       <table>
@@ -2266,69 +2226,41 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
           </tr>
         </thead>
         <tbody>
-          ${requests.length ? requests.map(r => `
-            <tr>
-              <td>${r.name || "未登録"}<br><small style="color:#dc2626;">${r.status || "承認待ち"}</small></td>
-              <td>${r.date || "-"}</td>
-              <td style="text-align:left;">
-                出勤: ${formatDateTimeStr(r.before?.clockIn)} → <span class="new-time">${formatDateTimeStr(r.after?.clockIn)}</span><br>
-                退勤: ${formatDateTimeStr(r.before?.clockOut)} → <span class="new-time">${formatDateTimeStr(r.after?.clockOut)}</span><br>
-                休憩開始: ${formatDateTimeStr(r.before?.breakStart)} → <span class="new-time">${formatDateTimeStr(r.after?.breakStart)}</span><br>
-                休憩終了: ${formatDateTimeStr(r.before?.breakEnd)} → <span class="new-time">${formatDateTimeStr(r.after?.breakEnd)}</span>
-              </td>
-              <td>${r.message || ""}</td>
-              <td><span class="status ${r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting"}">${r.status || "承認待ち"}</span></td>
-              <td>
-                <button class="btn-approve" onclick="updateStatus(\"${r.id}\",\"承認\")">✔</button>
-                <button class="btn-reject" onclick="updateStatus(\"${r.id}\",\"却下\")">✖</button>
-              </td>
-            </tr>
-          `).join("") : `
-            <tr><td colspan="6" style="color:#9ca3af;">申請はありません</td></tr>
-          `}
+          ${
+            filtered.length
+              ? filtered.map(r => `
+                <tr>
+                  <td>${r.name || "未登録"}<br><small style="color:#dc2626;">${r.status || "承認待ち"}</small></td>
+                  <td>${r.date || "-"}</td>
+                  <td style="text-align:left;">
+                    出勤: ${r.before?.clockIn || "--:--"} → <span class="new-time">${r.after?.clockIn || "--:--"}</span><br>
+                    退勤: ${r.before?.clockOut || "--:--"} → <span class="new-time">${r.after?.clockOut || "--:--"}</span><br>
+                    休憩開始: ${r.before?.breakStart || "--:--"} → <span class="new-time">${r.after?.breakStart || "--:--"}</span><br>
+                    休憩終了: ${r.before?.breakEnd || "--:--"} → <span class="new-time">${r.after?.breakEnd || "--:--"}</span>
+                  </td>
+                  <td>${r.message || ""}</td>
+                  <td>
+                    <span class="status ${
+                      r.status === "承認" ? "approved" :
+                      r.status === "却下" ? "rejected" : "waiting"
+                    }">
+                      ${r.status || "承認待ち"}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="btn-approve" onclick="updateStatus('${r.id}','承認')">✔</button>
+                    <button class="btn-reject" onclick="updateStatus('${r.id}','却下')">✖</button>
+                  </td>
+                </tr>
+              `).join("")
+              : `<tr><td colspan="6" style="color:#9ca3af;">申請はありません</td></tr>`
+          }
         </tbody>
       </table>
     </div>
+
     <script>
-      function renderRequests() {
-        const tbody = document.getElementById("requestBody");
-        const pendingOnly = document.getElementById("pendingOnly")?.checked;
-        let list = allRequests || [];
-
-        // ✅ 「承認待ちのみ」ONのときにフィルタリング
-        if (pendingOnly) {
-          list = list.filter(r => r.status === "承認待ち");
-        }
-
-        if (!list.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="empty">該当する申請はありません</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = list.map(function(r) {
-          return (
-            '<tr>' +
-              '<td>' + (r.name || "未登録") + '<br><small style="color:#dc2626;">' + (r.status || "承認待ち") + '</small></td>' +
-              '<td>' + (r.date || "-") + '</td>' +
-              '<td style="text-align:left;">' +
-                '出勤: ' + (r.before?.clockIn || "--:--") + ' → <span class="new-time">' + (r.after?.clockIn || "--:--") + '</span><br>' +
-                '退勤: ' + (r.before?.clockOut || "--:--") + ' → <span class="new-time">' + (r.after?.clockOut || "--:--") + '</span><br>' +
-                '休憩開始: ' + (r.before?.breakStart || "--:--") + ' → <span class="new-time">' + (r.after?.breakStart || "--:--") + '</span><br>' +
-                '休憩終了: ' + (r.before?.breakEnd || "--:--") + ' → <span class="new-time">' + (r.after?.breakEnd || "--:--") + '</span>' +
-              '</td>' +
-              '<td>' + (r.message || "") + '</td>' +
-              '<td><span class="status ' +
-                (r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting") + '">' +
-                (r.status || "承認待ち") + '</span></td>' +
-              '<td>' +
-                '<button class="btn-approve" onclick="updateStatus(' + JSON.stringify(r.id) + ',\'承認\')">✔</button>' +
-                '<button class="btn-reject" onclick="updateStatus(' + JSON.stringify(r.id) + ',\'却下\')">✖</button>' +
-              '</td>' +
-            '</tr>'
-          );
-        }).join('');
-      }
-
+      // 🔹 承認／却下処理（既存と同じ）
       async function updateStatus(id, status) {
         if (!confirm("この申請を" + status + "にしますか？")) return;
         await fetch("/${store}/admin/fix/update", {
@@ -2340,16 +2272,23 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
         location.reload();
       }
 
-      // DOMが読み込まれてからイベントを登録
-      window.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("pendingOnly").addEventListener("change", renderRequests);
-        renderRequests(); // 初期表示
-      });
+      // 🔹 「承認待ちのみ」トグル → クエリ付けてリロード
+      function toggleWaiting() {
+        const cb = document.getElementById("onlyWaiting");
+        const url = new URL(location.href);
+        if (cb.checked) {
+          url.searchParams.set("waiting", "1");
+        } else {
+          url.searchParams.delete("waiting");
+        }
+        location.href = url.toString();
+      }
     </script>
   </body>
   </html>
   `);
 });
+
 
 
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
