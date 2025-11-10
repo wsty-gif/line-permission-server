@@ -1773,6 +1773,8 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
 
     <script>
       let userId, name; // ← 関数の外に宣言（★重要）
+      let allRecords = [];
+      let allRequests = [];
 
       async function main() {
         await liff.init({ liffId: "${storeConf.liffId}" });
@@ -1783,6 +1785,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         name = profile.displayName;
 
         document.getElementById("status").innerText = name + " さん";
+        await loadRecords();
         await loadRequests();        // ← 引数不要（グローバル変数から参照）
       }
 
