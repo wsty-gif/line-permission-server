@@ -1121,27 +1121,37 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         renderTable(filtered);
       }
 
-      function renderTable(list){
+      function renderTable(list) {
         const tbody = document.querySelector("#records tbody");
-        if(!list.length){
+
+        if (!list.length) {
           tbody.innerHTML = "<tr><td colspan='6'>該当データがありません</td></tr>";
           document.getElementById("summary").textContent = "";
           return;
         }
 
-        tbody.innerHTML = list.map(r => \`
-          <tr>
-            <td>\${r.date}</td>
-            <td>\${r.name || "未登録"}</td>
-            <td>\${formatTime(r.clockIn)}</td>
-            <td>\${formatTime(r.clockOut)}</td>
-            <td>\${formatTime(r.breakStart)}</td>
-            <td>\${formatTime(r.breakEnd)}</td>
-          </tr>\`
-        ).join("");
+        // ★ テンプレートリテラルをやめて、文字列連結で HTML を生成
+        let html = "";
+        list.forEach(function (r) {
+          html +=
+            "<tr>" +
+              "<td>" + (r.date || "") + "</td>" +
+              "<td>" + (r.name || "未登録") + "</td>" +
+              "<td>" + formatTime(r.clockIn) + "</td>" +
+              "<td>" + formatTime(r.clockOut) + "</td>" +
+              "<td>" + formatTime(r.breakStart) + "</td>" +
+              "<td>" + formatTime(r.breakEnd) + "</td>" +
+            "</tr>";
+        });
 
-        const workDays = list.filter(r => r.clockIn && r.clockOut).length;
-        document.getElementById("summary").textContent = "勤務日数：" + workDays + "日";
+        tbody.innerHTML = html;
+
+        const workDays = list.filter(function (r) {
+          return r.clockIn && r.clockOut;
+        }).length;
+
+        document.getElementById("summary").textContent =
+          "勤務日数：" + workDays + "日";
       }
 
       init();
