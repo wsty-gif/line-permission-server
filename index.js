@@ -1918,11 +1918,14 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
 
       document.getElementById("btnNew").onclick = () => {
         document.getElementById("modal").style.display = "flex";
+        document.querySelector(".top-bar").style.display = "none"; // ← 戻るボタンを隠す
       };
 
       function closeModal() {
         document.getElementById("modal").style.display = "none";
+        document.querySelector(".top-bar").style.display = "flex"; // ← 再表示する
       }
+
 
       function loadCurrentRecord() {
         const date = document.getElementById("reqDate").value;
