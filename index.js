@@ -2170,6 +2170,48 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
       .rejected { background:#fee2e2; color:#991b1b; }
 
       .new-time { color:#16a34a; font-weight:bold; }
+      /* ---- フィルタスイッチ ---- */
+      .filter-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 24px;
+        margin-left: 6px;
+      }
+      .switch input { display: none; }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #ccc;
+        border-radius: 24px;
+        transition: .3s;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: .3s;
+      }
+      input:checked + .slider {
+        background-color: #2563eb;
+      }
+      input:checked + .slider:before {
+        transform: translateX(22px);
+      }
 
       @media(max-width:600px){
         th, td { font-size:12px; padding:6px; }
@@ -2190,10 +2232,15 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
     <div class="container">
       <div class="header-row">
         <h2>修正申請一覧</h2>
-        <div class="btn-group">
-          <button class="btn-outline">自分の申請</button>
-          <button class="btn-primary">全ての申請</button>
-          <button class="btn-primary">＋ 新規申請</button>
+        <!-- フィルタスイッチを配置 -->
+        <div class="filter-bar">
+          <label style="font-size:14px;">
+            承認待ちのみ
+            <label class="switch">
+              <input type="checkbox" id="pendingOnly" onchange="renderRequests()">
+              <span class="slider"></span>
+            </label>
+          </label>
         </div>
       </div>
 
@@ -2243,6 +2290,46 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
         alert("更新しました");
         location.reload();
       }
+      async function renderRequests() {
+        const tbody = document.getElementById("requestBody");
+        const pendingOnly = document.getElementById("pendingOnly")?.checked;
+        let list = allRequests || [];
+
+        // ✅ 「承認待ちのみ」ONのときにフィルタリング
+        if (pendingOnly) {
+          list = list.filter(r => r.status === "承認待ち");
+        }
+
+        if (!list.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty">該当する申請はありません</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = list.map(function(r) {
+          return (
+            '<tr>' +
+              '<td>' + (r.name || "未登録") + '<br><small style="color:#dc2626;">' + (r.status || "承認待ち") + '</small></td>' +
+              '<td>' + (r.date || "-") + '</td>' +
+              '<td style="text-align:left;">' +
+                '出勤: ' + (r.before?.clockIn || "--:--") + ' → <span class="new-time">' + (r.after?.clockIn || "--:--") + '</span><br>' +
+                '退勤: ' + (r.before?.clockOut || "--:--") + ' → <span class="new-time">' + (r.after?.clockOut || "--:--") + '</span><br>' +
+                '休憩開始: ' + (r.before?.breakStart || "--:--") + ' → <span class="new-time">' + (r.after?.breakStart || "--:--") + '</span><br>' +
+                '休憩終了: ' + (r.before?.breakEnd || "--:--") + ' → <span class="new-time">' + (r.after?.breakEnd || "--:--") + '</span>' +
+              '</td>' +
+              '<td>' + (r.message || "") + '</td>' +
+              '<td><span class="status ' + 
+                (r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting") + '">' + 
+                (r.status || "承認待ち") + '</span></td>' +
+              '<td>' +
+                '<button class="btn-approve" onclick="updateStatus(\'' + r.id + '\',\'承認\')">✔</button>' +
+                '<button class="btn-reject" onclick="updateStatus(\'' + r.id + '\',\'却下\')">✖</button>' +
+              '</td>' +
+            '</tr>'
+          );
+        }).join("");
+
+      }
+
     </script>
   </body>
   </html>
