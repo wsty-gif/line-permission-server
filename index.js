@@ -792,7 +792,15 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         }
 
         document.getElementById("btnIn").onclick = () => sendAction("clockIn");
-        document.getElementById("btnOut").onclick = () => sendAction("clockOut");
+        document.getElementById("btnOut").onclick = async () => {
+          await sendAction("clockOut");
+
+          // 🔹退勤後に時刻表示をクリア
+          document.getElementById("timeIn").innerText = "--:--";
+          document.getElementById("timeOut").innerText = "--:--";
+          document.getElementById("timeBreakStart").innerText = "--:--";
+          document.getElementById("timeBreakEnd").innerText = "--:--";
+        };
         document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
         document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
       });
