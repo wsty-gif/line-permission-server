@@ -2295,28 +2295,24 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
           return;
         }
 
-        tbody.innerHTML = list.map(function(r) {
-          return (
-            '<tr>' +
-              '<td>' + (r.name || "未登録") + '<br><small style="color:#dc2626;">' + (r.status || "承認待ち") + '</small></td>' +
-              '<td>' + (r.date || "-") + '</td>' +
-              '<td style="text-align:left;">' +
-                '出勤: ' + (r.before?.clockIn || "--:--") + ' → <span class="new-time">' + (r.after?.clockIn || "--:--") + '</span><br>' +
-                '退勤: ' + (r.before?.clockOut || "--:--") + ' → <span class="new-time">' + (r.after?.clockOut || "--:--") + '</span><br>' +
-                '休憩開始: ' + (r.before?.breakStart || "--:--") + ' → <span class="new-time">' + (r.after?.breakStart || "--:--") + '</span><br>' +
-                '休憩終了: ' + (r.before?.breakEnd || "--:--") + ' → <span class="new-time">' + (r.after?.breakEnd || "--:--") + '</span>' +
-              '</td>' +
-              '<td>' + (r.message || "") + '</td>' +
-              '<td><span class="status ' +
-                (r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting") + '">' +
-                (r.status || "承認待ち") + '</span></td>' +
-              '<td>' +
-                '<button class="btn-approve" onclick="updateStatus(' + JSON.stringify(r.id) + ',\'承認\')">✔</button>' +
-                '<button class="btn-reject" onclick="updateStatus(' + JSON.stringify(r.id) + ',\'却下\')">✖</button>' +
-              '</td>' +
-            '</tr>'
-          );
-        }).join('');
+        tbody.innerHTML = ${list.map(r => `
+          <tr>
+            <td>${r.name || "未登録"}<br><small style="color:#dc2626;">${r.status || "承認待ち"}</small></td>
+            <td>${r.date || "-"}</td>
+            <td style="text-align:left;">
+              出勤: ${r.before?.clockIn || "--:--"} → <span class="new-time">${r.after?.clockIn || "--:--"}</span><br>
+              退勤: ${r.before?.clockOut || "--:--"} → <span class="new-time">${r.after?.clockOut || "--:--"}</span><br>
+              休憩開始: ${r.before?.breakStart || "--:--"} → <span class="new-time">${r.after?.breakStart || "--:--"}</span><br>
+              休憩終了: ${r.before?.breakEnd || "--:--"} → <span class="new-time">${r.after?.breakEnd || "--:--"}</span>
+            </td>
+            <td>${r.message || ""}</td>
+            <td><span class="status ${r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting"}">${r.status || "承認待ち"}</span></td>
+            <td>
+              <button class="btn-approve" onclick="updateStatus(\"${r.id}\",\"承認\")">✔</button>
+              <button class="btn-reject" onclick="updateStatus(\"${r.id}\",\"却下\")">✖</button>
+            </td>
+          </tr>
+        `).join("")};
       }
 
       async function updateStatus(id, status) {
