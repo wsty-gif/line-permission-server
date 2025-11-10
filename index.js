@@ -1728,10 +1728,36 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       .btn-send { background:#2563eb; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
       .current-record { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; margin-top:8px; font-size:13px; color:#374151; line-height:1.6; }
       .new-time { color:#16a34a; font-weight:bold; }
+
+      .top-bar {
+        position: sticky;   /* スクロールしても上部に固定 */
+        top: 0;
+        display: flex;
+        justify-content: flex-end;
+        background: #f9fafb; /* 背景と同じ色 */
+        padding: 8px 0;
+        z-index: 100; /* モーダルより上に出るように */
+      }
+      .btn-back {
+        background: #6b7280;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background 0.2s;
+      }
+      .btn-back:hover {
+        background: #4b5563;
+      }
     </style>
   </head>
   <body>
     <div class="container">
+    <div class="top-bar">
+      <button class="btn-back" onclick="history.back()">← 戻る</button>
+    </div>
 <h1>打刻時間修正申請</h1>
 <div id="status" style="text-align:center; margin-bottom:10px; color:#4b5563;"></div>
       <div class="card">
@@ -1748,7 +1774,6 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
           </tbody>
         </table>
       </div>
-      <button class="btn-back" onclick="history.back()">戻る</button>
     </div>
 
     <!-- 修正申請モーダル -->
