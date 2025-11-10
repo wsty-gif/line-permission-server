@@ -2269,8 +2269,8 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
               <td>${r.message || ""}</td>
               <td><span class="status ${r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting"}">${r.status || "承認待ち"}</span></td>
               <td>
-                <button class="btn-approve" onclick="updateStatus('${r.id}','承認')">✔</button>
-                <button class="btn-reject" onclick="updateStatus('${r.id}','却下')">✖</button>
+                <button class="btn-approve" onclick="updateStatus(\"${r.id}\",\"承認\")">✔</button>
+                <button class="btn-reject" onclick="updateStatus(\"${r.id}\",\"却下\")">✖</button>
               </td>
             </tr>
           `).join("") : `
@@ -2280,7 +2280,7 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
       </table>
     </div>
     <script>
-      async function renderRequests() {
+      function renderRequests() {
         const tbody = document.getElementById("requestBody");
         const pendingOnly = document.getElementById("pendingOnly")?.checked;
         let list = allRequests || [];
