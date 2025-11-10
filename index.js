@@ -2013,6 +2013,13 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
     .orderBy("createdAt", "desc")
     .get();
 
+  // 🔹「T」を削除し、「2025/11/10 10:39」形式に変換する関数
+  function formatDateTimeStr(value) {
+    if (!value) return "--:--";
+    if (typeof value !== "string") return value;
+    return value.replace("T", " ").replace(/-/g, "/");
+  }
+
   const requests = snap.docs.map(d => ({
     id: d.id,
     ...d.data(),
@@ -2156,10 +2163,10 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
               <td>${r.name || "未登録"}<br><small style="color:#dc2626;">${r.status || "承認待ち"}</small></td>
               <td>${r.date || "-"}</td>
               <td style="text-align:left;">
-                出勤: ${r.before?.clockIn || "--:--"} → <span class="new-time">${r.after?.clockIn || "--:--"}</span><br>
-                退勤: ${r.before?.clockOut || "--:--"} → <span class="new-time">${r.after?.clockOut || "--:--"}</span><br>
-                休憩開始: ${r.before?.breakStart || "--:--"} → <span class="new-time">${r.after?.breakStart || "--:--"}</span><br>
-                休憩終了: ${r.before?.breakEnd || "--:--"} → <span class="new-time">${r.after?.breakEnd || "--:--"}</span>
+                出勤: ${formatDateTimeStr(r.before?.clockIn)} → <span class="new-time">${formatDateTimeStr(r.after?.clockIn)}</span><br>
+                退勤: ${formatDateTimeStr(r.before?.clockOut)} → <span class="new-time">${formatDateTimeStr(r.after?.clockOut)}</span><br>
+                休憩開始: ${formatDateTimeStr(r.before?.breakStart)} → <span class="new-time">${formatDateTimeStr(r.after?.breakStart)}</span><br>
+                休憩終了: ${formatDateTimeStr(r.before?.breakEnd)} → <span class="new-time">${formatDateTimeStr(r.after?.breakEnd)}</span>
               </td>
               <td>${r.message || ""}</td>
               <td><span class="status ${r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting"}">${r.status || "承認待ち"}</span></td>
