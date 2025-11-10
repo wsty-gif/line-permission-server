@@ -1802,12 +1802,12 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         const formatDateTime = (value) => {
           if (!value) return "--:--";
 
-          // 例: "2025/11/8 15:42:23" → "2025/11/8 15:42"
+          // 🔹 before側（2025/11/8 15:42:22 → 2025/11/8 15:42）
           if (value.includes("/")) {
-            return value.replace(/:(\d{2})$/, ""); 
+            return value.replace(/:\d{2}$/, ""); // ← 最後の「:22」などを削除
           }
 
-          // 例: "2025-11-08T15:43" → "2025/11/08 15:43"
+          // 🔹 after側（2025-11-08T15:43 → 2025/11/08 15:43）
           if (value.includes("T")) {
             const [date, time] = value.split("T");
             return date.replace(/-/g, "/") + " " + time.slice(0, 5);
