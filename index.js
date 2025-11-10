@@ -776,10 +776,15 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       function getTodayKey(){ const jst=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo"})); return jst.toISOString().slice(0,10); }
       function initMonthSelector(){ const m=document.getElementById("monthSelect"); const jst=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo"})); m.value=jst.toISOString().slice(0,7); m.addEventListener("change",loadRecords); }
 
-      async function sendAction(action){
-        await fetch("/${store}/attendance/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,name,action})});
-        loadRecords();
+      async function sendAction(action, skipReload = false) {
+        await fetch("/${store}/attendance/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, name, action })
+        });
+        if (!skipReload) loadRecords();
       }
+
 
       document.addEventListener("DOMContentLoaded", () => {
 
@@ -793,13 +798,25 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         document.getElementById("btnIn").onclick = () => sendAction("clockIn");
         document.getElementById("btnOut").onclick = async () => {
-          await sendAction("clockOut");
+          const now = new Date();
+          const today = now.toISOString().slice(0, 10); // "2025-11-10" のような形
+          
+          // Firestoreなどから出勤時刻の日付を取得（allRecordsなどに保持している場合）
+          const latestRecord = allRecords?.[allRecords.length - 1]; // 最後の勤務データ
+          const workDate = latestRecord?.date || today;
 
-          // 🔹退勤後に時刻表示をクリア
-          document.getElementById("timeIn").innerText = "--:--";
-          document.getElementById("timeOut").innerText = "--:--";
-          document.getElementById("timeBreakStart").innerText = "--:--";
-          document.getElementById("timeBreakEnd").innerText = "--:--";
+          // 退勤処理
+          await sendAction("clockOut", true);
+
+          // 🔹 当日勤務の場合のみクリア
+          if (workDate === today) {
+            document.getElementById("timeIn").innerText = "--:--";
+            document.getElementById("timeOut").innerText = "--:--";
+            document.getElementById("timeBreakStart").innerText = "--:--";
+            document.getElementById("timeBreakEnd").innerText = "--:--";
+          } else {
+            console.log("翌日退勤のため、時刻表示を保持しました。");
+          }
         };
         document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
         document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
@@ -824,41 +841,39 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         document.getElementById("reqDate").value = today;
       }
 
-async function submitRequest() {
-  const date = document.getElementById("reqDate").value;
-  const msg = document.getElementById("reqMessage").value;
-  const newData = {
-    clockIn: document.getElementById("newClockIn").value,
-    clockOut: document.getElementById("newClockOut").value,
-    breakStart: document.getElementById("newBreakStart").value,
-    breakEnd: document.getElementById("newBreakEnd").value
-  };
+      async function submitRequest() {
+        const date = document.getElementById("reqDate").value;
+        const msg = document.getElementById("reqMessage").value;
+        const newData = {
+          clockIn: document.getElementById("newClockIn").value,
+          clockOut: document.getElementById("newClockOut").value,
+          breakStart: document.getElementById("newBreakStart").value,
+          breakEnd: document.getElementById("newBreakEnd").value
+        };
 
-  if (!date || !msg) {
-    alert("対象日と理由を入力してください。");
-    return;
-  }
+        if (!date || !msg) {
+          alert("対象日と理由を入力してください。");
+          return;
+        }
 
-  await fetch("/${store}/attendance/request", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userId,
-      name,
-      date,
-      message: msg,
-      after: newData,
-    }),
-  });
+        await fetch("/${store}/attendance/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            name,
+            date,
+            message: msg,
+            after: newData,
+          }),
+        });
 
-  alert("修正申請を送信しました。");
-  closeModal();
+        alert("修正申請を送信しました。");
+        closeModal();
 
-  // 🔹 Firestoreから最新ステータスを再取得して反映
-  await loadRequests();
-}
-
-
+        // 🔹 Firestoreから最新ステータスを再取得して反映
+        await loadRequests();
+      }
 
       async function loadRecords(){
         const month=document.getElementById("monthSelect").value;
