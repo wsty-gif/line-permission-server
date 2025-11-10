@@ -2280,16 +2280,6 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
       </table>
     </div>
     <script>
-      async function updateStatus(id, status) {
-        if (!confirm("この申請を" + status + "にしますか？")) return;
-        await fetch("/${store}/admin/fix/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, status })
-        });
-        alert("更新しました");
-        location.reload();
-      }
       async function renderRequests() {
         const tbody = document.getElementById("requestBody");
         const pendingOnly = document.getElementById("pendingOnly")?.checked;
@@ -2317,19 +2307,34 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
                 '休憩終了: ' + (r.before?.breakEnd || "--:--") + ' → <span class="new-time">' + (r.after?.breakEnd || "--:--") + '</span>' +
               '</td>' +
               '<td>' + (r.message || "") + '</td>' +
-              '<td><span class="status ' + 
-                (r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting") + '">' + 
+              '<td><span class="status ' +
+                (r.status === "承認" ? "approved" : r.status === "却下" ? "rejected" : "waiting") + '">' +
                 (r.status || "承認待ち") + '</span></td>' +
               '<td>' +
-                '<button class="btn-approve" onclick="updateStatus(\'' + r.id + '\',\'承認\')">✔</button>' +
-                '<button class="btn-reject" onclick="updateStatus(\'' + r.id + '\',\'却下\')">✖</button>' +
+                '<button class="btn-approve" onclick="updateStatus(' + JSON.stringify(r.id) + ',\'承認\')">✔</button>' +
+                '<button class="btn-reject" onclick="updateStatus(' + JSON.stringify(r.id) + ',\'却下\')">✖</button>' +
               '</td>' +
             '</tr>'
           );
-        }).join("");
-
+        }).join('');
       }
 
+      async function updateStatus(id, status) {
+        if (!confirm("この申請を" + status + "にしますか？")) return;
+        await fetch("/${store}/admin/fix/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, status })
+        });
+        alert("更新しました");
+        location.reload();
+      }
+
+      // DOMが読み込まれてからイベントを登録
+      window.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("pendingOnly").addEventListener("change", renderRequests);
+        renderRequests(); // 初期表示
+      });
     </script>
   </body>
   </html>
