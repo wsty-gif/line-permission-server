@@ -1804,7 +1804,7 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
 
           // 例: "2025/11/8 15:42:23" → "2025/11/8 15:42"
           if (value.includes("/")) {
-            return value.replace(/:\d{2}$/, "");
+            return value.replace(/:(\d{2})$/, ""); 
           }
 
           // 例: "2025-11-08T15:43" → "2025/11/08 15:43"
