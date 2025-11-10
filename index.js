@@ -936,24 +936,26 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
   res.json(doc.exists ? doc.data() : {});
 });
 
-// 🧾 打刻処理（日本時間対応版）
-// 🧾 打刻処理（修正版）
-// 🧾 打刻処理（日本時間で正確に保存）
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, action } = req.body;
 
-  // ✅ JSTの現在時刻
+  // JST時刻取得
   const now = new Date();
   const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
 
-  // ✅ 秒を0にして「分」までで固定
+  // 秒とミリ秒をゼロ化
   jstNow.setSeconds(0, 0);
 
-  // 勤怠日キー
+  // 🔹 「分まで」の文字列としてフォーマット（例: "2025/11/10 19:05"）
+  const formattedTime = jstNow.getFullYear() + "/" +
+    (jstNow.getMonth() + 1) + "/" +
+    jstNow.getDate() + " " +
+    String(jstNow.getHours()).padStart(2, "0") + ":" +
+    String(jstNow.getMinutes()).padStart(2, "0");
+
   const currentDate = jstNow.toISOString().split("T")[0];
 
-  // Firestore参照
   const ref = db.collection("companies").doc(store)
     .collection("attendance").doc(userId)
     .collection("records").doc(currentDate);
@@ -961,27 +963,20 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const snap = await ref.get();
   const data = snap.exists ? snap.data() : {};
 
-  // ✅ 「分」単位に丸めた時刻を Timestamp で保存
-  const ts = admin.firestore.Timestamp.fromDate(new Date(jstNow));
-
-  if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
-  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
-  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
-  if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
-
-  if (action === "clockIn") data.clockIn = ts;
-  if (action === "breakStart") data.breakStart = ts;
-  if (action === "breakEnd") data.breakEnd = ts;
-  if (action === "clockOut") data.clockOut = ts;
+  // 🔹 Timestampではなく文字列で登録
+  if (action === "clockIn") data.clockIn = formattedTime;
+  if (action === "breakStart") data.breakStart = formattedTime;
+  if (action === "breakEnd") data.breakEnd = formattedTime;
+  if (action === "clockOut") data.clockOut = formattedTime;
 
   data.userId = userId;
   data.name = name;
   data.date = currentDate;
 
   await ref.set(data, { merge: true });
-
-  res.send("打刻を記録しました（分単位で保存）");
+  res.send("打刻を記録しました（分単位）");
 });
+
 
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
