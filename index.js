@@ -1513,10 +1513,19 @@ app.get("/:store/attendance/records", ensureStore, async (req, res) => {
 });
 
 function formatDate(ts) {
-  const date = ts.toDate();
-  return date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-}
+  // もし Timestamp 型なら toDate() を使う
+  if (ts && typeof ts.toDate === "function") {
+    const date = ts.toDate();
+    return date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+  }
 
+  // もし文字列ならそのまま（例: "2025/11/10 19:05"）
+  if (typeof ts === "string") {
+    return ts;
+  }
+
+  return "--:--";
+}
 
 // 承認済みスタッフ一覧
 app.get("/:store/admin/staff", ensureStore, async (req, res) => {
