@@ -891,20 +891,38 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         await loadRequests();
       }
 
-      async function loadRecords(){
-        const month=document.getElementById("monthSelect").value;
-        const res=await fetch("/${store}/attendance/records?userId="+userId+"&month="+month);
-        const data=await res.json();
-        allRecords=data;
-        const tbody=document.getElementById("recordsBody");
-        tbody.innerHTML=data.map(r=>"<tr><td>"+(r.date||"--")+"</td><td>"+(r.clockIn||"--:--")+"</td><td>"+(r.clockOut||"--:--")+"</td><td>"+(r.breakStart||"--:--")+"</td><td>"+(r.breakEnd||"--:--")+"</td></tr>").join("");
+      async function loadRecords() {
+        const month = document.getElementById("monthSelect").value;
+        const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
+        const data = await res.json();
+        allRecords = data;
 
-        const today=getTodayKey();
-        const todayData=data.find(r=>r.date===today);
-        document.getElementById("timeIn").innerText=timeOnly(todayData?.clockIn);
-        document.getElementById("timeOut").innerText=timeOnly(todayData?.clockOut);
-        document.getElementById("timeBreakStart").innerText=timeOnly(todayData?.breakStart);
-        document.getElementById("timeBreakEnd").innerText=timeOnly(todayData?.breakEnd);
+        const tbody = document.getElementById("recordsBody");
+        tbody.innerHTML = data.map(r =>
+          "<tr><td>" + (r.date || "--") + "</td><td>" + (r.clockIn || "--:--") + "</td><td>" +
+          (r.clockOut || "--:--") + "</td><td>" + (r.breakStart || "--:--") + "</td><td>" +
+          (r.breakEnd || "--:--") + "</td></tr>"
+        ).join("");
+
+        const today = getTodayKey();
+        const todayData = data.find(r => r.date === today);
+        const latestRecord = data[data.length - 1];
+
+        // 🔹 日跨ぎ未退勤対応
+        if (latestRecord && !latestRecord.clockOut) {
+          // 「前日未退勤」の場合 → 出勤ボタンを非表示、退勤ボタンを表示
+          document.getElementById("btnIn").disabled = true;
+          document.getElementById("btnOut").disabled = false;
+        } else {
+          // 通常（全て退勤済） → 出勤ボタン表示、退勤ボタン非表示
+          document.getElementById("btnIn").disabled = false;
+          document.getElementById("btnOut").disabled = true;
+        }
+
+        document.getElementById("timeIn").innerText = timeOnly(todayData?.clockIn);
+        document.getElementById("timeOut").innerText = timeOnly(todayData?.clockOut);
+        document.getElementById("timeBreakStart").innerText = timeOnly(todayData?.breakStart);
+        document.getElementById("timeBreakEnd").innerText = timeOnly(todayData?.breakEnd);
       }
 
       main();
@@ -989,22 +1007,32 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
     String(jstNow.getHours()).padStart(2, "0") + ":" +
     String(jstNow.getMinutes()).padStart(2, "0");
 
-  // 🔹 勤務日を判定（日跨ぎ対応）
   const recordsRef = db.collection("companies").doc(store)
     .collection("attendance").doc(userId)
     .collection("records");
+
+  // 🔹 直近の勤務データを取得
   const snapshot = await recordsRef.orderBy("date", "desc").limit(1).get();
+  const latestData = !snapshot.empty ? snapshot.docs[0].data() : null;
 
   let workDate;
-  if (action === "clockOut" && !snapshot.empty) {
-    workDate = snapshot.docs[0].data().date; // 前回の出勤日を使用
+
+  if (action === "clockOut" && latestData) {
+    // ⏰ 前日の出勤データに退勤登録
+    workDate = latestData.date;
   } else {
-    workDate = jstNow.toISOString().split("T")[0]; // 新規出勤
+    workDate = jstNow.toISOString().split("T")[0];
   }
 
   const ref = recordsRef.doc(workDate);
   const snap = await ref.get();
   const data = snap.exists ? snap.data() : {};
+
+  // 🔹 退勤漏れ補正
+  if (action === "clockIn" && latestData && !latestData.clockOut) {
+    await recordsRef.doc(latestData.date).update({ clockOut: formattedTime });
+    console.log(`自動退勤処理: ${latestData.date}`);
+  }
 
   if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
   if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
@@ -1021,9 +1049,9 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   data.date = workDate;
 
   await ref.set(data, { merge: true });
-  res.send("打刻を記録しました（日跨ぎ対応）");
-});
 
+  res.send("打刻を記録しました（日跨ぎ対応＋前日退勤補正）");
+});
 
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
