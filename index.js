@@ -763,13 +763,29 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       let userId, name, allRecords = [];
 
       async function main() {
-        await liff.init({ liffId: "${storeConf.liffId}" });
-        if (!liff.isLoggedIn()) return liff.login();
-        const p = await liff.getProfile();
-        userId = p.userId; name = p.displayName;
-        document.getElementById("status").innerText = name + " さんログイン中";
-        initMonthSelector();
-        await loadRecords();
+        try {
+          await liff.init({ liffId: "${storeConf.liffId}" });
+
+          // ✅ location.pathname が /manual の場合のみ manual処理に進む
+          if (location.pathname.includes("/manual")) return;
+
+          if (!liff.isLoggedIn()) {
+            // ✅ manualではない画面のみでログイン誘導
+            liff.login({ redirectUri: location.href });
+            return;
+          }
+
+          const p = await liff.getProfile();
+          userId = p.userId;
+          name = p.displayName;
+          document.getElementById("status").innerText = name + " さんログイン中";
+
+          initMonthSelector();
+          await loadRecords();
+        } catch (e) {
+          console.error("LIFF初期化エラー:", e);
+          document.getElementById("status").innerText = "ログインエラーが発生しました";
+        }
       }
 
       function timeOnly(str){ if(!str)return "--:--"; const p=String(str).split(" "); return p.length>1?p[1].slice(0,5):str.slice(-5); }
