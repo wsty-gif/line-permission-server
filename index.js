@@ -793,14 +793,51 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       function initMonthSelector(){ const m=document.getElementById("monthSelect"); const jst=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo"})); m.value=jst.toISOString().slice(0,7); m.addEventListener("change",loadRecords); }
 
       async function sendAction(action, skipReload = false) {
-        await fetch("/${store}/attendance/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, name, action })
-        });
-        if (!skipReload) loadRecords();
-      }
+        let message = "";
 
+        // ✅ ボタンごとのアラートメッセージを設定
+        switch (action) {
+          case "clockIn":
+            message = "出勤を記録しました。";
+            break;
+          case "clockOut":
+            message = "退勤を記録しました。";
+            break;
+          case "breakStart":
+            message = "休憩を開始しました。";
+            break;
+          case "breakEnd":
+            message = "休憩を終了しました。";
+            break;
+          default:
+            message = "打刻を記録しました。";
+        }
+
+        try {
+          const res = await fetch("/${store}/attendance/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, name, action })
+          });
+
+          const text = await res.text();
+          console.log("送信結果:", text);
+
+          // 🔹 登録成功時にアラート表示
+          if (text.includes("打刻を記録しました")) {
+            alert(message);
+          } else {
+            alert("エラー: " + text);
+          }
+
+          // 🔹 一覧を即時更新
+          if (!skipReload) loadRecords();
+
+        } catch (error) {
+          console.error(error);
+          alert("通信エラーが発生しました。");
+        }
+      }
 
       document.addEventListener("DOMContentLoaded", () => {
 
