@@ -813,27 +813,41 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         }
 
         document.getElementById("btnIn").onclick = () => sendAction("clockIn");
-        document.getElementById("btnOut").onclick = async () => {
-          const now = new Date();
-          const today = now.toISOString().slice(0, 10); // "2025-11-10" のような形
-          
-          // Firestoreなどから出勤時刻の日付を取得（allRecordsなどに保持している場合）
-          const latestRecord = allRecords?.[allRecords.length - 1]; // 最後の勤務データ
-          const workDate = latestRecord?.date || today;
+        // 退勤ボタン押下
+        document.getElementById("btnOut").addEventListener("click", async () => {
+          try {
+            const res = await fetch("/${store}/attendance/submit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId,
+                name,
+                action: "clockOut"
+              })
+            });
 
-          // 退勤処理
-          await sendAction("clockOut", true);
+            const msg = await res.text();
+            alert(msg);
 
-          // 🔹 当日勤務の場合のみクリア
-          if (workDate === today) {
-            document.getElementById("timeIn").innerText = "--:--";
-            document.getElementById("timeOut").innerText = "--:--";
-            document.getElementById("timeBreakStart").innerText = "--:--";
-            document.getElementById("timeBreakEnd").innerText = "--:--";
-          } else {
-            console.log("翌日退勤のため、時刻表示を保持しました。");
+            // 🔹 退勤成功後に即UIリセット
+            if (msg.includes("打刻を記録しました")) {
+              // 全ての時刻クリア
+              document.getElementById("timeIn").innerText = "--:--";
+              document.getElementById("timeOut").innerText = "--:--";
+              document.getElementById("timeBreakStart").innerText = "--:--";
+              document.getElementById("timeBreakEnd").innerText = "--:--";
+
+              // 出勤ボタンのみ有効に戻す
+              document.getElementById("btnIn").disabled = false;
+              document.getElementById("btnOut").disabled = true;
+            }
+
+          } catch (e) {
+            console.error(e);
+            alert("退勤の記録に失敗しました。");
           }
-        };
+        });
+
         document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
         document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
       });
