@@ -1153,10 +1153,10 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
             "<tr>" +
               "<td>" + (r.date || "") + "</td>" +
               "<td>" + (r.name || "未登録") + "</td>" +
-              "<td>" + formatTime(r.clockIn) + "</td>" +
-              "<td>" + formatTime(r.clockOut) + "</td>" +
-              "<td>" + formatTime(r.breakStart) + "</td>" +
-              "<td>" + formatTime(r.breakEnd) + "</td>" +
+              "<td>" + r.clockIn + "</td>" +
+              "<td>" + r.clockOut + "</td>" +
+              "<td>" + r.breakStart + "</td>" +
+              "<td>" + r.breakEnd + "</td>" +
             "</tr>";
         });
 
