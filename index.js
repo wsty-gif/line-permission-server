@@ -910,19 +910,25 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         // 🔹 日跨ぎ未退勤対応
         if (latestRecord && !latestRecord.clockOut) {
-          // 「前日未退勤」の場合 → 出勤ボタンを非表示、退勤ボタンを表示
+          // 「前日未退勤」→ 出勤ボタン無効、退勤ボタン有効
           document.getElementById("btnIn").disabled = true;
           document.getElementById("btnOut").disabled = false;
+
+          // 🔸 退勤以外の時刻は保持して表示
+          document.getElementById("timeIn").innerText = timeOnly(latestRecord.clockIn);
+          document.getElementById("timeBreakStart").innerText = timeOnly(latestRecord.breakStart);
+          document.getElementById("timeBreakEnd").innerText = timeOnly(latestRecord.breakEnd);
+          document.getElementById("timeOut").innerText = "--:--";
         } else {
-          // 通常（全て退勤済） → 出勤ボタン表示、退勤ボタン非表示
+          // 🔹 通常（全て退勤済み or 新規勤務）
           document.getElementById("btnIn").disabled = false;
           document.getElementById("btnOut").disabled = true;
-        }
 
-        document.getElementById("timeIn").innerText = timeOnly(todayData?.clockIn);
-        document.getElementById("timeOut").innerText = timeOnly(todayData?.clockOut);
-        document.getElementById("timeBreakStart").innerText = timeOnly(todayData?.breakStart);
-        document.getElementById("timeBreakEnd").innerText = timeOnly(todayData?.breakEnd);
+          document.getElementById("timeIn").innerText = timeOnly(todayData?.clockIn);
+          document.getElementById("timeOut").innerText = timeOnly(todayData?.clockOut);
+          document.getElementById("timeBreakStart").innerText = timeOnly(todayData?.breakStart);
+          document.getElementById("timeBreakEnd").innerText = timeOnly(todayData?.breakEnd);
+        }
       }
 
       main();
