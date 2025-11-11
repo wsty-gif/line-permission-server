@@ -814,40 +814,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
         document.getElementById("btnIn").onclick = () => sendAction("clockIn");
         // 退勤ボタン押下
-        document.getElementById("btnOut").addEventListener("click", async () => {
-          try {
-            const res = await fetch("/${store}/attendance/submit", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId,
-                name,
-                action: "clockOut"
-              })
-            });
-
-            const msg = await res.text();
-            alert(msg);
-
-            // 🔹 退勤成功後に即UIリセット
-            if (msg.includes("打刻を記録しました")) {
-              // 全ての時刻クリア
-              document.getElementById("timeIn").innerText = "--:--";
-              document.getElementById("timeOut").innerText = "--:--";
-              document.getElementById("timeBreakStart").innerText = "--:--";
-              document.getElementById("timeBreakEnd").innerText = "--:--";
-
-              // 出勤ボタンのみ有効に戻す
-              document.getElementById("btnIn").disabled = false;
-              document.getElementById("btnOut").disabled = true;
-            }
-
-          } catch (e) {
-            console.error(e);
-            alert("退勤の記録に失敗しました。");
-          }
-        });
-
+        document.getElementById("btnOut").onclick = () => sendAction("clockOut");
         document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
         document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
       });
@@ -911,39 +878,44 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         const data = await res.json();
         allRecords = data;
 
+        // テーブル描画
         const tbody = document.getElementById("recordsBody");
         tbody.innerHTML = data.map(r =>
-          "<tr><td>" + (r.date || "--") + "</td><td>" + (r.clockIn || "--:--") + "</td><td>" +
-          (r.clockOut || "--:--") + "</td><td>" + (r.breakStart || "--:--") + "</td><td>" +
+          "<tr><td>" + (r.date || "--") + "</td><td>" +
+          (r.clockIn || "--:--") + "</td><td>" +
+          (r.clockOut || "--:--") + "</td><td>" +
+          (r.breakStart || "--:--") + "</td><td>" +
           (r.breakEnd || "--:--") + "</td></tr>"
         ).join("");
 
         const today = getTodayKey();
         const todayData = data.find(r => r.date === today);
-        const latestRecord = data[data.length - 1];
+        const latestRecord = data[data.length - 1]; // 一番新しい勤務
 
-        // 🔹 日跨ぎ未退勤対応
+        // 🔹 まだ退勤していない勤務がある場合
         if (latestRecord && !latestRecord.clockOut) {
-          // 「前日未退勤」→ 出勤ボタン無効、退勤ボタン有効
+          // 出勤ボタンは押せない・退勤ボタンだけ押せる
           document.getElementById("btnIn").disabled = true;
           document.getElementById("btnOut").disabled = false;
 
-          // 🔸 退勤以外の時刻は保持して表示
-          document.getElementById("timeIn").innerText = timeOnly(latestRecord.clockIn);
+          // ボタン内の時刻は「未退勤のその勤務」の内容を表示
+          document.getElementById("timeIn").innerText         = timeOnly(latestRecord.clockIn);
           document.getElementById("timeBreakStart").innerText = timeOnly(latestRecord.breakStart);
-          document.getElementById("timeBreakEnd").innerText = timeOnly(latestRecord.breakEnd);
-          document.getElementById("timeOut").innerText = "--:--";
+          document.getElementById("timeBreakEnd").innerText   = timeOnly(latestRecord.breakEnd);
+          document.getElementById("timeOut").innerText        = "--:--";
         } else {
-          // 🔹 通常（全て退勤済み or 新規勤務）
+          // 🔹 すべて退勤済み or まだ一度も出勤していない → 通常状態
           document.getElementById("btnIn").disabled = false;
           document.getElementById("btnOut").disabled = true;
 
-          document.getElementById("timeIn").innerText = timeOnly(todayData?.clockIn);
-          document.getElementById("timeOut").innerText = timeOnly(todayData?.clockOut);
+          // 今日分のデータだけ反映（なければ "--:--"）
+          document.getElementById("timeIn").innerText         = timeOnly(todayData?.clockIn);
+          document.getElementById("timeOut").innerText        = timeOnly(todayData?.clockOut);
           document.getElementById("timeBreakStart").innerText = timeOnly(todayData?.breakStart);
-          document.getElementById("timeBreakEnd").innerText = timeOnly(todayData?.breakEnd);
+          document.getElementById("timeBreakEnd").innerText   = timeOnly(todayData?.breakEnd);
         }
       }
+
 
       main();
     </script>
