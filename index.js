@@ -823,7 +823,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
           console.log("送信結果:", text);
 
           if (text.includes("打刻を記録しました")) {
-            showToast(message); // ✅ ← ここを alert から変更
+            showToast(message); // ✅ 上中央に表示
           } else {
             showToast("エラー: " + text);
           }
@@ -950,27 +950,43 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         }
       }
 
-      // ✅ 数秒で消えるトースト通知
       function showToast(message) {
         const toast = document.getElementById("toast");
         toast.textContent = message;
         toast.style.display = "block";
 
-        // 3秒でフェードアウト
+        // 少しフェードイン効果
+        toast.style.transition = "opacity 0.3s ease";
+        toast.style.opacity = "1";
+
+        // 3秒後にフェードアウト
         setTimeout(() => {
-          toast.style.transition = "opacity 0.5s";
+          toast.style.transition = "opacity 0.5s ease";
           toast.style.opacity = "0";
           setTimeout(() => {
             toast.style.display = "none";
-            toast.style.opacity = "0.9";
           }, 500);
         }, 2500);
       }
 
-
       main();
     </script>
-    <div id="toast" style="display:none; position:fixed; bottom:30px; right:30px; background:#333; color:#fff; padding:10px 20px; border-radius:8px; font-size:14px; opacity:0.9; z-index:9999;"></div>
+    <div id="toast" style="
+      display:none;
+      position:fixed;
+      top:30px;
+      left:50%;
+      transform:translateX(-50%);
+      background:rgba(50,50,50,0.9);
+      color:#fff;
+      padding:12px 24px;
+      border-radius:8px;
+      font-size:15px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.2);
+      z-index:9999;
+      opacity:0.9;
+      backdrop-filter:blur(4px);
+    "></div>
 
   </body>
   </html>
