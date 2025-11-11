@@ -795,7 +795,6 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
       async function sendAction(action, skipReload = false) {
         let message = "";
 
-        // ✅ ボタンごとのアラートメッセージを設定
         switch (action) {
           case "clockIn":
             message = "出勤を記録しました。";
@@ -823,19 +822,17 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
           const text = await res.text();
           console.log("送信結果:", text);
 
-          // 🔹 登録成功時にアラート表示
           if (text.includes("打刻を記録しました")) {
-            alert(message);
+            showToast(message); // ✅ ← ここを alert から変更
           } else {
-            alert("エラー: " + text);
+            showToast("エラー: " + text);
           }
 
-          // 🔹 一覧を即時更新
           if (!skipReload) loadRecords();
 
         } catch (error) {
           console.error(error);
-          alert("通信エラーが発生しました。");
+          showToast("通信エラーが発生しました。");
         }
       }
 
@@ -953,9 +950,28 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         }
       }
 
+      // ✅ 数秒で消えるトースト通知
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.style.display = "block";
+
+        // 3秒でフェードアウト
+        setTimeout(() => {
+          toast.style.transition = "opacity 0.5s";
+          toast.style.opacity = "0";
+          setTimeout(() => {
+            toast.style.display = "none";
+            toast.style.opacity = "0.9";
+          }, 500);
+        }, 2500);
+      }
+
 
       main();
     </script>
+    <div id="toast" style="display:none; position:fixed; bottom:30px; right:30px; background:#333; color:#fff; padding:10px 20px; border-radius:8px; font-size:14px; opacity:0.9; z-index:9999;"></div>
+
   </body>
   </html>
   `);
