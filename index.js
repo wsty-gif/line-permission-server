@@ -2564,17 +2564,30 @@ app.post("/:store/admin/settings/save", ensureStore, async (req, res) => {
   `);
 });
 
+// ==============================
+// 👥 雇用区分別設定ページ
+// ==============================
 app.get("/:store/admin/settings/employment", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
   const types = ["fulltime", "parttime", "contractor", "temp"];
-  const labels = { fulltime: "正社員", parttime: "アルバイト", contractor: "業務委託", temp: "パート" };
+  const labels = {
+    fulltime: "正社員",
+    parttime: "アルバイト",
+    contractor: "業務委託",
+    temp: "パート"
+  };
 
   let data = {};
   for (const t of types) {
-    const doc = await db.collection("companies").doc(store).collection("settings").doc("employment_" + t).get();
+    const doc = await db
+      .collection("companies")
+      .doc(store)
+      .collection("settings")
+      .doc("employment_" + t)
+      .get();
     data[t] = doc.exists ? doc.data() : {};
   }
 
@@ -2583,65 +2596,98 @@ app.get("/:store/admin/settings/employment", ensureStore, async (req, res) => {
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${store} 雇用区分別設定</title>
   <style>
-    body{font-family:sans-serif;background:#f9fafb;padding:20px;}
-    .tabs{display:flex;justify-content:center;gap:10px;margin-bottom:20px;}
-    .tab{padding:10px 16px;border-radius:8px;background:#e5e7eb;cursor:pointer;}
-    .tab.active{background:#2563eb;color:#fff;}
-    .panel{display:none;}
-    .panel.active{display:block;}
-    label{display:block;margin-top:10px;font-weight:600;}
-    input{width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:6px;}
-    button{margin-top:20px;background:#2563eb;color:white;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;}
+    body { font-family:sans-serif; background:#f9fafb; padding:20px; }
+    h1 { text-align:center; color:#2563eb; margin-bottom:20px; }
+    .tabs { display:flex; justify-content:center; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+    .tab { padding:10px 18px; border-radius:8px; background:#e5e7eb; cursor:pointer; transition:0.2s; }
+    .tab.active { background:#2563eb; color:white; }
+    .panel { display:none; }
+    .panel.active { display:block; animation:fadeIn 0.3s; }
+    @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+    form { background:#fff; padding:20px; border-radius:8px; max-width:700px; margin:0 auto; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    label { display:block; margin-top:12px; font-weight:600; }
+    input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-top:4px; }
+    button { margin-top:20px; background:#2563eb; color:white; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; }
+    button:hover { background:#1d4ed8; }
+    a { display:block; text-align:center; margin-top:20px; color:#2563eb; text-decoration:none; }
   </style></head><body>
 
-  <h1 style="text-align:center;color:#2563eb;">雇用区分別設定</h1>
+  <h1>👥 雇用区分別設定</h1>
+
   <div class="tabs">
-    ${types.map((t,i)=>`<div class="tab ${i===0?"active":""}" data-tab="${t}">${labels[t]}</div>`).join("")}
+    ${types.map((t,i)=>`
+      <div class="tab ${i===0?"active":""}" data-tab="${t}">${labels[t]}</div>
+    `).join("")}
   </div>
 
   ${types.map((t,i)=>`
-  <div id="${t}" class="panel ${i===0?"active":""}">
-    <form method="POST" action="/${store}/admin/settings/employment/save/${t}">
-      <label>基本時給／日給／月給</label>
-      <input name="basePay" value="${data[t].basePay || ""}" placeholder="時給1100円など">
+    <div id="${t}" class="panel ${i===0?"active":""}">
+      <form method="POST" action="/${store}/admin/settings/employment/save/${t}">
+        <h2 style="text-align:center; color:#374151;">${labels[t]} の設定</h2>
 
-      <label>残業割増率（％）</label>
-      <input name="overtimeRate" type="number" value="${data[t].overtimeRate || 25}">
+        <label>基本時給／日給／月給</label>
+        <input name="basePay" value="${data[t].basePay || ""}" placeholder="例：時給1100円、月給25万円など">
 
-      <label>深夜手当時間帯</label>
-      <input name="nightHours" value="${data[t].nightHours || "22:00〜5:00"}">
+        <label>残業割増率（％）</label>
+        <input name="overtimeRate" type="number" value="${data[t].overtimeRate || 25}">
 
-      <label>休日出勤割増率（％）</label>
-      <input name="holidayRate" type="number" value="${data[t].holidayRate || 35}">
+        <label>深夜手当時間帯</label>
+        <input name="nightHours" value="${data[t].nightHours || "22:00〜5:00"}">
 
-      <label>勤続／役職手当ルール</label>
-      <input name="bonusRule" value="${data[t].bonusRule || ""}" placeholder="例：1年ごとに＋5000円">
+        <label>休日出勤割増率（％）</label>
+        <input name="holidayRate" type="number" value="${data[t].holidayRate || 35}">
 
-      <button type="submit">保存</button>
-    </form>
-  </div>`).join("")}
+        <label>勤続／役職手当ルール</label>
+        <input name="bonusRule" value="${data[t].bonusRule || ""}" placeholder="例：1年ごとに＋5000円">
+
+        <label>有給休暇付与条件（任意）</label>
+        <input name="paidLeaveRule" value="${data[t].paidLeaveRule || ""}" placeholder="例：入社6ヶ月後10日">
+
+        <button type="submit">保存</button>
+      </form>
+    </div>
+  `).join("")}
+
+  <a href="/${store}/admin/settings">← 設定メニューへ戻る</a>
 
   <script>
-  document.querySelectorAll(".tab").forEach(tab=>{
-    tab.addEventListener("click",()=>{
-      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  // 🔹 タブ切替スクリプト
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
       tab.classList.add("active");
       document.getElementById(tab.dataset.tab).classList.add("active");
     });
   });
   </script>
+
   </body></html>
   `);
 });
 
 app.post("/:store/admin/settings/employment/save/:type", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
   const { store } = req;
   const { type } = req.params;
   const data = req.body;
-  await db.collection("companies").doc(store).collection("settings").doc("employment_" + type).set(data, { merge: true });
-  res.redirect(`/${store}/admin/settings/employment`);
+
+  await db.collection("companies")
+    .doc(store)
+    .collection("settings")
+    .doc("employment_" + type)
+    .set(data, { merge: true });
+
+  res.send(`
+    <html><body style="font-family:sans-serif;text-align:center;padding-top:30vh;">
+      <h2 style="color:#16a34a;">✅ ${type} の設定を保存しました</h2>
+      <a href="/${store}/admin/settings/employment">← 雇用区分別設定へ戻る</a>
+    </body></html>
+  `);
 });
+
 
 // ==============================
 // 📋 店舗共通設定ページ
@@ -2742,6 +2788,171 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
     <html><body style="font-family:sans-serif;text-align:center;padding-top:30vh;">
       <h2 style="color:#16a34a;">✅ 店舗共通設定を保存しました</h2>
       <a href="/${store}/admin/settings/general">← 戻る</a>
+    </body></html>
+  `);
+});
+
+// ==============================
+// 🧑‍💼 従業員個別設定ページ（一覧＋個別編集）
+// ==============================
+app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+
+  // 🔹 Firestoreから従業員一覧を取得（membersコレクション想定）
+  const snapshot = await db
+    .collection("companies")
+    .doc(store)
+    .collection("members")
+    .get();
+
+  const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  res.send(`
+  <!DOCTYPE html><html lang="ja"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${store} 従業員個別設定</title>
+  <style>
+    body { font-family:sans-serif; background:#f9fafb; padding:20px; }
+    h1 { color:#2563eb; text-align:center; }
+    table { width:100%; max-width:900px; margin:20px auto; border-collapse:collapse; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    th, td { border:1px solid #ddd; padding:10px; text-align:left; }
+    th { background:#2563eb; color:white; }
+    tr:hover { background:#f3f4f6; }
+    a.btn { color:#2563eb; text-decoration:none; font-weight:bold; }
+    a.btn:hover { text-decoration:underline; }
+    .back { text-align:center; margin-top:20px; }
+  </style></head><body>
+    <h1>🧑‍💼 従業員個別設定</h1>
+
+    <table>
+      <tr><th>名前</th><th>雇用区分</th><th>ステータス</th><th>編集</th></tr>
+      ${members.length
+        ? members
+            .map(
+              m => `
+        <tr>
+          <td>${m.name || "未登録"}</td>
+          <td>${m.employmentType || "未設定"}</td>
+          <td>${m.status || "在籍中"}</td>
+          <td><a class="btn" href="/${store}/admin/settings/staff/${m.id}">編集</a></td>
+        </tr>`
+            )
+            .join("")
+        : `<tr><td colspan="4" style="text-align:center;">従業員データがありません</td></tr>`}
+    </table>
+
+    <div class="back">
+      <a href="/${store}/admin/settings">← 設定メニューへ戻る</a>
+    </div>
+  </body></html>
+  `);
+});
+
+// ==============================
+// ✏️ 個別編集ページ
+// ==============================
+app.get("/:store/admin/settings/staff/:id", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const { store, params } = req;
+  const staffId = params.id;
+
+  // 🔹 基本データ取得（members）
+  const memberDoc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("members")
+    .doc(staffId)
+    .get();
+  const member = memberDoc.exists ? memberDoc.data() : {};
+
+  // 🔹 個別設定（settings/staff/{id}）
+  const configDoc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("settings")
+    .doc("staff_" + staffId)
+    .get();
+  const conf = configDoc.exists ? configDoc.data() : {};
+
+  res.send(`
+  <!DOCTYPE html><html lang="ja"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${member.name || "従業員"} の設定</title>
+  <style>
+    body { font-family:sans-serif; background:#f9fafb; padding:20px; }
+    h1 { text-align:center; color:#2563eb; }
+    form { background:#fff; padding:20px; border-radius:8px; max-width:700px; margin:0 auto; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    label { display:block; margin-top:12px; font-weight:600; }
+    input, select { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-top:4px; }
+    button { margin-top:20px; background:#2563eb; color:white; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; }
+    button:hover { background:#1d4ed8; }
+    a { display:block; text-align:center; margin-top:20px; color:#2563eb; text-decoration:none; }
+  </style></head><body>
+
+    <h1>${member.name || "従業員"} の個別設定</h1>
+
+    <form method="POST" action="/${store}/admin/settings/staff/save/${staffId}">
+      <label>雇用区分</label>
+      <select name="employmentType">
+        <option value="">選択してください</option>
+        <option value="正社員" ${member.employmentType === "正社員" ? "selected" : ""}>正社員</option>
+        <option value="アルバイト" ${member.employmentType === "アルバイト" ? "selected" : ""}>アルバイト</option>
+        <option value="業務委託" ${member.employmentType === "業務委託" ? "selected" : ""}>業務委託</option>
+        <option value="パート" ${member.employmentType === "パート" ? "selected" : ""}>パート</option>
+      </select>
+
+      <label>個別基本時給／月給</label>
+      <input type="text" name="basePay" value="${conf.basePay || ""}" placeholder="例：時給1200円、月給28万円など">
+
+      <label>個別残業割増率（％）</label>
+      <input type="number" name="overtimeRate" value="${conf.overtimeRate || ""}" placeholder="例：25">
+
+      <label>個別深夜手当時間帯</label>
+      <input type="text" name="nightHours" value="${conf.nightHours || ""}" placeholder="例：22:00〜5:00">
+
+      <label>個別休日出勤割増率（％）</label>
+      <input type="number" name="holidayRate" value="${conf.holidayRate || ""}" placeholder="例：35">
+
+      <label>勤続／役職手当ルール</label>
+      <input type="text" name="bonusRule" value="${conf.bonusRule || ""}" placeholder="例：1年ごとに＋5000円">
+
+      <button type="submit">保存</button>
+    </form>
+
+    <a href="/${store}/admin/settings/staff">← 従業員一覧に戻る</a>
+  </body></html>
+  `);
+});
+
+// ==============================
+// 💾 個別設定保存
+// ==============================
+app.post("/:store/admin/settings/staff/save/:id", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const { store, params, body } = req;
+  const staffId = params.id;
+
+  // 🔹 雇用区分は members にも反映
+  await db.collection("companies").doc(store).collection("members").doc(staffId)
+    .set({ employmentType: body.employmentType }, { merge: true });
+
+  // 🔹 個別設定を保存
+  await db.collection("companies").doc(store)
+    .collection("settings")
+    .doc("staff_" + staffId)
+    .set(body, { merge: true });
+
+  res.send(`
+    <html><body style="font-family:sans-serif;text-align:center;padding-top:30vh;">
+      <h2 style="color:#16a34a;">✅ ${staffId} の設定を保存しました</h2>
+      <a href="/${store}/admin/settings/staff">← 従業員一覧へ戻る</a>
     </body></html>
   `);
 });
