@@ -2793,7 +2793,7 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
 });
 
 // ==============================
-// 🧑‍💼 従業員個別設定ページ（承認済み一覧・自動スクロール対応）
+// 🧑‍💼 従業員個別設定ページ（承認済み一覧・コンパクト表示）
 // ==============================
 app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
@@ -2811,7 +2811,7 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
 
   const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  // 🔹 個別設定の雇用区分を取得（あれば上書き）
+  // 🔹 雇用区分を個別設定から取得（存在すれば上書き）
   for (const m of members) {
     const staffDoc = await db
       .collection("companies")
@@ -2831,114 +2831,127 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   <title>${store} 従業員個別設定</title>
   <style>
     body {
-      font-family:sans-serif;
-      background:#f9fafb;
-      padding:20px;
-    }
-    h1 {
-      color:#2563eb;
-      text-align:center;
-      margin-bottom:16px;
+      font-family: "Segoe UI", "Hiragino Sans", sans-serif;
+      background: #f8fafc;
+      padding: 20px;
     }
 
-    /* テーブル全体のラッパー（通常は固定幅、長い時のみスクロール） */
+    h1 {
+      text-align: center;
+      color: #2563eb;
+      font-size: 1.4rem;
+      margin-bottom: 14px;
+    }
+
     .table-wrapper {
-      width:100%;
-      max-width:900px;
-      margin:0 auto;
-      background:#fff;
-      border-radius:8px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.1);
-      overflow-x:auto; /* 長い時だけ自動スクロール */
+      overflow-x: auto;
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      padding: 6px 10px;
     }
 
     table {
-      width:100%;
-      border-collapse:collapse;
-      min-width:100%;
-      table-layout:auto; /* 内容に応じて幅を可変 */
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      min-width: 500px;
     }
 
     th, td {
-      border:1px solid #ddd;
-      padding:10px;
-      text-align:left;
-      vertical-align:middle;
-      word-break:keep-all;
-      white-space:nowrap;
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
     }
 
     th {
-      background:#2563eb;
-      color:white;
+      color: #374151;
+      font-weight: 600;
+      background: #f3f4f6;
     }
 
-    tr:hover { background:#f3f4f6; }
+    tr:hover {
+      background: #f9fafb;
+    }
 
     a.btn {
-      display:inline-block;
-      background:#2563eb;
-      color:white;
-      padding:6px 10px;
-      border-radius:6px;
-      text-decoration:none;
-      font-size:13px;
+      display: inline-block;
+      padding: 5px 8px;
+      border-radius: 6px;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      font-size: 0.8rem;
+      transition: 0.2s;
     }
-    a.btn:hover { background:#1d4ed8; }
+
+    a.btn:hover {
+      background: #1e40af;
+    }
 
     .back {
-      text-align:center;
-      margin-top:20px;
-    }
-    .back a {
-      color:#2563eb;
-      text-decoration:none;
-    }
-    .back a:hover {
-      text-decoration:underline;
+      text-align: center;
+      margin-top: 18px;
     }
 
-    /* 📱 小さい画面でも横スクロールが必要なときだけ発動 */
+    .back a {
+      color: #2563eb;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+
+    .back a:hover {
+      text-decoration: underline;
+    }
+
+    /* 📱 小画面ではスクロールが自動有効 */
     @media (max-width: 640px) {
-      .table-wrapper { overflow-x:auto; }
-      table { min-width:600px; }
+      .table-wrapper { overflow-x: auto; }
+      table { min-width: 480px; }
     }
   </style>
-  </head><body>
+  </head>
+  <body>
+    <h1>🧑‍💼 従業員個別設定</h1>
 
-  <h1>🧑‍💼 従業員個別設定</h1>
-
-  <div class="table-wrapper">
-    <table>
-      <tr>
-        <th>編集</th>
-        <th>名前</th>
-        <th>雇用区分</th>
-      </tr>
-      ${
-        members.length
-          ? members
-              .map(
-                (m) => `
+    <div class="table-wrapper">
+      <table>
+        <thead>
           <tr>
-            <td><a class="btn" href="/${store}/admin/settings/staff/${m.id}">編集</a></td>
-            <td>${m.name || "未登録"}</td>
-            <td>${m.employmentType || "未設定"}</td>
-          </tr>`
-              )
-              .join("")
-          : `<tr><td colspan="3" style="text-align:center;">承認済みの従業員がいません</td></tr>`
-      }
-    </table>
-  </div>
+            <th>編集</th>
+            <th>名前</th>
+            <th>雇用区分</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            members.length
+              ? members
+                  .map(
+                    (m) => `
+              <tr>
+                <td><a class="btn" href="/${store}/admin/settings/staff/${m.id}">編集</a></td>
+                <td>${m.name || "未登録"}</td>
+                <td>${m.employmentType || "未設定"}</td>
+              </tr>`
+                  )
+                  .join("")
+              : `<tr><td colspan="3" style="text-align:center; color:#6b7280;">承認済みの従業員がいません</td></tr>`
+          }
+        </tbody>
+      </table>
+    </div>
 
-  <div class="back">
-    <a href="/${store}/admin/settings">← 設定メニューへ戻る</a>
-  </div>
-
+    <div class="back">
+      <a href="/${store}/admin/settings">← 設定メニューへ戻る</a>
+    </div>
   </body></html>
   `);
 });
+
 
 // ==============================
 // ✏️ 個別編集ページ
