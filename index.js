@@ -2578,6 +2578,85 @@ app.post("/:store/admin/settings/save", ensureStore, async (req, res) => {
   `);
 });
 
+app.get("/:store/admin/settings/employment", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+  const types = ["fulltime", "parttime", "contractor", "temp"];
+  const labels = { fulltime: "正社員", parttime: "アルバイト", contractor: "業務委託", temp: "パート" };
+
+  let data = {};
+  for (const t of types) {
+    const doc = await db.collection("companies").doc(store).collection("settings").doc("employment_" + t).get();
+    data[t] = doc.exists ? doc.data() : {};
+  }
+
+  res.send(`
+  <!DOCTYPE html><html lang="ja"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${store} 雇用区分別設定</title>
+  <style>
+    body{font-family:sans-serif;background:#f9fafb;padding:20px;}
+    .tabs{display:flex;justify-content:center;gap:10px;margin-bottom:20px;}
+    .tab{padding:10px 16px;border-radius:8px;background:#e5e7eb;cursor:pointer;}
+    .tab.active{background:#2563eb;color:#fff;}
+    .panel{display:none;}
+    .panel.active{display:block;}
+    label{display:block;margin-top:10px;font-weight:600;}
+    input{width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:6px;}
+    button{margin-top:20px;background:#2563eb;color:white;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;}
+  </style></head><body>
+
+  <h1 style="text-align:center;color:#2563eb;">雇用区分別設定</h1>
+  <div class="tabs">
+    ${types.map((t,i)=>`<div class="tab ${i===0?"active":""}" data-tab="${t}">${labels[t]}</div>`).join("")}
+  </div>
+
+  ${types.map((t,i)=>`
+  <div id="${t}" class="panel ${i===0?"active":""}">
+    <form method="POST" action="/${store}/admin/settings/employment/save/${t}">
+      <label>基本時給／日給／月給</label>
+      <input name="basePay" value="${data[t].basePay || ""}" placeholder="時給1100円など">
+
+      <label>残業割増率（％）</label>
+      <input name="overtimeRate" type="number" value="${data[t].overtimeRate || 25}">
+
+      <label>深夜手当時間帯</label>
+      <input name="nightHours" value="${data[t].nightHours || "22:00〜5:00"}">
+
+      <label>休日出勤割増率（％）</label>
+      <input name="holidayRate" type="number" value="${data[t].holidayRate || 35}">
+
+      <label>勤続／役職手当ルール</label>
+      <input name="bonusRule" value="${data[t].bonusRule || ""}" placeholder="例：1年ごとに＋5000円">
+
+      <button type="submit">保存</button>
+    </form>
+  </div>`).join("")}
+
+  <script>
+  document.querySelectorAll(".tab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById(tab.dataset.tab).classList.add("active");
+    });
+  });
+  </script>
+  </body></html>
+  `);
+});
+
+app.post("/:store/admin/settings/employment/save/:type", ensureStore, async (req, res) => {
+  const { store } = req;
+  const { type } = req.params;
+  const data = req.body;
+  await db.collection("companies").doc(store).collection("settings").doc("employment_" + type).set(data, { merge: true });
+  res.redirect(`/${store}/admin/settings/employment`);
+});
+
 // ==============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
