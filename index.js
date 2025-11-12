@@ -2500,7 +2500,7 @@ app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) =
 });
 
 // ==============================
-// ⚙️ 店舗設定メニュー（統合版）
+// ⚙️ 店舗設定メニュー（修正版：給与集計ボタン付き）
 // ==============================
 app.get("/:store/admin/settings", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store) {
@@ -2524,18 +2524,19 @@ app.get("/:store/admin/settings", ensureStore, async (req, res) => {
         transition:background .2s;
       }
       a.btn:hover { background:#1d4ed8; }
-      .back { margin-top:20px; }
+      .back { margin-top:24px; }
       .back a { color:#6b7280; text-decoration:none; }
       .back a:hover { text-decoration:underline; }
     </style>
   </head>
   <body>
     <h1>店舗設定メニュー</h1>
-    <p>店舗全体・雇用区分・従業員ごとの設定を管理します。</p>
+    <p>設定を行ったあと、給与を自動集計できます。</p>
     <div class="wrap">
       <a class="btn" href="/${store}/admin/settings/general">📋 店舗共通設定</a>
-      <a class="btn" href="/${store}/admin/settings/employment">📘 雇用区分別設定</a>
+      <a class="btn" href="/${store}/admin/settings/employment">👥 雇用区分別設定</a>
       <a class="btn" href="/${store}/admin/settings/staff">🧑‍💼 従業員個別設定</a>
+      <a class="btn" href="/${store}/admin/payroll">💰 給与自動集計</a>
     </div>
     <div class="back"><a href="/${store}/admin">← 管理TOPに戻る</a></div>
   </body></html>`);
@@ -3313,6 +3314,246 @@ app.post("/:store/admin/employees/save", ensureStore, express.urlencoded({ exten
   else await ref.add(data);
 
   res.redirect(`/${store}/admin/employees`);
+});
+
+// ==============================
+// 💰 給与自動集計（統合版）
+// ==============================
+app.get("/:store/admin/payroll", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+
+  // --- 各種設定を読み込み ---
+  const settingsRef = db.collection("companies").doc(store).collection("settings");
+  const general = (await settingsRef.doc("storeGeneral").get()).data() || {};
+  const fulltime = (await settingsRef.doc("employment_fulltime").get()).data() || {};
+  const parttime = (await settingsRef.doc("employment_parttime").get()).data() || {};
+  const contract = (await settingsRef.doc("employment_contract").get()).data() || {};
+
+  const employmentMap = { fulltime, parttime, contract };
+
+  // --- 店舗共通設定値 ---
+  const regularHours = general.regularHours || 8;
+  const nightStart = general.nightStart || "22:00";
+  const closingDay = general.closingDay || 25;
+
+  // --- 対象期間（例：前月26日〜今月25日） ---
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth(), closingDay);
+  const start = new Date(end);
+  start.setMonth(start.getMonth() - 1);
+  start.setDate(closingDay + 1);
+
+  // --- 従業員リスト取得 ---
+  const empSnap = await db.collection("companies").doc(store).collection("employees").get();
+  const employees = empSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const results = [];
+
+  for (const emp of employees) {
+    const type = emp.contractType || "parttime";
+    const empSetting = employmentMap[type] || {};
+    const hourly = emp.hourly || empSetting.basePay || 0;
+    const overtimeRate = empSetting.overtimeRate || 25;
+    const holidayRate = empSetting.holidayRate || 35;
+
+    // --- 勤怠データ取得 ---
+    const attSnap = await db.collection("companies").doc(store)
+      .collection("attendance").doc(emp.id).collection("records")
+      .where("date", ">=", start.toISOString().split("T")[0])
+      .where("date", "<=", end.toISOString().split("T")[0])
+      .get();
+
+    let totalWork = 0, overtime = 0, holiday = 0, night = 0;
+
+    attSnap.docs.forEach(doc => {
+      const d = doc.data();
+      const [inH, inM] = (d.clockIn || "00:00").split(":").map(Number);
+      const [outH, outM] = (d.clockOut || "00:00").split(":").map(Number);
+      let workHours = ((outH * 60 + outM) - (inH * 60 + inM)) / 60 - (d.restHours || 0);
+
+      if (workHours < 0) workHours = 0;
+      totalWork += workHours;
+
+      // 残業
+      if (workHours > regularHours) overtime += workHours - regularHours;
+
+      // 深夜時間（22:00〜翌5:00）
+      if (outH >= 22 || outH < 5) {
+        const nightH = outH >= 22 ? outH - 22 : outH + 2; // 簡易計算
+        night += nightH;
+      }
+
+      // 休日勤務
+      if (d.type === "休日") holiday += workHours;
+    });
+
+    // --- 給与計算 ---
+    const basePay = totalWork * hourly;
+    const overPay = overtime * hourly * (overtimeRate / 100);
+    const nightPay = night * hourly * 0.25; // 深夜は法定25%
+    const holidayPay = holiday * hourly * (holidayRate / 100);
+
+    const total = Math.round(basePay + overPay + nightPay + holidayPay);
+
+    results.push({
+      name: emp.name,
+      type,
+      totalWork: totalWork.toFixed(1),
+      overtime: overtime.toFixed(1),
+      night: night.toFixed(1),
+      holiday: holiday.toFixed(1),
+      hourly,
+      total,
+    });
+  }
+
+  // --- 結果表示 ---
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${store} 給与集計</title>
+  <style>
+    body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:20px; }
+    h1 { color:#2563eb; text-align:center; margin-bottom:20px; }
+    table { width:100%; border-collapse:collapse; background:white; }
+    th,td { border:1px solid #ccc; padding:8px; text-align:center; }
+    th { background:#2563eb; color:white; }
+    tr:nth-child(even){background:#f3f4f6;}
+    .back { text-align:center; margin-top:20px; }
+    .back a { color:#2563eb; text-decoration:none; }
+    .back a:hover { text-decoration:underline; }
+  </style>
+  </head><body>
+    <div class="back" style="margin-top:30px;">
+      <a href="/${store}/admin/settings">← 店舗設定メニューへ戻る</a><br><br>
+      <a href="/${store}/admin/payroll/export"
+        style="display:inline-block;margin-top:10px;background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">
+        💾 CSVでダウンロード
+      </a>
+    </div>
+
+    <h1>${store} 給与自動集計結果</h1>
+    <p style="text-align:center;">期間：${start.toLocaleDateString()}〜${end.toLocaleDateString()}</p>
+
+    <table>
+      <thead>
+        <tr><th>氏名</th><th>区分</th><th>勤務時間</th><th>残業</th><th>深夜</th><th>休日</th><th>時給</th><th>支給額</th></tr>
+      </thead>
+      <tbody>
+        ${results.map(r => `
+        <tr>
+          <td>${r.name}</td>
+          <td>${r.type}</td>
+          <td>${r.totalWork}</td>
+          <td>${r.overtime}</td>
+          <td>${r.night}</td>
+          <td>${r.holiday}</td>
+          <td>¥${r.hourly.toLocaleString()}</td>
+          <td><b>¥${r.total.toLocaleString()}</b></td>
+        </tr>
+        `).join("")}
+      </tbody>
+    </table>
+
+    <div class="back">
+      <a href="/${store}/admin/settings">← 店舗設定メニューへ戻る</a>
+    </div>
+
+  </body></html>`);
+});
+
+// ==============================
+// 💾 給与CSV出力
+// ==============================
+import { Parser } from 'json2csv'; // 上部に追記してください（npm install json2csv が必要）
+
+app.get("/:store/admin/payroll/export", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+
+  // --- 設定値の取得 ---
+  const settingsRef = db.collection("companies").doc(store).collection("settings");
+  const general = (await settingsRef.doc("storeGeneral").get()).data() || {};
+  const fulltime = (await settingsRef.doc("employment_fulltime").get()).data() || {};
+  const parttime = (await settingsRef.doc("employment_parttime").get()).data() || {};
+  const contract = (await settingsRef.doc("employment_contract").get()).data() || {};
+  const employmentMap = { fulltime, parttime, contract };
+  const regularHours = general.regularHours || 8;
+  const closingDay = general.closingDay || 25;
+
+  // --- 対象期間 ---
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth(), closingDay);
+  const start = new Date(end);
+  start.setMonth(start.getMonth() - 1);
+  start.setDate(closingDay + 1);
+
+  // --- 従業員リスト取得 ---
+  const empSnap = await db.collection("companies").doc(store).collection("employees").get();
+  const employees = empSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const rows = [];
+
+  for (const emp of employees) {
+    const type = emp.contractType || "parttime";
+    const empSetting = employmentMap[type] || {};
+    const hourly = emp.hourly || empSetting.basePay || 0;
+    const overtimeRate = empSetting.overtimeRate || 25;
+    const holidayRate = empSetting.holidayRate || 35;
+
+    // --- 勤怠データ取得 ---
+    const attSnap = await db.collection("companies").doc(store)
+      .collection("attendance").doc(emp.id).collection("records")
+      .where("date", ">=", start.toISOString().split("T")[0])
+      .where("date", "<=", end.toISOString().split("T")[0])
+      .get();
+
+    let totalWork = 0, overtime = 0, holiday = 0, night = 0;
+
+    attSnap.docs.forEach(doc => {
+      const d = doc.data();
+      const [inH, inM] = (d.clockIn || "00:00").split(":").map(Number);
+      const [outH, outM] = (d.clockOut || "00:00").split(":").map(Number);
+      let workHours = ((outH * 60 + outM) - (inH * 60 + inM)) / 60 - (d.restHours || 0);
+      if (workHours < 0) workHours = 0;
+      totalWork += workHours;
+      if (workHours > regularHours) overtime += workHours - regularHours;
+      if (outH >= 22 || outH < 5) night += (outH >= 22 ? outH - 22 : outH + 2);
+      if (d.type === "休日") holiday += workHours;
+    });
+
+    const basePay = totalWork * hourly;
+    const overPay = overtime * hourly * (overtimeRate / 100);
+    const nightPay = night * hourly * 0.25;
+    const holidayPay = holiday * hourly * (holidayRate / 100);
+    const total = Math.round(basePay + overPay + nightPay + holidayPay);
+
+    rows.push({
+      名前: emp.name,
+      区分: type,
+      勤務時間: totalWork.toFixed(1),
+      残業: overtime.toFixed(1),
+      深夜: night.toFixed(1),
+      休日: holiday.toFixed(1),
+      時給: hourly,
+      支給額: total,
+    });
+  }
+
+  // --- CSV生成 ---
+  const parser = new Parser();
+  const csv = parser.parse(rows);
+
+  res.setHeader('Content-Disposition', `attachment; filename="${store}_給与集計_${now.getFullYear()}-${now.getMonth()+1}.csv"`);
+  res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
+  res.send('\uFEFF' + csv); // Excelで文字化け防止
 });
 
 // ==============================
