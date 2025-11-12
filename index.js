@@ -4,6 +4,8 @@ const { Client } = require("@line/bot-sdk");
 const admin = require("firebase-admin");
 const cors = require("cors");
 const session = require("express-session");
+// ファイル先頭付近に追記
+const { Parser } = require('json2csv');
 
 const STORES = {
   storeA: {
@@ -3470,8 +3472,6 @@ app.get("/:store/admin/payroll", ensureStore, async (req, res) => {
 // ==============================
 // 💾 給与CSV出力
 // ==============================
-import { Parser } from 'json2csv'; // 上部に追記してください（npm install json2csv が必要）
-
 app.get("/:store/admin/payroll/export", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
