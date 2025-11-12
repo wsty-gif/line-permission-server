@@ -2795,6 +2795,9 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
 // ==============================
 // 🧑‍💼 従業員個別設定ページ（一覧）
 // ==============================
+// ==============================
+// 🧑‍💼 従業員個別設定ページ（承認済み一覧）
+// ==============================
 app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
@@ -2811,42 +2814,83 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
 
   const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+  // 🔹 個別設定の雇用区分を取得（あれば上書き）
+  for (const m of members) {
+    const staffDoc = await db
+      .collection("companies")
+      .doc(store)
+      .collection("settings")
+      .doc("staff_" + m.id)
+      .get();
+    if (staffDoc.exists && staffDoc.data().employmentType) {
+      m.employmentType = staffDoc.data().employmentType;
+    }
+  }
+
   res.send(`
   <!DOCTYPE html><html lang="ja"><head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${store} 従業員個別設定</title>
   <style>
     body { font-family:sans-serif; background:#f9fafb; padding:20px; }
-    h1 { color:#2563eb; text-align:center; }
-    table { width:100%; max-width:900px; margin:20px auto; border-collapse:collapse; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    th, td { border:1px solid #ddd; padding:10px; text-align:left; }
-    th { background:#2563eb; color:white; }
+    h1 { color:#2563eb; text-align:center; margin-bottom:16px; }
+
+    .table-wrapper {
+      overflow-x:auto;
+      margin:0 auto;
+      max-width:95vw;
+      background:#fff;
+      border-radius:8px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    table { width:100%; border-collapse:collapse; min-width:600px; }
+    th, td { border:1px solid #ddd; padding:10px; white-space:nowrap; }
+    th { background:#2563eb; color:white; text-align:left; }
     tr:hover { background:#f3f4f6; }
-    a.btn { color:#2563eb; text-decoration:none; font-weight:bold; }
-    a.btn:hover { text-decoration:underline; }
+
+    a.btn {
+      display:inline-block;
+      background:#2563eb;
+      color:white;
+      padding:6px 10px;
+      border-radius:6px;
+      text-decoration:none;
+      font-size:13px;
+    }
+    a.btn:hover { background:#1d4ed8; }
+
     .back { text-align:center; margin-top:20px; }
+    .back a { color:#2563eb; text-decoration:none; }
+    .back a:hover { text-decoration:underline; }
   </style></head><body>
-    <h1>🧑‍💼 従業員個別設定</h1>
 
+  <h1>🧑‍💼 従業員個別設定</h1>
+
+  <div class="table-wrapper">
     <table>
-      <tr><th>名前</th><th>ユーザーID</th><th>編集</th></tr>
-      ${members.length
-        ? members
-            .map(
-              m => `
-        <tr>
-          <td>${m.name || "未登録"}</td>
-          <td>${m.id}</td>
-          <td><a class="btn" href="/${store}/admin/settings/staff/${m.id}">編集</a></td>
-        </tr>`
-            )
-            .join("")
-        : `<tr><td colspan="3" style="text-align:center;">承認済みの従業員がいません</td></tr>`}
+      <tr><th>編集</th><th>名前</th><th>雇用区分</th></tr>
+      ${
+        members.length
+          ? members
+              .map(
+                (m) => `
+          <tr>
+            <td><a class="btn" href="/${store}/admin/settings/staff/${m.id}">編集</a></td>
+            <td>${m.name || "未登録"}</td>
+            <td>${m.employmentType || "未設定"}</td>
+          </tr>`
+              )
+              .join("")
+          : `<tr><td colspan="3" style="text-align:center;">承認済みの従業員がいません</td></tr>`
+      }
     </table>
+  </div>
 
-    <div class="back">
-      <a href="/${store}/admin/settings">← 設定メニューへ戻る</a>
-    </div>
+  <div class="back">
+    <a href="/${store}/admin/settings">← 設定メニューへ戻る</a>
+  </div>
+
   </body></html>
   `);
 });
