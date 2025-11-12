@@ -2500,61 +2500,45 @@ app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) =
 });
 
 // ==============================
-// 🏪 店舗共通設定画面
+// ⚙️ 店舗設定メニュー（統合版）
 // ==============================
 app.get("/:store/admin/settings", ensureStore, async (req, res) => {
-  if (!req.session.loggedIn || req.session.store !== req.store)
+  if (!req.session.loggedIn || req.session.store !== req.store) {
     return res.redirect(`/${req.store}/login`);
+  }
 
   const store = req.store;
-  const doc = await db.collection("companies").doc(store)
-    .collection("config").doc("settings").get();
-  const data = doc.exists ? doc.data() : {};
 
   res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${store} 店舗共通設定</title>
+  <!DOCTYPE html><html lang="ja"><head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${store} 店舗設定メニュー</title>
     <style>
-      body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:24px; }
-      h1 { color:#2563eb; text-align:center; }
-      form { background:#fff; max-width:480px; margin:0 auto; padding:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-      label { display:block; margin-top:12px; font-weight:bold; }
-      input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; }
-      button { width:100%; margin-top:20px; background:#2563eb; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; }
-      button:hover { background:#1d4ed8; }
-      .link { text-align:center; margin-top:20px; }
-      a { color:#2563eb; text-decoration:none; }
+      body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:40px; text-align:center; }
+      h1 { color:#2563eb; margin-bottom:10px; }
+      p  { color:#6b7280; margin-bottom:24px; }
+      .wrap { display:flex; flex-direction:column; align-items:center; gap:14px; }
+      a.btn {
+        display:inline-block; width:280px; padding:12px 0;
+        background:#2563eb; color:#fff; border-radius:8px; text-decoration:none;
+        transition:background .2s;
+      }
+      a.btn:hover { background:#1d4ed8; }
+      .back { margin-top:20px; }
+      .back a { color:#6b7280; text-decoration:none; }
+      .back a:hover { text-decoration:underline; }
     </style>
   </head>
   <body>
-    <h1>${store} 店舗共通設定</h1>
-    <form method="POST" action="/${store}/admin/settings">
-      <label>所定労働時間（時間）</label>
-      <input type="number" step="0.1" name="regularHours" value="${data.regularHours || 8}">
-
-      <label>深夜手当開始時刻</label>
-      <input type="time" name="nightStart" value="${data.nightStart || '22:00'}">
-
-      <label>日付変更基準時刻</label>
-      <input type="time" name="dateChange" value="${data.dateChange || '05:00'}">
-
-      <label>勤怠締め日（毎月）</label>
-      <input type="number" name="closingDay" value="${data.closingDay || 25}">
-
-      <button type="submit">保存する</button>
-    </form>
-
-    <div class="link">
-      <a href="/${store}/admin/contract">雇用区分別設定へ →</a><br><br>
-      <a href="/${store}/admin">← 管理TOPに戻る</a>
+    <h1>店舗設定メニュー</h1>
+    <p>店舗全体・雇用区分・従業員ごとの設定を管理します。</p>
+    <div class="wrap">
+      <a class="btn" href="/${store}/admin/settings/general">📋 店舗共通設定</a>
+      <a class="btn" href="/${store}/admin/settings/contracts">📘 雇用区分別設定</a>
+      <a class="btn" href="/${store}/admin/settings/staff">🧑‍💼 従業員個別設定</a>
     </div>
-  </body>
-  </html>
-  `);
+    <div class="back"><a href="/${store}/admin">← 管理TOPに戻る</a></div>
+  </body></html>`);
 });
 
 app.post("/:store/admin/settings", ensureStore, express.urlencoded({ extended: true }), async (req, res) => {
@@ -2835,6 +2819,12 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
   </style></head><body>
 
   <h1>📋 店舗共通設定</h1>
+  <div class="link" style="text-align:center;margin-top:20px;">
+    <a href="/${store}/admin/settings">⚙️ 店舗設定メニューへ戻る</a> |
+    <a href="/${store}/admin/settings/contracts">📘 雇用区分別設定へ</a> |
+    <a href="/${store}/admin/settings/staff">🧑‍💼 従業員個別設定へ</a>
+  </div>
+
   <form method="POST" action="/${store}/admin/settings/general/save">
 
     <label>営業開始時間</label>
@@ -3171,6 +3161,156 @@ app.post("/:store/admin/settings/staff/save/:id", ensureStore, async (req, res) 
       <a href="/${store}/admin/settings/staff">← 従業員一覧へ戻る</a>
     </body></html>
   `);
+});
+
+// ==============================
+// 👤 従業員個別設定（ボタン＋画面）
+// ==============================
+
+// 🔹 管理TOPにボタンを追加
+// （管理TOP HTML内のナビ部分に以下のボタンを追加してください）
+// <a href="/${store}/admin/employees">従業員設定</a>
+
+// 🔹 ルート定義
+app.get("/:store/admin/employees", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+  const snap = await db.collection("companies").doc(store).collection("employees").get();
+  const employees = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${store} 従業員設定</title>
+    <style>
+      body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:20px; }
+      h1 { text-align:center; color:#2563eb; margin-bottom:20px; }
+      table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; }
+      th,td { padding:10px; border-bottom:1px solid #eee; text-align:center; font-size:14px; }
+      th { background:#2563eb; color:white; }
+      tr:nth-child(even){background:#f3f4f6;}
+      button { background:#2563eb; color:white; border:none; border-radius:6px; padding:6px 10px; cursor:pointer; }
+      button:hover { background:#1e40af; }
+      .add { margin-bottom:16px; display:block; background:#16a34a; }
+    </style>
+  </head>
+  <body>
+    <h1>${store} 従業員設定</h1>
+    <button class="add" onclick="location.href='/${store}/admin/employees/new'">＋ 従業員を追加</button>
+
+    <table>
+      <thead>
+        <tr><th>名前</th><th>雇用区分</th><th>時給</th><th>交通費</th><th>備考</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        ${employees.map(e => `
+          <tr>
+            <td>${e.name || "未登録"}</td>
+            <td>${e.contractType || "-"}</td>
+            <td>${e.hourly || 0}</td>
+            <td>${e.commuteAllowance || 0}</td>
+            <td>${e.note || ""}</td>
+            <td><button onclick="location.href='/${store}/admin/employees/edit?id=${e.id}'">編集</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+
+    <div style="text-align:center;margin-top:20px;">
+      <a href="/${store}/admin" style="color:#2563eb;">← 管理TOPへ戻る</a>
+    </div>
+  </body>
+  </html>
+  `);
+});
+
+
+// 🔹 従業員追加・編集画面
+app.get("/:store/admin/employees/:mode", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+  const { mode } = req.params;
+  const id = req.query.id;
+  let emp = {};
+  if (id) {
+    const doc = await db.collection("companies").doc(store).collection("employees").doc(id).get();
+    emp = doc.exists ? doc.data() : {};
+  }
+
+  res.send(`
+  <!DOCTYPE html><html lang="ja"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${store} 従業員${mode === "new" ? "追加" : "編集"}</title>
+  <style>
+    body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:20px; }
+    h1 { color:#2563eb; text-align:center; margin-bottom:16px; }
+    form { background:white; padding:20px; border-radius:8px; max-width:400px; margin:0 auto; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    label { display:block; margin-top:12px; font-weight:bold; }
+    input, select, textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px; }
+    button { margin-top:16px; background:#2563eb; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; }
+    button:hover { background:#1e40af; }
+  </style>
+  </head>
+  <body>
+    <h1>${store} 従業員${mode === "new" ? "追加" : "編集"}</h1>
+    <form method="POST" action="/${store}/admin/employees/save">
+      <input type="hidden" name="id" value="${id || ""}">
+      <label>氏名</label>
+      <input type="text" name="name" value="${emp.name || ""}" required>
+
+      <label>雇用区分</label>
+      <select name="contractType">
+        <option value="">選択してください</option>
+        <option value="fulltime" ${emp.contractType==="fulltime"?"selected":""}>正社員</option>
+        <option value="parttime" ${emp.contractType==="parttime"?"selected":""}>アルバイト</option>
+        <option value="contract" ${emp.contractType==="contract"?"selected":""}>契約社員</option>
+      </select>
+
+      <label>基本時給／月給</label>
+      <input type="number" name="hourly" step="1" value="${emp.hourly || ""}" placeholder="例：1100">
+
+      <label>交通費（定額）</label>
+      <input type="number" name="commuteAllowance" step="1" value="${emp.commuteAllowance || ""}" placeholder="例：5000">
+
+      <label>備考</label>
+      <textarea name="note">${emp.note || ""}</textarea>
+
+      <button type="submit">保存する</button>
+    </form>
+
+    <div style="text-align:center;margin-top:16px;">
+      <a href="/${store}/admin/employees" style="color:#2563eb;">← 一覧に戻る</a>
+    </div>
+  </body></html>
+  `);
+});
+
+
+// 🔹 保存処理
+app.post("/:store/admin/employees/save", ensureStore, express.urlencoded({ extended: true }), async (req, res) => {
+  const store = req.store;
+  const { id, name, contractType, hourly, commuteAllowance, note } = req.body;
+  const data = {
+    name,
+    contractType,
+    hourly: Number(hourly) || 0,
+    commuteAllowance: Number(commuteAllowance) || 0,
+    note: note || "",
+    updatedAt: new Date(),
+  };
+
+  const ref = db.collection("companies").doc(store).collection("employees");
+  if (id) await ref.doc(id).set(data, { merge: true });
+  else await ref.add(data);
+
+  res.redirect(`/${store}/admin/employees`);
 });
 
 // ==============================
