@@ -2502,61 +2502,47 @@ app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) =
 // ==============================
 // ⚙️ 店舗独自設定ページ
 // ==============================
+
+// 店舗設定メニュー（親）
 app.get("/:store/admin/settings", ensureStore, async (req, res) => {
-  if (!req.session.loggedIn || req.session.store !== req.store)
+  if (!req.session.loggedIn || req.session.store !== req.store) {
     return res.redirect(`/${req.store}/login`);
+  }
 
   const store = req.store;
-  const doc = await db.collection("companies").doc(store).collection("settings").doc("general").get();
-  const settings = doc.exists ? doc.data() : {};
 
   res.send(`
   <!DOCTYPE html><html lang="ja"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${store} 店舗設定</title>
-  <style>
-    body { font-family:sans-serif; background:#f9fafb; padding:20px; }
-    h1 { color:#2563eb; text-align:center; }
-    form { background:#fff; padding:20px; border-radius:8px; max-width:600px; margin:20px auto; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    label { display:block; margin-top:12px; font-weight:600; }
-    input, select { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-top:4px; }
-    button { margin-top:20px; background:#2563eb; color:white; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; }
-  </style></head><body>
-    <h1>${store} 店舗設定</h1>
-    <form method="POST" action="/${store}/admin/settings/save">
-      <label>営業開始時間</label>
-      <input type="time" name="openTime" value="${settings.openTime || ""}">
-
-      <label>営業終了時間</label>
-      <input type="time" name="closeTime" value="${settings.closeTime || ""}">
-
-      <label>1日の所定労働時間（時間）</label>
-      <input type="number" step="0.1" name="standardHours" value="${settings.standardHours || 8}">
-
-      <label>休憩時間の自動付与（分）</label>
-      <input type="number" name="autoBreakMinutes" value="${settings.autoBreakMinutes || 45}">
-
-      <label>早朝勤務時間帯（例：05:00〜08:00）</label>
-      <input type="text" name="earlyShift" value="${settings.earlyShift || ""}">
-
-      <label>残業割増率（％）</label>
-      <input type="number" name="overtimeRate" value="${settings.overtimeRate || 25}">
-
-      <label>深夜手当時間帯（例：22:00〜05:00）</label>
-      <input type="text" name="nightHours" value="${settings.nightHours || "22:00〜05:00"}">
-
-      <label>休日出勤割増率（％）</label>
-      <input type="number" name="holidayRate" value="${settings.holidayRate || 35}">
-
-      <label>有給休暇の付与条件（例：6ヶ月後10日）</label>
-      <input type="text" name="paidLeaveRule" value="${settings.paidLeaveRule || ""}">
-
-      <label>有給有効期限（年）</label>
-      <input type="number" name="paidLeaveExpireYears" value="${settings.paidLeaveExpireYears || 2}">
-
-      <button type="submit">保存</button>
-    </form>
-  </body></html>`);
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${store} 店舗設定メニュー</title>
+    <style>
+      body { font-family:sans-serif; background:#f9fafb; padding:40px; text-align:center; margin:0; }
+      h1 { color:#2563eb; margin:0 0 10px; }
+      p  { color:#6b7280; margin:0 0 24px; }
+      .wrap { display:flex; flex-direction:column; align-items:center; gap:14px; }
+      a.btn {
+        display:inline-block; width:280px; padding:12px 0;
+        background:#2563eb; color:#fff; border-radius:8px; text-decoration:none;
+        transition:background .2s;
+      }
+      a.btn:hover { background:#1d4ed8; }
+      .back { margin-top:20px; }
+      .back a { color:#6b7280; text-decoration:none; }
+      .back a:hover { text-decoration:underline; }
+    </style>
+  </head><body>
+    <h1>店舗設定メニュー</h1>
+    <p>店舗全体の基本設定、雇用区分ごとのルール、従業員ごとの個別設定を管理できます。</p>
+    <div class="wrap">
+      <a class="btn" href="/${store}/admin/settings/general">📋 店舗共通設定</a>
+      <a class="btn" href="/${store}/admin/settings/employment">👥 雇用区分別設定（正社員／アルバイト／業務委託／パート）</a>
+      <a class="btn" href="/${store}/admin/settings/staff">🧑‍💼 従業員個別設定</a>
+    </div>
+    <div class="back">
+      <a href="/${store}/admin">← 管理者TOPに戻る</a>
+    </div>
+  </body></html>
+  `);
 });
 
 app.post("/:store/admin/settings/save", ensureStore, async (req, res) => {
