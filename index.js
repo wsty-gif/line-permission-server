@@ -2816,15 +2816,16 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
     button { margin-top:20px; background:#2563eb; color:white; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; }
     button:hover { background:#1d4ed8; }
     a { color:#2563eb; text-decoration:none; display:block; text-align:center; margin-top:16px; }
-  </style></head><body>
-
-  <h1>📋 店舗共通設定</h1>
-  <div class="link" style="text-align:center;margin-top:20px;">
-    <a href="/${store}/admin/settings">⚙️ 店舗設定メニューへ戻る</a> |
-    <a href="/${store}/admin/settings/contracts">📘 雇用区分別設定へ</a> |
-    <a href="/${store}/admin/settings/staff">🧑‍💼 従業員個別設定へ</a>
+  </style></head>
+  <body>
+  <div style="text-align:center;margin-bottom:16px;">
+    <a href="/${store}/admin/settings"
+      style="display:inline-block;background:#2563eb;color:#fff;padding:8px 16px;border-radius:6px;
+              text-decoration:none;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.15);">
+      ← 店舗設定メニューに戻る
+    </a>
   </div>
-
+  <h1>📋 店舗共通設定</h1>
   <form method="POST" action="/${store}/admin/settings/general/save">
 
     <label>営業開始時間</label>
@@ -3019,6 +3020,14 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   </style>
   </head>
   <body>
+    <div style="text-align:center;margin-bottom:16px;">
+      <a href="/${store}/admin/settings"
+        style="display:inline-block;background:#2563eb;color:#fff;padding:8px 16px;border-radius:6px;
+                text-decoration:none;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.15);">
+        ← 店舗設定メニューに戻る
+      </a>
+    </div>
+
     <h1>🧑‍💼 従業員個別設定</h1>
 
     <div class="table-wrapper">
