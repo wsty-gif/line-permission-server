@@ -2793,10 +2793,7 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
 });
 
 // ==============================
-// 🧑‍💼 従業員個別設定ページ（一覧）
-// ==============================
-// ==============================
-// 🧑‍💼 従業員個別設定ページ（承認済み一覧）
+// 🧑‍💼 従業員個別設定ページ（承認済み一覧・自動スクロール対応）
 // ==============================
 app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
@@ -2829,24 +2826,53 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
 
   res.send(`
   <!DOCTYPE html><html lang="ja"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${store} 従業員個別設定</title>
   <style>
-    body { font-family:sans-serif; background:#f9fafb; padding:20px; }
-    h1 { color:#2563eb; text-align:center; margin-bottom:16px; }
+    body {
+      font-family:sans-serif;
+      background:#f9fafb;
+      padding:20px;
+    }
+    h1 {
+      color:#2563eb;
+      text-align:center;
+      margin-bottom:16px;
+    }
 
+    /* テーブル全体のラッパー（通常は固定幅、長い時のみスクロール） */
     .table-wrapper {
-      overflow-x:auto;
+      width:100%;
+      max-width:900px;
       margin:0 auto;
-      max-width:95vw;
       background:#fff;
       border-radius:8px;
       box-shadow:0 2px 6px rgba(0,0,0,0.1);
+      overflow-x:auto; /* 長い時だけ自動スクロール */
     }
 
-    table { width:100%; border-collapse:collapse; min-width:600px; }
-    th, td { border:1px solid #ddd; padding:10px; white-space:nowrap; }
-    th { background:#2563eb; color:white; text-align:left; }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      min-width:100%;
+      table-layout:auto; /* 内容に応じて幅を可変 */
+    }
+
+    th, td {
+      border:1px solid #ddd;
+      padding:10px;
+      text-align:left;
+      vertical-align:middle;
+      word-break:keep-all;
+      white-space:nowrap;
+    }
+
+    th {
+      background:#2563eb;
+      color:white;
+    }
+
     tr:hover { background:#f3f4f6; }
 
     a.btn {
@@ -2860,16 +2886,35 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
     }
     a.btn:hover { background:#1d4ed8; }
 
-    .back { text-align:center; margin-top:20px; }
-    .back a { color:#2563eb; text-decoration:none; }
-    .back a:hover { text-decoration:underline; }
-  </style></head><body>
+    .back {
+      text-align:center;
+      margin-top:20px;
+    }
+    .back a {
+      color:#2563eb;
+      text-decoration:none;
+    }
+    .back a:hover {
+      text-decoration:underline;
+    }
+
+    /* 📱 小さい画面でも横スクロールが必要なときだけ発動 */
+    @media (max-width: 640px) {
+      .table-wrapper { overflow-x:auto; }
+      table { min-width:600px; }
+    }
+  </style>
+  </head><body>
 
   <h1>🧑‍💼 従業員個別設定</h1>
 
   <div class="table-wrapper">
     <table>
-      <tr><th>編集</th><th>名前</th><th>雇用区分</th></tr>
+      <tr>
+        <th>編集</th>
+        <th>名前</th>
+        <th>雇用区分</th>
+      </tr>
       ${
         members.length
           ? members
@@ -2894,7 +2939,6 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   </body></html>
   `);
 });
-
 
 // ==============================
 // ✏️ 個別編集ページ
