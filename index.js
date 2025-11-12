@@ -2500,50 +2500,164 @@ app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) =
 });
 
 // ==============================
-// ⚙️ 店舗独自設定ページ
+// 🏪 店舗共通設定画面
 // ==============================
-
-// 店舗設定メニュー（親）
 app.get("/:store/admin/settings", ensureStore, async (req, res) => {
-  if (!req.session.loggedIn || req.session.store !== req.store) {
+  if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
-  }
 
   const store = req.store;
+  const doc = await db.collection("companies").doc(store)
+    .collection("config").doc("settings").get();
+  const data = doc.exists ? doc.data() : {};
 
   res.send(`
-  <!DOCTYPE html><html lang="ja"><head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>${store} 店舗設定メニュー</title>
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${store} 店舗共通設定</title>
     <style>
-      body { font-family:sans-serif; background:#f9fafb; padding:40px; text-align:center; margin:0; }
-      h1 { color:#2563eb; margin:0 0 10px; }
-      p  { color:#6b7280; margin:0 0 24px; }
-      .wrap { display:flex; flex-direction:column; align-items:center; gap:14px; }
-      a.btn {
-        display:inline-block; width:280px; padding:12px 0;
-        background:#2563eb; color:#fff; border-radius:8px; text-decoration:none;
-        transition:background .2s;
-      }
-      a.btn:hover { background:#1d4ed8; }
-      .back { margin-top:20px; }
-      .back a { color:#6b7280; text-decoration:none; }
-      .back a:hover { text-decoration:underline; }
+      body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:24px; }
+      h1 { color:#2563eb; text-align:center; }
+      form { background:#fff; max-width:480px; margin:0 auto; padding:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+      label { display:block; margin-top:12px; font-weight:bold; }
+      input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; }
+      button { width:100%; margin-top:20px; background:#2563eb; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; }
+      button:hover { background:#1d4ed8; }
+      .link { text-align:center; margin-top:20px; }
+      a { color:#2563eb; text-decoration:none; }
     </style>
-  </head><body>
-    <h1>店舗設定メニュー</h1>
-    <p>店舗全体の基本設定、雇用区分ごとのルール、従業員ごとの個別設定を管理できます。</p>
-    <div class="wrap">
-      <a class="btn" href="/${store}/admin/settings/general">📋 店舗共通設定</a>
-      <a class="btn" href="/${store}/admin/settings/employment">👥 雇用区分別設定（正社員／アルバイト／業務委託／パート）</a>
-      <a class="btn" href="/${store}/admin/settings/staff">🧑‍💼 従業員個別設定</a>
+  </head>
+  <body>
+    <h1>${store} 店舗共通設定</h1>
+    <form method="POST" action="/${store}/admin/settings">
+      <label>所定労働時間（時間）</label>
+      <input type="number" step="0.1" name="regularHours" value="${data.regularHours || 8}">
+
+      <label>深夜手当開始時刻</label>
+      <input type="time" name="nightStart" value="${data.nightStart || '22:00'}">
+
+      <label>日付変更基準時刻</label>
+      <input type="time" name="dateChange" value="${data.dateChange || '05:00'}">
+
+      <label>勤怠締め日（毎月）</label>
+      <input type="number" name="closingDay" value="${data.closingDay || 25}">
+
+      <button type="submit">保存する</button>
+    </form>
+
+    <div class="link">
+      <a href="/${store}/admin/contract">雇用区分別設定へ →</a><br><br>
+      <a href="/${store}/admin">← 管理TOPに戻る</a>
     </div>
-    <div class="back">
-      <a href="/${store}/admin">← 管理者TOPに戻る</a>
-    </div>
-  </body></html>
+  </body>
+  </html>
   `);
 });
+
+app.post("/:store/admin/settings", ensureStore, express.urlencoded({ extended: true }), async (req, res) => {
+  const store = req.store;
+  const settings = {
+    regularHours: Number(req.body.regularHours) || 8,
+    nightStart: req.body.nightStart || "22:00",
+    dateChange: req.body.dateChange || "05:00",
+    closingDay: Number(req.body.closingDay) || 25,
+    updatedAt: new Date(),
+  };
+  await db.collection("companies").doc(store)
+    .collection("config").doc("settings").set(settings, { merge: true });
+
+  res.redirect(`/${store}/admin/settings`);
+});
+
+
+// ==============================
+// 👥 雇用区分別設定画面
+// ==============================
+app.get("/:store/admin/contract", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const store = req.store;
+  const snap = await db.collection("companies").doc(store)
+    .collection("config").doc("contractSettings").get();
+  const data = snap.exists ? snap.data() : {};
+
+  const types = ["fulltime", "parttime", "contract"];
+  const labels = { fulltime: "正社員", parttime: "アルバイト", contract: "契約社員" };
+
+  const input = t => {
+    const val = data[t] || {};
+    return `
+      <h3>${labels[t]}</h3>
+      <label>基本時給／月給</label>
+      <input type="number" step="1" name="${t}_basePay" value="${val.basePay || 0}">
+      <label>残業割増率（%）</label>
+      <input type="number" name="${t}_overtimeRate" value="${val.overtimeRate || 25}">
+      <label>深夜割増率（%）</label>
+      <input type="number" name="${t}_nightRate" value="${val.nightRate || 25}">
+      <label>休日出勤割増率（%）</label>
+      <input type="number" name="${t}_holidayRate" value="${val.holidayRate || 35}">
+      <hr style="margin:20px 0;">
+    `;
+  };
+
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${store} 雇用区分別設定</title>
+    <style>
+      body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:24px; }
+      h1 { color:#2563eb; text-align:center; }
+      form { background:#fff; max-width:520px; margin:0 auto; padding:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+      label { display:block; margin-top:8px; font-weight:bold; }
+      input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; }
+      button { width:100%; margin-top:20px; background:#2563eb; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; }
+      button:hover { background:#1d4ed8; }
+      .link { text-align:center; margin-top:20px; }
+      h3 { margin-top:20px; color:#374151; border-left:4px solid #2563eb; padding-left:6px; }
+    </style>
+  </head>
+  <body>
+    <h1>${store} 雇用区分別設定</h1>
+    <form method="POST" action="/${store}/admin/contract">
+      ${types.map(t => input(t)).join("")}
+      <button type="submit">保存する</button>
+    </form>
+
+    <div class="link">
+      <a href="/${store}/admin/settings">← 店舗共通設定へ戻る</a>
+    </div>
+  </body>
+  </html>
+  `);
+});
+
+app.post("/:store/admin/contract", ensureStore, express.urlencoded({ extended: true }), async (req, res) => {
+  const store = req.store;
+  const types = ["fulltime", "parttime", "contract"];
+
+  const obj = {};
+  types.forEach(t => {
+    obj[t] = {
+      basePay: Number(req.body[`${t}_basePay`]) || 0,
+      overtimeRate: Number(req.body[`${t}_overtimeRate`]) || 25,
+      nightRate: Number(req.body[`${t}_nightRate`]) || 25,
+      holidayRate: Number(req.body[`${t}_holidayRate`]) || 35,
+    };
+  });
+
+  await db.collection("companies").doc(store)
+    .collection("config").doc("contractSettings").set(obj, { merge: true });
+
+  res.redirect(`/${store}/admin/contract`);
+});
+
 
 app.post("/:store/admin/settings/save", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
