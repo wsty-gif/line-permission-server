@@ -2789,114 +2789,104 @@ app.post("/:store/admin/settings/employment/save/:type", ensureStore, express.ur
   `);
 });
 
-
 // ==============================
-// 📋 店舗共通設定ページ
+// 🏪 店舗共通設定（最低限版）
 // ==============================
 app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
-  const doc = await db
-    .collection("companies")
+
+  // Firestoreから設定データ取得
+  const doc = await db.collection("companies")
     .doc(store)
     .collection("settings")
-    .doc("general")
+    .doc("storeGeneral")
     .get();
-  const settings = doc.exists ? doc.data() : {};
+  const data = doc.exists ? doc.data() : {};
 
   res.send(`
-  <!DOCTYPE html><html lang="ja"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${store} 店舗共通設定</title>
-  <style>
-    body { font-family:sans-serif; background:#f9fafb; padding:20px; }
-    h1 { color:#2563eb; text-align:center; margin-bottom:20px; }
-    form { background:#fff; padding:20px; border-radius:8px; max-width:700px; margin:0 auto; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    label { display:block; margin-top:12px; font-weight:600; }
-    input, select { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-top:4px; }
-    button { margin-top:20px; background:#2563eb; color:white; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; }
-    button:hover { background:#1d4ed8; }
-    a { color:#2563eb; text-decoration:none; display:block; text-align:center; margin-top:16px; }
-  </style></head>
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${store} 店舗共通設定</title>
+    <style>
+      body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:24px; }
+      h1 { color:#2563eb; text-align:center; margin-bottom:24px; }
+      .back-btn { text-align:center; margin-bottom:20px; }
+      .back-btn a {
+        background:#2563eb; color:#fff; padding:8px 16px;
+        border-radius:6px; text-decoration:none;
+      }
+      form { background:white; padding:20px; border-radius:8px;
+             max-width:460px; margin:0 auto;
+             box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+      label { display:block; margin-top:12px; font-weight:600; }
+      input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-top:4px; }
+      button {
+        margin-top:20px; background:#2563eb; color:white;
+        border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%;
+      }
+      button:hover { background:#1d4ed8; }
+    </style>
+  </head>
   <body>
-  <div style="text-align:center;margin-bottom:16px;">
-    <a href="/${store}/admin/settings"
-      style="display:inline-block;background:#2563eb;color:#fff;padding:8px 16px;border-radius:6px;
-              text-decoration:none;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.15);">
-      ← 店舗設定メニューに戻る
-    </a>
-  </div>
-  <h1>📋 店舗共通設定</h1>
-  <form method="POST" action="/${store}/admin/settings/general/save">
 
-    <label>営業開始時間</label>
-    <input type="time" name="openTime" value="${settings.openTime || ""}">
+    <div class="back-btn">
+      <a href="/${store}/admin/settings">← 店舗設定メニューに戻る</a>
+    </div>
 
-    <label>営業終了時間</label>
-    <input type="time" name="closeTime" value="${settings.closeTime || ""}">
+    <h1>📋 店舗共通設定</h1>
 
-    <label>1日の所定労働時間（時間）</label>
-    <input type="number" step="0.1" name="standardHours" value="${settings.standardHours || 8}">
+    <form method="POST" action="/${store}/admin/settings/general/save">
+      <label>所定労働時間（時間）</label>
+      <input type="number" step="0.1" name="regularHours" value="${data.regularHours || 8}">
 
-    <label>休憩時間の自動付与ルール（分）</label>
-    <input type="number" name="autoBreakMinutes" value="${settings.autoBreakMinutes || 45}">
+      <label>深夜手当開始時刻</label>
+      <input type="time" name="nightStart" value="${data.nightStart || '22:00'}">
 
-    <label>早朝勤務時間帯（例：05:00〜08:00）</label>
-    <input type="text" name="earlyShift" value="${settings.earlyShift || ""}">
+      <label>日付変更基準時刻</label>
+      <input type="time" name="dateChange" value="${data.dateChange || '05:00'}">
 
-    <label>残業割増率（％）</label>
-    <input type="number" name="overtimeRate" value="${settings.overtimeRate || 25}">
+      <label>勤怠締め日（毎月）</label>
+      <input type="number" name="closingDay" value="${data.closingDay || 25}">
 
-    <label>深夜手当発生時間帯</label>
-    <input type="text" name="nightHours" value="${settings.nightHours || "22:00〜05:00"}">
+      <button type="submit">保存する</button>
+    </form>
 
-    <label>休日出勤割増率（％）</label>
-    <input type="number" name="holidayRate" value="${settings.holidayRate || 35}">
-
-    <label>有給休暇付与条件（例：入社6ヶ月後10日）</label>
-    <input type="text" name="paidLeaveRule" value="${settings.paidLeaveRule || ""}">
-
-    <label>有給自動付与日（例：入社月＋6ヶ月後）</label>
-    <input type="text" name="paidLeaveGrant" value="${settings.paidLeaveGrant || ""}">
-
-    <label>有給有効期限（年）</label>
-    <input type="number" name="paidLeaveExpireYears" value="${settings.paidLeaveExpireYears || 2}">
-
-    <label>年間休日数（上限）</label>
-    <input type="number" name="annualHolidays" value="${settings.annualHolidays || 120}">
-
-    <button type="submit">保存</button>
-  </form>
-
-  <a href="/${store}/admin/settings">← 設定メニューへ戻る</a>
-  </body></html>
+  </body>
+  </html>
   `);
 });
 
-// ==============================
-// 📥 店舗共通設定の保存処理
-// ==============================
-app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) => {
-  if (!req.session.loggedIn || req.session.store !== req.store)
-    return res.redirect(`/${req.store}/login`);
 
+// ==============================
+// 💾 保存処理
+// ==============================
+app.post("/:store/admin/settings/general/save", ensureStore, express.urlencoded({ extended: true }), async (req, res) => {
   const store = req.store;
-  const data = req.body;
+  const data = {
+    regularHours: Number(req.body.regularHours) || 8,
+    nightStart: req.body.nightStart || "22:00",
+    dateChange: req.body.dateChange || "05:00",
+    closingDay: Number(req.body.closingDay) || 25,
+    updatedAt: new Date(),
+  };
 
-  await db
-    .collection("companies")
+  await db.collection("companies")
     .doc(store)
     .collection("settings")
-    .doc("general")
+    .doc("storeGeneral")
     .set(data, { merge: true });
 
   res.send(`
-    <html><body style="font-family:sans-serif;text-align:center;padding-top:30vh;">
-      <h2 style="color:#16a34a;">✅ 店舗共通設定を保存しました</h2>
-      <a href="/${store}/admin/settings/general">← 戻る</a>
-    </body></html>
+  <html><body style="font-family:sans-serif;text-align:center;padding-top:30vh;">
+    <h2 style="color:#16a34a;">✅ 設定を保存しました</h2>
+    <a href="/${store}/admin/settings/general" style="color:#2563eb;">← 店舗共通設定に戻る</a>
+  </body></html>
   `);
 });
 
