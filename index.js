@@ -2534,7 +2534,7 @@ app.get("/:store/admin/settings", ensureStore, async (req, res) => {
     <p>店舗全体・雇用区分・従業員ごとの設定を管理します。</p>
     <div class="wrap">
       <a class="btn" href="/${store}/admin/settings/general">📋 店舗共通設定</a>
-      <a class="btn" href="/${store}/admin/settings/contracts">📘 雇用区分別設定</a>
+      <a class="btn" href="/${store}/admin/settings/employment">📘 雇用区分別設定</a>
       <a class="btn" href="/${store}/admin/settings/staff">🧑‍💼 従業員個別設定</a>
     </div>
     <div class="back"><a href="/${store}/admin">← 管理TOPに戻る</a></div>
