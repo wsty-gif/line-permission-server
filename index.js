@@ -2793,7 +2793,7 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
 });
 
 // ==============================
-// 🧑‍💼 従業員個別設定ページ（一覧＋個別編集）
+// 🧑‍💼 従業員個別設定ページ（一覧）
 // ==============================
 app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
@@ -2801,11 +2801,12 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
 
   const store = req.store;
 
-  // 🔹 Firestoreから従業員一覧を取得（membersコレクション想定）
+  // 🔹 permissions コレクションから「承認済みのみ」取得
   const snapshot = await db
     .collection("companies")
     .doc(store)
-    .collection("members")
+    .collection("permissions")
+    .where("approved", "==", true)
     .get();
 
   const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2828,20 +2829,19 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
     <h1>🧑‍💼 従業員個別設定</h1>
 
     <table>
-      <tr><th>名前</th><th>雇用区分</th><th>ステータス</th><th>編集</th></tr>
+      <tr><th>名前</th><th>ユーザーID</th><th>編集</th></tr>
       ${members.length
         ? members
             .map(
               m => `
         <tr>
           <td>${m.name || "未登録"}</td>
-          <td>${m.employmentType || "未設定"}</td>
-          <td>${m.status || "在籍中"}</td>
+          <td>${m.id}</td>
           <td><a class="btn" href="/${store}/admin/settings/staff/${m.id}">編集</a></td>
         </tr>`
             )
             .join("")
-        : `<tr><td colspan="4" style="text-align:center;">従業員データがありません</td></tr>`}
+        : `<tr><td colspan="3" style="text-align:center;">承認済みの従業員がいません</td></tr>`}
     </table>
 
     <div class="back">
@@ -2850,6 +2850,7 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   </body></html>
   `);
 });
+
 
 // ==============================
 // ✏️ 個別編集ページ
