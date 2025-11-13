@@ -3280,6 +3280,35 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
         border:none;
         width:48%;
       }
+      
+
+      .table-scroll {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      table.staff-table {
+        min-width: 600px;   /* ← 横スクロール強制 */
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      table.staff-table th, table.staff-table td {
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+        white-space: nowrap; /* ← 横に伸ばす */
+        text-align: center;
+      }
+
+      .btn-edit {
+        background:#3b82f6;
+        border:none;
+        color:#fff;
+        padding:4px 8px;
+        border-radius:6px;
+        cursor:pointer;
+      }
     </style>
   </head>
 
@@ -3287,45 +3316,59 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
 
     <h1>👤 従業員個別設定</h1>
 
-    <table>
-      <tr>
-        <th>名前</th>
-        <th>雇用区分</th>
-        <th>給料</th>
-        <th>編集</th>
-      </tr>
+    <!-- 👇 ここからテーブル全体を差し替え -->
 
-      ${staff.map(s => `
-        <tr>
-          <td>${s.name || "未登録"}</td>
-          <td>${s.employmentType || "未設定"}</td>
-          <td>
-            ${
-              s.salary
-                ? s.employmentType === "正社員"
-                  ? "月給 " + (s.salary.monthly || "未設定")
-                : s.employmentType === "アルバイト"
-                  ? "時給 " + (s.salary.hourly || "未設定")
-                : s.employmentType === "業務委託"
-                  ? "日給 " + (s.salary.daily || "未設定")
-                : "—"
-              : "—"
-            }
-          </td>
-          <td>
-            <button class="edit-btn"
-              onclick="openEdit(
-                '${s.userId}',
-                '${s.name}',
-                '${s.employmentType || ""}',
-                '${jsonForHtml(s.salary || {})}'
-              )">
-              編集
-            </button>
-          </td>
-        </tr>
-      `).join("")}
-    </table>
+    <div class="table-scroll">
+      <table class="staff-table">
+        <thead>
+          <tr>
+            <th>編集</th>
+            <th>名前</th>
+            <th>雇用区分</th>
+            <th>給料</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${staff.map(s => `
+            <tr>
+              <!-- 編集ボタン -->
+              <td>
+                <button class="edit-btn"
+                  onclick="openEdit(
+                    '${s.userId}',
+                    '${s.name || ""}',
+                    '${s.employmentType || ""}',
+                    '${jsonForHtml(s.salary || {})}'
+                  )">
+                  編集
+                </button>
+              </td>
+
+              <!-- 名前 -->
+              <td>${s.name || "未登録"}</td>
+
+              <!-- 雇用区分 -->
+              <td>${s.employmentType || "未設定"}</td>
+
+              <!-- 給料 -->
+              <td>
+                ${
+                  s.salary
+                    ? s.employmentType === "正社員"
+                      ? "月給 " + (s.salary.monthly || "未設定")
+                    : s.employmentType === "アルバイト"
+                      ? "時給 " + (s.salary.hourly || "未設定")
+                    : s.employmentType === "業務委託"
+                      ? "日給 " + (s.salary.daily || "未設定")
+                    : "—"
+                  : "—"
+                }
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
 
     <!-- ===== モーダル ===== -->
     <div id="modal" class="modal-bg">
