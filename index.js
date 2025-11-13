@@ -348,8 +348,9 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         );
         renderTable(filtered);
       }
+
       function editStaff(userId) {
-        window.location.href = \`/${store}/admin/staff/${userId}/edit\`;
+        window.location.href = "/" + store + "/admin/staff/" + userId + "/edit";
       }
 
       function renderTable(data) {
