@@ -1618,24 +1618,35 @@ app.get("/:store/attendance-admin", ensureStore, async (req, res) => {
         m.showModal();
       }
 
-      async function saveEdit(){
-        const userId = document.getElementById("staffSelect").value;
-        const date = document.getElementById("editDate").value;
+      async function saveEdit() {
+        const id = document.getElementById("editId").value; 
+        const [userId, date] = id.split("_"); // ← FirestoreのIDから取得（安全）
+
         const inT = document.getElementById("editIn").value;
         const outT = document.getElementById("editOut").value;
-        if(inT && outT && inT>outT){ alert("出勤時間は退勤時間より前にしてください。"); return; }
+
+        if (inT && outT && inT > outT) {
+          alert("出勤時間は退勤時間より前にしてください。");
+          return;
+        }
 
         const body = {
-          userId, date,
-          clockIn: inT, clockOut: outT,
-          breakStart: document.getElementById("editBreakStart").value,
-          breakEnd: document.getElementById("editBreakEnd").value
+          userId,
+          date,
+          clockIn: inT,
+          clockOut: outT,
         };
-        const res = await fetch("/${store}/admin/attendance/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+
+        const res = await fetch(`/${store}/admin/attendance/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
         alert(await res.text());
         closeModal();
-        loadRecords();
       }
+
 
       // ✅ DOM読み込み後に初期化
       document.addEventListener("DOMContentLoaded", () => {
