@@ -362,15 +362,27 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         tbody.innerHTML = data.map(s => \`
           <tr>
             <td>
-              <button class="btn-edit" onclick="event.stopPropagation(); editStaff('${s.id}')">
+              <button class="btn-edit" onclick="event.stopPropagation(); editStaff('${"`"}\${s.id}${"`"}')">
                 ✏️
               </button>
             </td>
-            <td onclick="viewAttendance('${s.id}')">${s.name}</td>
-            <td>${s.approved ? "✅ 承認済み" : "⏳ 承認待ち"}</td>
-            <td><button class="btn-approve" onclick="event.stopPropagation(); updateStatus('${s.id}', true)">承認</button></td>
-            <td><button class="btn-revoke" onclick="event.stopPropagation(); updateStatus('${s.id}', false)">解除</button></td>
-            <td><button class="btn-delete" onclick="event.stopPropagation(); deleteStaff('${s.id}')">削除</button></td>
+            <td onclick="viewAttendance('${"`"}\${s.id}${"`"}')">
+              ${"`"}\${s.name}${"`"}
+            </td>
+            <td>
+              ${"`"}\${ s.approved ? "✅ 承認済み" : "⏳ 承認待ち" }${"`"}
+            </td>
+            <td>
+              <button class="btn-approve" onclick="event.stopPropagation(); updateStatus('${"`"}\${s.id}${"`"}', true)">承認</button>
+            </td>
+
+            <td>
+              <button class="btn-revoke" onclick="event.stopPropagation(); updateStatus('${"`"}\${s.id}${"`"}', false)">解除</button>
+            </td>
+
+            <td>
+              <button class="btn-delete" onclick="event.stopPropagation(); deleteStaff('${"`"}\${s.id}${"`"}')">削除</button>
+            </td>
           </tr>
           \`
         ).join("");
