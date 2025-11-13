@@ -2792,9 +2792,6 @@ app.post("/:store/admin/settings/employment/save/:type", ensureStore, express.ur
   `);
 });
 
-// ==============================
-// 🏪 店舗共通設定（デザイン版完成）
-// ==============================
 app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
@@ -2822,73 +2819,88 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
         margin: 0;
         padding: 20px;
       }
+
       .container {
-        max-width: 900px;
+        max-width: 760px;
         margin: 0 auto;
         background: white;
-        padding: 24px;
+        padding: 28px;
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
       }
+
       h1 {
         font-size: 20px;
-        font-weight: bold;
+        font-weight: 700;
+        margin-bottom: 18px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         border-bottom: 2px solid #e5e7eb;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
+        padding-bottom: 8px;
       }
+
       .row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        margin-bottom: 16px;
+        margin-bottom: 18px;
       }
+
       label {
+        font-weight: 700;
         font-size: 14px;
-        font-weight: 600;
-        display: block;
         margin-bottom: 4px;
+        display: block;
       }
-      input, select {
+
+      input {
         width: 100%;
         padding: 10px;
+        border: 1px solid #cbd5e1;
         border-radius: 8px;
-        border: 1px solid #d1d5db;
         font-size: 15px;
-        background: #fff;
       }
-      small {
-        font-size: 12px;
-        color: #6b7280;
+
+      .time-range {
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
+
+      .time-range input {
+        flex: 1;
+      }
+
       .save-btn {
-        background: #4f46e5;
-        color: white;
-        padding: 12px 18px;
-        border-radius: 8px;
+        width: 100%;
+        margin-top: 28px;
+        padding: 13px;
         font-size: 16px;
+        background: #6366f1;
+        color: white;
+        font-weight: 600;
         border: none;
+        border-radius: 8px;
         cursor: pointer;
-        margin-top: 12px;
       }
+
       .save-btn:hover {
-        background: #4338ca;
+        background: #4f46e5;
       }
+
       .back {
-        margin-bottom: 16px;
+        margin-bottom: 14px;
+        text-align: center;
       }
+
       .back a {
         color: #2563eb;
-        font-size: 14px;
         text-decoration: none;
+        font-size: 14px;
       }
     </style>
   </head>
 
   <body>
+
     <div class="back">
       <a href="/${store}/admin/settings">← 店舗設定に戻る</a>
     </div>
@@ -2898,61 +2910,51 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
 
       <form method="POST" action="/${store}/admin/settings/general/save">
 
+        <!-- 残業単価倍率 -->
         <div class="row">
-          <div>
-            <label>残業単価倍率</label>
-            <input type="number" step="0.01" name="overtimeRate" value="${data.overtimeRate || 1.25}">
-            <small>例：1.25倍 = 時給×125%</small>
-          </div>
+          <label>残業単価倍率</label>
+          <input type="number" step="0.01" name="overtimeRate" value="${data.overtimeRate || 1.25}">
+        </div>
 
-          <div>
-            <label>深夜割増倍率</label>
-            <input type="number" step="0.01" name="nightRate" value="${data.nightRate || 1.25}">
-            <small>例：1.25倍 = 時給×125%</small>
+        <!-- 深夜割増倍率 -->
+        <div class="row">
+          <label>深夜割増倍率</label>
+          <input type="number" step="0.01" name="nightRate" value="${data.nightRate || 1.25}">
+        </div>
+
+        <!-- 深夜時間帯（開始〜終了） -->
+        <div class="row">
+          <label>深夜時間帯（開始〜終了）</label>
+          <div class="time-range">
+            <input type="time" name="nightStart" value="${data.nightStart || '22:00'}">
+            <span>〜</span>
+            <input type="time" name="nightEnd" value="${data.nightEnd || '05:00'}">
           </div>
         </div>
 
+        <!-- 休日割増倍率 -->
         <div class="row">
-          <div>
-            <label>深夜時間帯（開始）</label>
-            <input type="time" name="nightStart" value="${data.nightStart || "22:00"}">
-          </div>
-
-          <div>
-            <label>深夜時間帯（終了）</label>
-            <input type="time" name="nightEnd" value="${data.nightEnd || "05:00"}">
-          </div>
+          <label>休日割増倍率</label>
+          <input type="number" step="0.01" name="holidayRate" value="${data.holidayRate || 1.35}">
         </div>
 
+        <!-- 締め日（入力式） -->
         <div class="row">
-          <div>
-            <label>休日割増倍率</label>
-            <input type="number" step="0.01" name="holidayRate" value="${data.holidayRate || 1.35}">
-            <small>例：1.35倍 = 時給×135%</small>
-          </div>
-
-          <div>
-            <label>締め日</label>
-            <select name="closing">
-              <option value="月末締め" ${data.closing==="月末締め"?"selected":""}>月末締め</option>
-              <option value="毎月15日締め" ${data.closing==="毎月15日締め"?"selected":""}>毎月15日締め</option>
-              <option value="毎月20日締め" ${data.closing==="毎月20日締め"?"selected":""}>毎月20日締め</option>
-              <option value="毎月25日締め" ${data.closing==="毎月25日締め"?"selected":""}>毎月25日締め</option>
-            </select>
-          </div>
+          <label>締め日（◯日締め）</label>
+          <input type="number" name="closingDay" value="${data.closingDay || ''}" placeholder="例：25 → 25日締め">
         </div>
 
         <button class="save-btn">💾 設定を保存</button>
+
       </form>
     </div>
+
   </body>
   </html>
   `);
 });
 
-// ==============================
-// 💾 店舗共通設定 保存処理
-// ==============================
+
 app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) => {
   const store = req.store;
 
@@ -2962,7 +2964,7 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
     nightStart: req.body.nightStart,
     nightEnd: req.body.nightEnd,
     holidayRate: Number(req.body.holidayRate),
-    closing: req.body.closing,
+    closingDay: Number(req.body.closingDay),  // ← 修正
     updatedAt: new Date(),
   };
 
@@ -2979,6 +2981,7 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
     </body></html>
   `);
 });
+
 
 // ==============================
 // 🧑‍💼 従業員個別設定ページ（承認済み一覧・コンパクト表示）
