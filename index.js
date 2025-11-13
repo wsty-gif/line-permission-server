@@ -3343,26 +3343,19 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
       let editUserId = null;
       let selectedType = "";
 
-      function jsonForHtml(obj) {
-        return JSON.stringify(obj)
-          .replace(/\\/g, "\\\\")     // バックスラッシュ
-          .replace(/"/g, '\\"')       // ダブルクォート
-          .replace(/'/g, "\\'");      // シングルクォート
-      }
-
 
       function openEdit(id, name, type, salaryJson) {
         const salary = JSON.parse(salaryJson);
 
         console.log("編集開始:", id, name, type, salary);
-        editUserId = userId;
+        editUserId = id;
 
-        document.getElementById("modalTitle").innerText = "✏️ " + name + " さんの設定";
+        document.getElementById("modalTitle").innerText =
+          "✏️ " + name + " さんの設定";
 
         selectedType = type || "";
         highlightTypeButton();
 
-        const salary = JSON.parse(salaryJson);
         renderSalaryInput(salary);
 
         document.getElementById("modal").style.display = "flex";
@@ -3474,6 +3467,13 @@ app.post("/:store/admin/settings/staff/salary", ensureStore, async (req, res) =>
 
   res.json({ status: "ok" });
 });
+
+// HTML属性に安全に JSON を埋め込むためのヘルパー（サーバー側）
+function jsonForHtml(obj) {
+  return JSON.stringify(obj || {})
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;"); // ダブルクォートだけ HTML エスケープ
+}
 
 // ==============================
 // ✏️ 個別編集ページ
