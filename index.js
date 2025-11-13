@@ -1640,8 +1640,9 @@ app.get("/:store/attendance-admin", ensureStore, async (req, res) => {
         const res = await fetch(`/${store}/admin/attendance/update`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
+          body: JSON.stringify(payload)
+        });   // ← ★ ここの括弧が必要！
+
 
         alert(await res.text());
         closeModal();
