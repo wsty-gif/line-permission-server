@@ -3304,7 +3304,13 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
             }
           </td>
           <td>
-            <button class="edit-btn" onclick="openEdit('${s.userId}', '${s.name || ""}', '${s.employmentType || ""}', '${JSON.stringify(s.salary || {})}')">
+            <button class="edit-btn" onclick="openEdit(
+                '${s.id}',
+                '${s.name}',
+                '${s.employmentType}',
+                '${jsonForHtml(s.salary || {})}'
+              )"
+            >
               ✏️ 編集
             </button>
           </td>
@@ -3337,7 +3343,10 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
       let editUserId = null;
       let selectedType = "";
 
-      function openEdit(userId, name, type, salaryJson) {
+      function openEdit(id, name, type, salaryJson) {
+        const salary = JSON.parse(salaryJson);
+
+        console.log("編集開始:", id, name, type, salary);
         editUserId = userId;
 
         document.getElementById("modalTitle").innerText = "✏️ " + name + " さんの設定";
