@@ -2792,187 +2792,177 @@ app.post("/:store/admin/settings/employment/save/:type", ensureStore, express.ur
   `);
 });
 
+// ==============================
+// 🏪 店舗共通設定（デザイン版完成）
+// ==============================
 app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
 
-  // Firestoreから設定データ取得
-  const doc = await db.collection("companies")
-    .doc(store)
-    .collection("settings")
-    .doc("storeGeneral")
+  const doc = await db
+    .collection("companies").doc(store)
+    .collection("settings").doc("storeGeneral")
     .get();
+
   const data = doc.exists ? doc.data() : {};
 
   res.send(`
   <!DOCTYPE html>
   <html lang="ja">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>${store} 店舗共通設定</title>
-
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${store} 給与計算ルール</title>
     <style>
       body {
-        font-family:'Noto Sans JP', sans-serif;
-        background:#f1f5f9;
-        padding:20px;
-      }
-      h1 {
-        color:#2563eb;
-        text-align:center;
-        margin-bottom:20px;
-        font-weight:700;
+        font-family: 'Noto Sans JP', sans-serif;
+        background: #f3f4f6;
+        margin: 0;
+        padding: 20px;
       }
       .container {
-        max-width:900px;
-        margin:0 auto;
-        background:#fff;
-        padding:25px 30px;
-        border-radius:12px;
-        box-shadow:0 3px 10px rgba(0,0,0,0.08);
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       }
-      .section-title {
-        font-size:1.2rem;
-        font-weight:700;
-        margin-bottom:15px;
-        padding-bottom:8px;
-        border-bottom:2px solid #e5e7eb;
-        display:flex;
-        align-items:center;
-        gap:8px;
+      h1 {
+        font-size: 20px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
       }
-      .grid {
-        display:flex;
-        flex-wrap:wrap;
-        gap:16px;
-      }
-      .field {
-        flex:1;
-        min-width:260px;
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
       }
       label {
-        font-weight:600;
-        margin-bottom:4px;
-        display:block;
-        color:#374151;
-        display:flex;
-        align-items:center;
-        gap:6px;
+        font-size: 14px;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 4px;
       }
       input, select {
-        width:100%;
-        padding:10px;
-        border:1px solid #cbd5e1;
-        border-radius:8px;
-        font-size:15px;
-        margin-top:4px;
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        font-size: 15px;
+        background: #fff;
       }
-      input:focus, select:focus {
-        border-color:#2563eb;
-        outline:none;
-        box-shadow:0 0 0 3px rgba(37,99,235,0.2);
+      small {
+        font-size: 12px;
+        color: #6b7280;
       }
-
-      button.save {
-        width:100%;
-        margin-top:25px;
-        padding:12px;
-        font-size:16px;
-        background:#6366f1;
-        color:white;
-        border:none;
-        border-radius:8px;
-        cursor:pointer;
-        font-weight:600;
+      .save-btn {
+        background: #4f46e5;
+        color: white;
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-size: 16px;
+        border: none;
+        cursor: pointer;
+        margin-top: 12px;
       }
-      button.save:hover {
-        background:#4f46e5;
+      .save-btn:hover {
+        background: #4338ca;
       }
-      .back-btn {
-        text-align:center;
-        margin-bottom:15px;
+      .back {
+        margin-bottom: 16px;
       }
-      .back-btn a {
-        color:#2563eb;
-        text-decoration:none;
-        font-weight:600;
-      }
-
-      @media (max-width: 640px) {
-        .grid { flex-direction:column; }
+      .back a {
+        color: #2563eb;
+        font-size: 14px;
+        text-decoration: none;
       }
     </style>
   </head>
 
   <body>
-
-    <div class="back-btn">
-      <a href="/${store}/admin/settings">← 店舗設定メニューに戻る</a>
+    <div class="back">
+      <a href="/${store}/admin/settings">← 店舗設定に戻る</a>
     </div>
 
-    <h1>📋 給与計算ルール</h1>
+    <div class="container">
+      <h1>📋 給与計算ルール</h1>
 
-    <form method="POST" action="/${store}/admin/settings/general/save">
-      <div class="container">
+      <form method="POST" action="/${store}/admin/settings/general/save">
 
-        <div class="section-title">
-          📄 基本設定
+        <div class="row">
+          <div>
+            <label>残業単価倍率</label>
+            <input type="number" step="0.01" name="overtimeRate" value="${data.overtimeRate || 1.25}">
+            <small>例：1.25倍 = 時給×125%</small>
+          </div>
+
+          <div>
+            <label>深夜割増倍率</label>
+            <input type="number" step="0.01" name="nightRate" value="${data.nightRate || 1.25}">
+            <small>例：1.25倍 = 時給×125%</small>
+          </div>
         </div>
 
-        <div class="grid">
-          <div class="field">
-            <label>🕒 所定労働時間（時間）</label>
-            <input type="number" step="0.1" name="regularHours" value="${data.regularHours || 8}">
+        <div class="row">
+          <div>
+            <label>深夜時間帯（開始）</label>
+            <input type="time" name="nightStart" value="${data.nightStart || "22:00"}">
           </div>
 
-          <div class="field">
-            <label>🌙 深夜手当開始時刻</label>
-            <input type="time" name="nightStart" value="${data.nightStart || '22:00'}">
+          <div>
+            <label>深夜時間帯（終了）</label>
+            <input type="time" name="nightEnd" value="${data.nightEnd || "05:00"}">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>休日割増倍率</label>
+            <input type="number" step="0.01" name="holidayRate" value="${data.holidayRate || 1.35}">
+            <small>例：1.35倍 = 時給×135%</small>
           </div>
 
-          <div class="field">
-            <label>⏰ 日付変更基準時刻（深夜終了）</label>
-            <input type="time" name="dateChange" value="${data.dateChange || '05:00'}">
-          </div>
-
-          <div class="field">
-            <label>📅 勤怠締め日</label>
-            <select name="closingDay">
-              <option value="0" ${data.closingDay == 0 ? "selected" : ""}>月末締め</option>
-              <option value="15" ${data.closingDay == 15 ? "selected" : ""}>毎月15日締め</option>
-              <option value="20" ${data.closingDay == 20 ? "selected" : ""}>毎月20日締め</option>
-              <option value="25" ${data.closingDay == 25 ? "selected" : ""}>毎月25日締め</option>
+          <div>
+            <label>締め日</label>
+            <select name="closing">
+              <option value="月末締め" ${data.closing==="月末締め"?"selected":""}>月末締め</option>
+              <option value="毎月15日締め" ${data.closing==="毎月15日締め"?"selected":""}>毎月15日締め</option>
+              <option value="毎月20日締め" ${data.closing==="毎月20日締め"?"selected":""}>毎月20日締め</option>
+              <option value="毎月25日締め" ${data.closing==="毎月25日締め"?"selected":""}>毎月25日締め</option>
             </select>
           </div>
-
         </div>
 
-        <button class="save" type="submit">
-          💾 設定を保存
-        </button>
-
-      </div>
-    </form>
-
+        <button class="save-btn">💾 設定を保存</button>
+      </form>
+    </div>
   </body>
   </html>
   `);
 });
 
-
 // ==============================
-// 💾 保存処理
+// 💾 店舗共通設定 保存処理
 // ==============================
-app.post("/:store/admin/settings/general/save", ensureStore, express.urlencoded({ extended: true }), async (req, res) => {
+app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) => {
   const store = req.store;
+
   const data = {
-    regularHours: Number(req.body.regularHours) || 8,
-    nightStart: req.body.nightStart || "22:00",
-    dateChange: req.body.dateChange || "05:00",
-    closingDay: Number(req.body.closingDay) || 25,
+    overtimeRate: Number(req.body.overtimeRate),
+    nightRate: Number(req.body.nightRate),
+    nightStart: req.body.nightStart,
+    nightEnd: req.body.nightEnd,
+    holidayRate: Number(req.body.holidayRate),
+    closing: req.body.closing,
     updatedAt: new Date(),
   };
 
@@ -2983,10 +2973,10 @@ app.post("/:store/admin/settings/general/save", ensureStore, express.urlencoded(
     .set(data, { merge: true });
 
   res.send(`
-  <html><body style="font-family:sans-serif;text-align:center;padding-top:30vh;">
-    <h2 style="color:#16a34a;">✅ 設定を保存しました</h2>
-    <a href="/${store}/admin/settings/general" style="color:#2563eb;">← 店舗共通設定に戻る</a>
-  </body></html>
+    <html><body style="font-family:sans-serif;text-align:center;padding-top:30vh;">
+      <h2 style="color:#16a34a;">✅ 設定を保存しました</h2>
+      <a href="/${store}/admin/settings/general" style="color:#2563eb;">← 戻る</a>
+    </body></html>
   `);
 });
 
