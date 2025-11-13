@@ -3304,13 +3304,13 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
             }
           </td>
           <td>
-            <button class="edit-btn" onclick="openEdit(
-                '${s.id}',
+            <button class="edit-btn"
+              onclick="openEdit(
+                '${s.userId}',
                 '${s.name}',
-                '${s.employmentType}',
+                '${s.employmentType || ""}',
                 '${jsonForHtml(s.salary || {})}'
-              )"
-            >
+              )">
               ✏️ 編集
             </button>
           </td>
@@ -3345,9 +3345,11 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
 
       function jsonForHtml(obj) {
         return JSON.stringify(obj)
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
+          .replace(/\\/g, "\\\\")     // バックスラッシュ
+          .replace(/"/g, '\\"')       // ダブルクォート
+          .replace(/'/g, "\\'");      // シングルクォート
       }
+
 
       function openEdit(id, name, type, salaryJson) {
         const salary = JSON.parse(salaryJson);
