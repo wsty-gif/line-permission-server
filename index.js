@@ -3025,9 +3025,11 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
   </head>
 
   <body>
-
-    <div class="back">
-      <a href="/${store}/admin/settings">← 店舗設定に戻る</a>
+    <div style="text-align:center; margin-top:24px;">
+      <button onclick="location.href='/${store}/admin/settings'" 
+        style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
+        ← 店舗設定に戻る
+      </button>
     </div>
 
     <div class="container">
@@ -3313,7 +3315,12 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   </head>
 
   <body>
-
+    <div style="text-align:center; margin-top:24px;">
+      <button onclick="location.href='/${store}/admin/settings'" 
+        style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
+        ← 店舗設定に戻る
+      </button>
+    </div>
     <h1>👤 従業員個別設定</h1>
 
     <!-- 👇 ここからテーブル全体を差し替え -->
