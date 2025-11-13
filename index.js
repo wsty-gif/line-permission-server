@@ -3029,15 +3029,18 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
   </head>
 
   <body>
-    <div style="text-align:center; margin-top:24px;">
-      <button onclick="location.href='/${store}/admin/settings'" 
-        style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
+    <div style="text-align:center; margin-top:24px; margin-bottom:24px;">
+      <button
+        onclick="location.href='/${store}/admin/settings'"
+        style="background:#6b7280; color:white; border:none;
+              border-radius:8px; padding:10px 20px; font-size:14px;
+              cursor:pointer; margin-bottom:24px;">
         ← 店舗設定に戻る
       </button>
     </div>
 
     <div class="container">
-      <h1>📋 給与計算ルール</h1>
+      <h1>店舗共通設定</h1>
 
       <form method="POST" action="/${store}/admin/settings/general/save">
 
