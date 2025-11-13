@@ -2792,9 +2792,6 @@ app.post("/:store/admin/settings/employment/save/:type", ensureStore, express.ur
   `);
 });
 
-// ==============================
-// 🏪 店舗共通設定（最低限版）
-// ==============================
 app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
@@ -2816,48 +2813,148 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>${store} 店舗共通設定</title>
+
     <style>
-      body { font-family:'Noto Sans JP',sans-serif; background:#f9fafb; padding:24px; }
-      h1 { color:#2563eb; text-align:center; margin-bottom:24px; }
-      .back-btn { text-align:center; margin-bottom:20px; }
+      body {
+        font-family:'Noto Sans JP', sans-serif;
+        background:#f1f5f9;
+        padding:20px;
+      }
+      h1 {
+        color:#2563eb;
+        text-align:center;
+        margin-bottom:20px;
+        font-weight:700;
+      }
+      .container {
+        max-width:900px;
+        margin:0 auto;
+        background:#fff;
+        padding:25px 30px;
+        border-radius:12px;
+        box-shadow:0 3px 10px rgba(0,0,0,0.08);
+      }
+      .section-title {
+        font-size:1.2rem;
+        font-weight:700;
+        margin-bottom:15px;
+        padding-bottom:8px;
+        border-bottom:2px solid #e5e7eb;
+        display:flex;
+        align-items:center;
+        gap:8px;
+      }
+      .grid {
+        display:flex;
+        flex-wrap:wrap;
+        gap:16px;
+      }
+      .field {
+        flex:1;
+        min-width:260px;
+      }
+      label {
+        font-weight:600;
+        margin-bottom:4px;
+        display:block;
+        color:#374151;
+        display:flex;
+        align-items:center;
+        gap:6px;
+      }
+      input, select {
+        width:100%;
+        padding:10px;
+        border:1px solid #cbd5e1;
+        border-radius:8px;
+        font-size:15px;
+        margin-top:4px;
+      }
+      input:focus, select:focus {
+        border-color:#2563eb;
+        outline:none;
+        box-shadow:0 0 0 3px rgba(37,99,235,0.2);
+      }
+
+      button.save {
+        width:100%;
+        margin-top:25px;
+        padding:12px;
+        font-size:16px;
+        background:#6366f1;
+        color:white;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+        font-weight:600;
+      }
+      button.save:hover {
+        background:#4f46e5;
+      }
+      .back-btn {
+        text-align:center;
+        margin-bottom:15px;
+      }
       .back-btn a {
-        background:#2563eb; color:#fff; padding:8px 16px;
-        border-radius:6px; text-decoration:none;
+        color:#2563eb;
+        text-decoration:none;
+        font-weight:600;
       }
-      form { background:white; padding:20px; border-radius:8px;
-             max-width:460px; margin:0 auto;
-             box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-      label { display:block; margin-top:12px; font-weight:600; }
-      input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-top:4px; }
-      button {
-        margin-top:20px; background:#2563eb; color:white;
-        border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%;
+
+      @media (max-width: 640px) {
+        .grid { flex-direction:column; }
       }
-      button:hover { background:#1d4ed8; }
     </style>
   </head>
+
   <body>
 
     <div class="back-btn">
       <a href="/${store}/admin/settings">← 店舗設定メニューに戻る</a>
     </div>
 
-    <h1>📋 店舗共通設定</h1>
+    <h1>📋 給与計算ルール</h1>
 
     <form method="POST" action="/${store}/admin/settings/general/save">
-      <label>所定労働時間（時間）</label>
-      <input type="number" step="0.1" name="regularHours" value="${data.regularHours || 8}">
+      <div class="container">
 
-      <label>深夜手当開始時刻</label>
-      <input type="time" name="nightStart" value="${data.nightStart || '22:00'}">
+        <div class="section-title">
+          📄 基本設定
+        </div>
 
-      <label>日付変更基準時刻</label>
-      <input type="time" name="dateChange" value="${data.dateChange || '05:00'}">
+        <div class="grid">
+          <div class="field">
+            <label>🕒 所定労働時間（時間）</label>
+            <input type="number" step="0.1" name="regularHours" value="${data.regularHours || 8}">
+          </div>
 
-      <label>勤怠締め日（毎月）</label>
-      <input type="number" name="closingDay" value="${data.closingDay || 25}">
+          <div class="field">
+            <label>🌙 深夜手当開始時刻</label>
+            <input type="time" name="nightStart" value="${data.nightStart || '22:00'}">
+          </div>
 
-      <button type="submit">保存する</button>
+          <div class="field">
+            <label>⏰ 日付変更基準時刻（深夜終了）</label>
+            <input type="time" name="dateChange" value="${data.dateChange || '05:00'}">
+          </div>
+
+          <div class="field">
+            <label>📅 勤怠締め日</label>
+            <select name="closingDay">
+              <option value="0" ${data.closingDay == 0 ? "selected" : ""}>月末締め</option>
+              <option value="15" ${data.closingDay == 15 ? "selected" : ""}>毎月15日締め</option>
+              <option value="20" ${data.closingDay == 20 ? "selected" : ""}>毎月20日締め</option>
+              <option value="25" ${data.closingDay == 25 ? "selected" : ""}>毎月25日締め</option>
+            </select>
+          </div>
+
+        </div>
+
+        <button class="save" type="submit">
+          💾 設定を保存
+        </button>
+
+      </div>
     </form>
 
   </body>
