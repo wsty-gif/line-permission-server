@@ -3034,6 +3034,41 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
     ...doc.data(),
   }));
 
+  // ==========================
+  // 🧩 給料欄のサーバー側HTML生成
+  // ==========================
+  function renderSalaryBox(staff) {
+    if (!staff.employmentType) return "—";
+
+    const salary = staff.salary || {};
+
+    if (staff.employmentType === "正社員") {
+      return `
+        <div class="salary-box">
+          月額固定給：${salary.monthly ? salary.monthly + " 円" : "未設定"}
+        </div>
+      `;
+    }
+
+    if (staff.employmentType === "アルバイト") {
+      return `
+        <div class="salary-box">
+          時給単価：${salary.hourly ? salary.hourly + " 円" : "未設定"}
+        </div>
+      `;
+    }
+
+    if (staff.employmentType === "業務委託") {
+      return `
+        <div class="salary-box">
+          日給単価：${salary.daily ? salary.daily + " 円" : "未設定"}
+        </div>
+      `;
+    }
+
+    return "—";
+  }
+
   res.send(`
   <!DOCTYPE html>
   <html lang="ja">
