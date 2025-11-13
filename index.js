@@ -360,20 +360,21 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
           return;
         }
 
-        tbody.innerHTML = data.map(s => {
-          return (
-            '<tr>' +
-              '<td>' +
-                '<button class="btn-edit" onclick="event.stopPropagation(); editStaff(\'' + s.id + '\')">✏️</button>' +
-              '</td>' +
-              '<td onclick="viewAttendance(\'' + s.id + '\')">' + s.name + '</td>' +
-              '<td>' + (s.approved ? "✅ 承認済み" : "⏳ 承認待ち") + '</td>' +
-              '<td><button class="btn-approve" onclick="event.stopPropagation(); updateStatus(\'' + s.id + '\', true)">承認</button></td>' +
-              '<td><button class="btn-revoke" onclick="event.stopPropagation(); updateStatus(\'' + s.id + '\', false)">解除</button></td>' +
-              '<td><button class="btn-delete" onclick="event.stopPropagation(); deleteStaff(\'' + s.id + '\')">削除</button></td>' +
-            '</tr>'
-          );
-        }).join("");
+      tbody.innerHTML = data.map(s => {
+        return (
+          '<tr>' +
+            '<td>' +
+              '<button class="btn-edit" onclick="event.stopPropagation(); editStaff(\'' + s.id + '\')">✏️</button>' +
+            '</td>' +
+            '<td onclick="viewAttendance(\'' + s.id + '\')">' + s.name + '</td>' +
+            '<td>' + (s.approved ? "✅ 承認済み" : "⏳ 承認待ち") + '</td>' +
+            '<td><button class="btn-approve" onclick="event.stopPropagation(); updateStatus(\'' + s.id + '\', true)">承認</button></td>' +
+            '<td><button class="btn-revoke" onclick="event.stopPropagation(); updateStatus(\'' + s.id + '\', false)">解除</button></td>' +
+            '<td><button class="btn-delete" onclick="event.stopPropagation(); deleteStaff(\'' + s.id + '\')">削除</button></td>' +
+          '</tr>'
+        );
+      }).join("");
+
       }
 
 
@@ -3193,22 +3194,33 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
 
       /* ===== モーダル ===== */
       .modal-bg {
-        position:fixed;
-        top:0; left:0;
-        width:100%; height:100%;
-        background:rgba(0,0,0,0.4);
-        display:none;
-        justify-content:center;
-        align-items:center;
-        padding:20px;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.4);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+        z-index: 9999;
       }
+      /* ===== モーダル本体 ===== */
       .modal-box {
-        background:white;
-        width:95%;
-        max-width:430px;
-        padding:20px;
-        border-radius:12px;
-        box-shadow:0 4px 12px rgba(0,0,0,0.2);
+        background: white;
+        width: 90%;                /* スマホで絶対に収まる幅 */
+        max-width: 420px;          /* タブレット・PC 用の上限 */
+        
+        max-height: 90vh;          /* 画面からはみ出さない */
+        overflow-y: auto;          /* 高さが溢れたら縦スクロール */
+        
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+
+        position: relative;
+        top: 0; left: 0;
+        right: 0; bottom: 0;
+        margin: auto;              /* 常にど真ん中へ */
       }
       .modal-title {
         font-size:20px;
@@ -3311,7 +3323,7 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
                 '${s.employmentType || ""}',
                 '${jsonForHtml(s.salary || {})}'
               )">
-              ✏️ 編集
+              編集
             </button>
           </td>
         </tr>
@@ -3351,7 +3363,7 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
         editUserId = id;
 
         document.getElementById("modalTitle").innerText =
-          "✏️ " + name + " さんの設定";
+          name + " さんの設定";
 
         selectedType = type || "";
         highlightTypeButton();
