@@ -3016,174 +3016,221 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
 });
 
 
-// ==============================
-// 🧑‍💼 従業員個別設定ページ（承認済み一覧・コンパクト表示）
-// ==============================
 app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
 
-  // 🔹 permissions コレクションから「承認済みのみ」取得
-  const snapshot = await db
-    .collection("companies")
+  // Firestore 従業員一覧取得（承認済みのみ）
+  const snap = await db.collection("companies")
     .doc(store)
     .collection("permissions")
     .where("approved", "==", true)
     .get();
 
-  const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-  // 🔹 雇用区分を個別設定から取得（存在すれば上書き）
-  for (const m of members) {
-    const staffDoc = await db
-      .collection("companies")
-      .doc(store)
-      .collection("settings")
-      .doc("staff_" + m.id)
-      .get();
-    if (staffDoc.exists && staffDoc.data().employmentType) {
-      m.employmentType = staffDoc.data().employmentType;
-    }
-  }
+  const staff = snap.docs.map(doc => ({
+    userId: doc.id,
+    ...doc.data(),
+  }));
 
   res.send(`
-  <!DOCTYPE html><html lang="ja"><head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${store} 従業員個別設定</title>
-  <style>
-    body {
-      font-family: "Segoe UI", "Hiragino Sans", sans-serif;
-      background: #f8fafc;
-      padding: 20px;
-    }
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>従業員個別設定</title>
 
-    h1 {
-      text-align: center;
-      color: #2563eb;
-      font-size: 1.4rem;
-      margin-bottom: 14px;
-    }
-
-    .table-wrapper {
-      overflow-x: auto;
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      padding: 6px 10px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-      min-width: 500px;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 8px 10px;
-      border-bottom: 1px solid #e5e7eb;
-      white-space: nowrap;
-    }
-
-    th {
-      color: #374151;
-      font-weight: 600;
-      background: #f3f4f6;
-    }
-
-    tr:hover {
-      background: #f9fafb;
-    }
-
-    a.btn {
-      display: inline-block;
-      padding: 5px 8px;
-      border-radius: 6px;
-      background: #2563eb;
-      color: white;
-      text-decoration: none;
-      font-size: 0.8rem;
-      transition: 0.2s;
-    }
-
-    a.btn:hover {
-      background: #1e40af;
-    }
-
-    .back {
-      text-align: center;
-      margin-top: 18px;
-    }
-
-    .back a {
-      color: #2563eb;
-      font-size: 0.9rem;
-      text-decoration: none;
-    }
-
-    .back a:hover {
-      text-decoration: underline;
-    }
-
-    /* 📱 小画面ではスクロールが自動有効 */
-    @media (max-width: 640px) {
-      .table-wrapper { overflow-x: auto; }
-      table { min-width: 480px; }
-    }
-  </style>
+    <style>
+      body {
+        font-family: "Noto Sans JP", sans-serif;
+        background:#f3f4f6;
+        padding:24px;
+      }
+      h1 {
+        text-align:center;
+        margin-bottom:20px;
+        font-size:20px;
+      }
+      table {
+        width:100%;
+        background:white;
+        border-collapse:collapse;
+        border-radius:10px;
+        overflow:hidden;
+      }
+      th, td {
+        padding:12px;
+        border-bottom:1px solid #e5e7eb;
+        text-align:left;
+      }
+      th {
+        background:#f9fafb;
+        font-weight:bold;
+      }
+      select, input {
+        padding:8px;
+        border:1px solid #d1d5db;
+        border-radius:6px;
+        width:100%;
+        background:white;
+      }
+      .salary-box {
+        background:#f5f5ff;
+        padding:10px;
+        border-radius:8px;
+        margin-top:8px;
+      }
+      .save-msg {
+        color:#16a34a;
+        font-size:13px;
+        display:none;
+        margin-top:4px;
+      }
+      .flex {
+        display:flex;
+        gap:8px;
+      }
+    </style>
   </head>
+
   <body>
-    <div style="text-align:center;margin-bottom:16px;">
-      <a href="/${store}/admin/settings"
-        style="display:inline-block;background:#2563eb;color:#fff;padding:8px 16px;border-radius:6px;
-                text-decoration:none;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.15);">
-        ← 店舗設定メニューに戻る
-      </a>
-    </div>
+    <h1>👤 従業員個別設定</h1>
 
-    <h1>🧑‍💼 従業員個別設定</h1>
+    <table>
+      <tr>
+        <th>名前</th>
+        <th>雇用区分</th>
+        <th>給料設定</th>
+      </tr>
 
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>編集</th>
-            <th>名前</th>
-            <th>雇用区分</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${
-            members.length
-              ? members
-                  .map(
-                    (m) => `
-              <tr>
-                <td><a class="btn" href="/${store}/admin/settings/staff/${m.id}">編集</a></td>
-                <td>${m.name || "未登録"}</td>
-                <td>${m.employmentType || "未設定"}</td>
-              </tr>`
-                  )
-                  .join("")
-              : `<tr><td colspan="3" style="text-align:center; color:#6b7280;">承認済みの従業員がいません</td></tr>`
-          }
-        </tbody>
-      </table>
-    </div>
+      ${staff.map(s => `
+        <tr>
+          <td>${s.name || "未登録"}</td>
 
-    <div class="back">
-      <a href="/${store}/admin/settings">← 設定メニューへ戻る</a>
-    </div>
-  </body></html>
+          <td>
+            <select onchange="changeType('${s.userId}', this.value)">
+              <option value="">未設定</option>
+              <option value="正社員" ${s.employmentType==="正社員"?"selected":""}>正社員</option>
+              <option value="アルバイト" ${s.employmentType==="アルバイト"?"selected":""}>アルバイト</option>
+              <option value="業務委託" ${s.employmentType==="業務委託"?"selected":""}>業務委託</option>
+            </select>
+          </td>
+
+          <td id="salary-${s.userId}">
+            ${renderSalaryBox(s)}
+          </td>
+        </tr>
+      `).join("")}
+    </table>
+
+    <script>
+      function renderSalaryBoxJS(type, salary = {}) {
+        if (!type) return "";
+
+        if (type === "正社員") {
+          return \`
+            <div class="salary-box">
+              <label>月額固定給（円）</label>
+              <input type="number" id="salaryInput" value="\${salary.monthly || ""}" 
+                     onblur="saveSalary(globalUserId, this.value)">
+            </div>
+          \`;
+        }
+
+        if (type === "アルバイト") {
+          return \`
+            <div class="salary-box">
+              <label>時給単価（円）</label>
+              <input type="number" id="salaryInput" value="\${salary.hourly || ""}"
+                     onblur="saveSalary(globalUserId, this.value)">
+            </div>
+          \`;
+        }
+
+        if (type === "業務委託") {
+          return \`
+            <div class="salary-box">
+              <label>日給単価（円）</label>
+              <input type="number" id="salaryInput" value="\${salary.daily || ""}"
+                     onblur="saveSalary(globalUserId, this.value)">
+            </div>
+          \`;
+        }
+
+        return "";
+      }
+
+      let globalUserId = null;
+
+      function changeType(userId, type) {
+        globalUserId = userId;
+
+        fetch("/${store}/admin/settings/staff/type", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ userId, type })
+        });
+
+        const target = document.getElementById("salary-" + userId);
+        target.innerHTML = renderSalaryBoxJS(type, {});
+      }
+
+      function saveSalary(userId, value) {
+        fetch("/${store}/admin/settings/staff/salary", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ userId, value })
+        });
+      }
+    </script>
+
+  </body>
+  </html>
+
   `);
 });
 
+app.post("/:store/admin/settings/staff/type", ensureStore, async (req, res) => {
+  const store = req.store;
+  const { userId, type } = req.body;
+
+  await db.collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .set({ employmentType: type }, { merge: true });
+
+  res.json({ status: "ok" });
+});
+
+app.post("/:store/admin/settings/staff/salary", ensureStore, async (req, res) => {
+  const store = req.store;
+  const { userId, value } = req.body;
+
+  const doc = await db.collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
+
+  const type = doc.data().employmentType;
+
+  let salary = {};
+
+  if (type === "正社員") salary = { monthly: Number(value) };
+  if (type === "アルバイト") salary = { hourly: Number(value) };
+  if (type === "業務委託") salary = { daily: Number(value) };
+
+  await db.collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .set({ salary }, { merge: true });
+
+  res.json({ status: "ok" });
+});
 
 // ==============================
 // ✏️ 個別編集ページ
