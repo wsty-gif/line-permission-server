@@ -267,7 +267,17 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         color:#6b7280;
         font-size:13px;
       }
+      .btn-edit {
+        background:#3b82f6;
+        color:white;
+        border:none;
+        padding:4px 6px;
+        border-radius:4px;
+        cursor:pointer;
+      }
+      .btn-edit:hover { background:#2563eb; }
     </style>
+
   </head>
   <body>
     <h1>${store} 管理画面</h1>
@@ -338,6 +348,9 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         );
         renderTable(filtered);
       }
+      function editStaff(userId) {
+        window.location.href = \`/${store}/admin/staff/${userId}/edit\`;
+      }
 
       function renderTable(data) {
         const tbody = document.getElementById("staffBody");
@@ -346,13 +359,19 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
           return;
         }
         tbody.innerHTML = data.map(s => \`
-          <tr onclick="viewAttendance('\${s.id}')">
-            <td>\${s.name}</td>
-            <td>\${s.approved ? "✅ 承認済み" : "⏳ 承認待ち"}</td>
-            <td><button class="btn-approve" onclick="event.stopPropagation(); updateStatus('\${s.id}', true)">承認</button></td>
-            <td><button class="btn-revoke" onclick="event.stopPropagation(); updateStatus('\${s.id}', false)">解除</button></td>
-            <td><button class="btn-delete" onclick="event.stopPropagation(); deleteStaff('\${s.id}')">削除</button></td>
-          </tr>\`
+          <tr>
+            <td>
+              <button class="btn-edit" onclick="event.stopPropagation(); editStaff('${s.id}')">
+                ✏️
+              </button>
+            </td>
+            <td onclick="viewAttendance('${s.id}')">${s.name}</td>
+            <td>${s.approved ? "✅ 承認済み" : "⏳ 承認待ち"}</td>
+            <td><button class="btn-approve" onclick="event.stopPropagation(); updateStatus('${s.id}', true)">承認</button></td>
+            <td><button class="btn-revoke" onclick="event.stopPropagation(); updateStatus('${s.id}', false)">解除</button></td>
+            <td><button class="btn-delete" onclick="event.stopPropagation(); deleteStaff('${s.id}')">削除</button></td>
+          </tr>
+          \`
         ).join("");
       }
 
@@ -385,6 +404,82 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
   `);
 });
 
+app.get("/:store/admin/staff/:userId/edit", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  const { store, params } = req;
+  const userId = params.userId;
+
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+
+  const data = doc.data() || {};
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>スタッフ編集</title>
+      <style>
+        body { font-family:sans-serif; padding:20px; background:#f9fafb; }
+        .box { background:white; padding:20px; border-radius:10px; max-width:400px; margin:auto; }
+        input, select { width:100%; padding:8px; margin:8px 0; border:1px solid #ccc; border-radius:6px; }
+        button { padding:10px; width:100%; border:none; background:#2563eb; color:white; border-radius:6px; font-size:1rem; cursor:pointer; }
+        button:hover { background:#1d4ed8; }
+      </style>
+    </head>
+    <body>
+      <h2>スタッフ情報編集</h2>
+
+      <div class="box">
+        <form method="POST" action="/${store}/admin/staff/${userId}/edit">
+          <label>雇用区分</label>
+          <select name="employmentType">
+            <option value="アルバイト" ${data.employmentType==="アルバイト"?"selected":""}>アルバイト</option>
+            <option value="パート" ${data.employmentType==="パート"?"selected":""}>パート</option>
+            <option value="正社員" ${data.employmentType==="正社員"?"selected":""}>正社員</option>
+          </select>
+
+          <label>基本時給</label>
+          <input type="number" name="hourlyWage" value="${data.hourlyWage || ""}" required>
+
+          <label>深夜時給</label>
+          <input type="number" name="nightWage" value="${data.nightWage || ""}">
+
+          <label>交通費（1日）</label>
+          <input type="number" name="transport" value="${data.transport || ""}">
+
+          <button>保存する</button>
+        </form>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+app.post("/:store/admin/staff/:userId/edit", ensureStore, async (req, res) => {
+  const { store, params, body } = req;
+  const userId = params.userId;
+
+  await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId)
+    .set({
+      employmentType: body.employmentType,
+      hourlyWage: Number(body.hourlyWage),
+      nightWage: Number(body.nightWage),
+      transport: Number(body.transport)
+    }, { merge:true });
+
+  res.send(`
+    <html><body style="text-align:center;padding-top:40px;font-family:sans-serif;">
+      <h3>保存しました</h3>
+      <a href="/${store}/admin">← 管理画面へ戻る</a>
+    </body></html>
+  `);
+});
 
 // ==============================
 // 🔄 承認・解除処理（リッチメニュー切り替え）
