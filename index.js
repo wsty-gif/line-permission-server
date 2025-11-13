@@ -3135,14 +3135,13 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
   `);
 });
 
-
 app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
     return res.redirect(`/${req.store}/login`);
 
   const store = req.store;
 
-  // Firestore 従業員一覧取得（承認済みのみ）
+  // Firestore 従業員（承認済）のみ取得
   const snap = await db.collection("companies")
     .doc(store)
     .collection("permissions")
@@ -3154,46 +3153,11 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
     ...doc.data(),
   }));
 
-  // ==========================
-  // 🧩 給料欄のサーバー側HTML生成
-  // ==========================
-  function renderSalaryBox(staff) {
-    if (!staff.employmentType) return "—";
-
-    const salary = staff.salary || {};
-
-    if (staff.employmentType === "正社員") {
-      return `
-        <div class="salary-box">
-          月額固定給：${salary.monthly ? salary.monthly + " 円" : "未設定"}
-        </div>
-      `;
-    }
-
-    if (staff.employmentType === "アルバイト") {
-      return `
-        <div class="salary-box">
-          時給単価：${salary.hourly ? salary.hourly + " 円" : "未設定"}
-        </div>
-      `;
-    }
-
-    if (staff.employmentType === "業務委託") {
-      return `
-        <div class="salary-box">
-          日給単価：${salary.daily ? salary.daily + " 円" : "未設定"}
-        </div>
-      `;
-    }
-
-    return "—";
-  }
-
   res.send(`
   <!DOCTYPE html>
   <html lang="ja">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>従業員個別設定</title>
 
@@ -3201,17 +3165,17 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
       body {
         font-family: "Noto Sans JP", sans-serif;
         background:#f3f4f6;
-        padding:24px;
+        padding:20px;
       }
       h1 {
         text-align:center;
+        font-size:22px;
         margin-bottom:20px;
-        font-size:20px;
       }
       table {
         width:100%;
-        background:white;
         border-collapse:collapse;
+        background:white;
         border-radius:10px;
         overflow:hidden;
       }
@@ -3219,133 +3183,251 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
         padding:12px;
         border-bottom:1px solid #e5e7eb;
         text-align:left;
+        font-size:15px;
       }
       th {
-        background:#f9fafb;
+        background:#eef2ff;
         font-weight:bold;
       }
-      select, input {
-        padding:8px;
-        border:1px solid #d1d5db;
+      .edit-btn {
+        background:#2563eb;
+        color:white;
+        padding:6px 12px;
         border-radius:6px;
-        width:100%;
-        background:white;
+        border:none;
+        font-size:14px;
+        cursor:pointer;
       }
-      .salary-box {
-        background:#f5f5ff;
+      .edit-btn:hover {
+        background:#1d4ed8;
+      }
+
+      /* ===== モーダル ===== */
+      .modal-bg {
+        position:fixed;
+        top:0; left:0;
+        width:100%; height:100%;
+        background:rgba(0,0,0,0.4);
+        display:none;
+        justify-content:center;
+        align-items:center;
+        padding:20px;
+      }
+      .modal-box {
+        background:white;
+        width:95%;
+        max-width:430px;
+        padding:20px;
+        border-radius:12px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.2);
+      }
+      .modal-title {
+        font-size:20px;
+        font-weight:bold;
+        margin-bottom:14px;
+        text-align:center;
+      }
+      .type-buttons {
+        display:flex;
+        justify-content:space-between;
+        margin-bottom:16px;
+      }
+      .type-btn {
+        flex:1;
+        margin:0 4px;
+        background:#e5e7eb;
         padding:10px;
         border-radius:8px;
-        margin-top:8px;
+        text-align:center;
+        cursor:pointer;
+        font-size:15px;
       }
-      .save-msg {
-        color:#16a34a;
-        font-size:13px;
-        display:none;
-        margin-top:4px;
+      .type-btn.active {
+        background:#2563eb;
+        color:white;
       }
-      .flex {
+      label {
+        font-size:15px;
+        margin-top:10px;
+        display:block;
+      }
+      input {
+        width:100%;
+        padding:10px;
+        font-size:16px;
+        margin-top:6px;
+        border:1px solid #d1d5db;
+        border-radius:8px;
+      }
+      .modal-actions {
+        margin-top:16px;
         display:flex;
-        gap:8px;
+        justify-content:space-between;
+      }
+      .save-btn {
+        background:#16a34a;
+        color:white;
+        padding:10px 16px;
+        border-radius:8px;
+        font-size:16px;
+        border:none;
+        width:48%;
+      }
+      .close-btn {
+        background:#dc2626;
+        color:white;
+        padding:10px 16px;
+        border-radius:8px;
+        font-size:16px;
+        border:none;
+        width:48%;
       }
     </style>
   </head>
 
   <body>
+
     <h1>👤 従業員個別設定</h1>
 
     <table>
       <tr>
         <th>名前</th>
         <th>雇用区分</th>
-        <th>給料設定</th>
+        <th>給料</th>
+        <th>編集</th>
       </tr>
 
       ${staff.map(s => `
         <tr>
           <td>${s.name || "未登録"}</td>
-
+          <td>${s.employmentType || "未設定"}</td>
           <td>
-            <select onchange="changeType('${s.userId}', this.value)">
-              <option value="">未設定</option>
-              <option value="正社員" ${s.employmentType==="正社員"?"selected":""}>正社員</option>
-              <option value="アルバイト" ${s.employmentType==="アルバイト"?"selected":""}>アルバイト</option>
-              <option value="業務委託" ${s.employmentType==="業務委託"?"selected":""}>業務委託</option>
-            </select>
+            ${
+              s.salary
+                ? s.employmentType === "正社員"
+                  ? "月給 " + (s.salary.monthly || "未設定")
+                : s.employmentType === "アルバイト"
+                  ? "時給 " + (s.salary.hourly || "未設定")
+                : s.employmentType === "業務委託"
+                  ? "日給 " + (s.salary.daily || "未設定")
+                : "—"
+              : "—"
+            }
           </td>
-
-          <td id="salary-${s.userId}">
-            ${renderSalaryBox(s)}
+          <td>
+            <button class="edit-btn" onclick="openEdit('${s.userId}', '${s.name || ""}', '${s.employmentType || ""}', '${JSON.stringify(s.salary || {})}')">
+              ✏️ 編集
+            </button>
           </td>
         </tr>
       `).join("")}
     </table>
 
+    <!-- ===== モーダル ===== -->
+    <div id="modal" class="modal-bg">
+      <div class="modal-box">
+        <div id="modalTitle" class="modal-title"></div>
+
+        <div class="type-buttons">
+          <div class="type-btn" id="btn正社員" onclick="selectType('正社員')">正社員</div>
+          <div class="type-btn" id="btnアルバイト" onclick="selectType('アルバイト')">アルバイト</div>
+          <div class="type-btn" id="btn業務委託" onclick="selectType('業務委託')">業務委託</div>
+        </div>
+
+        <div id="salaryArea"></div>
+
+        <div class="modal-actions">
+          <button class="save-btn" onclick="saveStaff()">保存</button>
+          <button class="close-btn" onclick="closeModal()">閉じる</button>
+        </div>
+      </div>
+    </div>
+
     <script>
-      function renderSalaryBoxJS(type, salary = {}) {
-        if (!type) return "";
+      const store = "${store}";
+      let editUserId = null;
+      let selectedType = "";
 
-        if (type === "正社員") {
-          return \`
-            <div class="salary-box">
-              <label>月額固定給（円）</label>
-              <input type="number" id="salaryInput" value="\${salary.monthly || ""}" 
-                     onblur="saveSalary(globalUserId, this.value)">
-            </div>
-          \`;
-        }
+      function openEdit(userId, name, type, salaryJson) {
+        editUserId = userId;
 
-        if (type === "アルバイト") {
-          return \`
-            <div class="salary-box">
-              <label>時給単価（円）</label>
-              <input type="number" id="salaryInput" value="\${salary.hourly || ""}"
-                     onblur="saveSalary(globalUserId, this.value)">
-            </div>
-          \`;
-        }
+        document.getElementById("modalTitle").innerText = "✏️ " + name + " さんの設定";
 
-        if (type === "業務委託") {
-          return \`
-            <div class="salary-box">
-              <label>日給単価（円）</label>
-              <input type="number" id="salaryInput" value="\${salary.daily || ""}"
-                     onblur="saveSalary(globalUserId, this.value)">
-            </div>
-          \`;
-        }
+        selectedType = type || "";
+        highlightTypeButton();
 
-        return "";
+        const salary = JSON.parse(salaryJson);
+        renderSalaryInput(salary);
+
+        document.getElementById("modal").style.display = "flex";
       }
 
-      let globalUserId = null;
-
-      function changeType(userId, type) {
-        globalUserId = userId;
-
-        fetch("/${store}/admin/settings/staff/type", {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ userId, type })
-        });
-
-        const target = document.getElementById("salary-" + userId);
-        target.innerHTML = renderSalaryBoxJS(type, {});
+      function closeModal() {
+        document.getElementById("modal").style.display = "none";
       }
 
-      function saveSalary(userId, value) {
-        fetch("/${store}/admin/settings/staff/salary", {
+      function highlightTypeButton() {
+        ["正社員","アルバイト","業務委託"].forEach(t => {
+          document.getElementById("btn" + t).classList.remove("active");
+        });
+
+        if (selectedType) {
+          document.getElementById("btn" + selectedType).classList.add("active");
+        }
+      }
+
+      function selectType(type) {
+        selectedType = type;
+        highlightTypeButton();
+        renderSalaryInput({});
+      }
+
+      function renderSalaryInput(salary) {
+        const area = document.getElementById("salaryArea");
+
+        if (selectedType === "正社員") {
+          area.innerHTML = \`
+            <label>月額固定給（円）</label>
+            <input id="salaryInput" type="number" value="\${salary.monthly || ""}">
+          \`;
+        } else if (selectedType === "アルバイト") {
+          area.innerHTML = \`
+            <label>時給単価（円）</label>
+            <input id="salaryInput" type="number" value="\${salary.hourly || ""}">
+          \`;
+        } else if (selectedType === "業務委託") {
+          area.innerHTML = \`
+            <label>日給単価（円）</label>
+            <input id="salaryInput" type="number" value="\${salary.daily || ""}">
+          \`;
+        } else {
+          area.innerHTML = "";
+        }
+      }
+
+      async function saveStaff() {
+        const value = document.getElementById("salaryInput")?.value || "";
+
+        await fetch("/${store}/admin/settings/staff/save", {
           method: "POST",
           headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ userId, value })
+          body: JSON.stringify({
+            userId: editUserId,
+            employmentType: selectedType,
+            value
+          })
         });
+
+        alert("保存しました");
+        location.reload();
       }
     </script>
 
   </body>
   </html>
-
   `);
 });
+
 
 app.post("/:store/admin/settings/staff/type", ensureStore, async (req, res) => {
   const store = req.store;
@@ -3463,6 +3545,50 @@ app.get("/:store/admin/settings/staff/:id", ensureStore, async (req, res) => {
     <a href="/${store}/admin/settings/staff">← 従業員一覧に戻る</a>
   </body></html>
   `);
+});
+
+// =====================================
+// ✅ 従業員個別設定 保存API（雇用区分＋給料）
+// =====================================
+app.post("/:store/admin/settings/staff/save", ensureStore, express.json(), async (req, res) => {
+  try {
+    const { store } = req;
+    const { userId, employmentType, value } = req.body;
+
+    if (!userId) {
+      return res.status(400).send("userId がありません");
+    }
+
+    // 給料データを Firestore 用に変換
+    let salaryData = {};
+
+    if (employmentType === "正社員") {
+      salaryData = { monthly: Number(value) || null };
+    } else if (employmentType === "アルバイト") {
+      salaryData = { hourly: Number(value) || null };
+    } else if (employmentType === "業務委託") {
+      salaryData = { daily: Number(value) || null };
+    }
+
+    // Firestore 更新
+    await db.collection("companies")
+      .doc(store)
+      .collection("permissions")
+      .doc(userId)
+      .set(
+        {
+          employmentType: employmentType || null,
+          salary: salaryData,
+          updatedAt: new Date()
+        },
+        { merge: true }
+      );
+
+    return res.status(200).send("OK");
+  } catch (err) {
+    console.error("従業員設定保存エラー:", err);
+    return res.status(500).send("保存に失敗しました");
+  }
 });
 
 // ==============================
