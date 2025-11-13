@@ -364,7 +364,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         return (
           '<tr>' +
             '<td>' +
-              '<button class="btn-edit" onclick="event.stopPropagation(); editStaff(\'' + s.id + '\')">✏️</button>' +
+            '<button class="btn-edit" onclick="event.stopPropagation(); editStaff(&quot;' + s.id + '&quot;)">✏️</button>' +
             '</td>' +
             '<td onclick="viewAttendance(\'' + s.id + '\')">' + s.name + '</td>' +
             '<td>' + (s.approved ? "✅ 承認済み" : "⏳ 承認待ち") + '</td>' +
