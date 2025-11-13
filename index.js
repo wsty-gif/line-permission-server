@@ -2639,15 +2639,19 @@ app.get("/:store/admin/settings", ensureStore, async (req, res) => {
     </style>
   </head>
   <body>
+  <div style="text-align:center; margin-top:24px;">
+    <button onclick="location.href='/${store}/admin'" 
+      style="background:#6b7280; color:white; border:none; border-radius:8px; padding:10px 20px; font-size:14px; cursor:pointer;">
+      ← 管理TOPに戻る
+    </button>
+  </div>
     <h1>店舗設定メニュー</h1>
-    <p>設定を行ったあと、給与を自動集計できます。</p>
     <div class="wrap">
       <a class="btn" href="/${store}/admin/settings/general">📋 店舗共通設定</a>
       <a class="btn" href="/${store}/admin/settings/employment">👥 雇用区分別設定</a>
       <a class="btn" href="/${store}/admin/settings/staff">🧑‍💼 従業員個別設定</a>
       <a class="btn" href="/${store}/admin/payroll">💰 給与自動集計</a>
     </div>
-    <div class="back"><a href="/${store}/admin">← 管理TOPに戻る</a></div>
   </body></html>`);
 });
 
@@ -3297,7 +3301,7 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
       }
 
       table.staff-table th, table.staff-table td {
-        padding: 8px;
+        padding: 6px 10px !important;
         border-bottom: 1px solid #ddd;
         white-space: nowrap; /* ← 横に伸ばす */
         text-align: center;
