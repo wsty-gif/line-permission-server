@@ -2812,6 +2812,7 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${store} 給与計算ルール</title>
+
     <style>
       body {
         font-family: 'Noto Sans JP', sans-serif;
@@ -2848,7 +2849,15 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
         font-weight: 700;
         font-size: 14px;
         margin-bottom: 4px;
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      label small {
+        font-weight: 400;
+        font-size: 12px;
+        color: #6b7280;
       }
 
       input {
@@ -2859,14 +2868,23 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
         font-size: 15px;
       }
 
+      /* 深夜時間帯 */
       .time-range {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
       }
 
-      .time-range input {
+      .time-range input[type=time] {
         flex: 1;
+        cursor: pointer;
+        position: relative;
+        z-index: 10;
+      }
+
+      .time-range span {
+        pointer-events: none;
+        font-weight: bold;
       }
 
       .save-btn {
@@ -2912,19 +2930,27 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
 
         <!-- 残業単価倍率 -->
         <div class="row">
-          <label>残業単価倍率</label>
+          <label>
+            残業単価倍率
+            <small>例: 1.25倍 = 時給×125%</small>
+          </label>
           <input type="number" step="0.01" name="overtimeRate" value="${data.overtimeRate || 1.25}">
         </div>
 
         <!-- 深夜割増倍率 -->
         <div class="row">
-          <label>深夜割増倍率</label>
+          <label>
+            深夜割増倍率
+            <small>例: 1.25倍 = 時給×125%</small>
+          </label>
           <input type="number" step="0.01" name="nightRate" value="${data.nightRate || 1.25}">
         </div>
 
-        <!-- 深夜時間帯（開始〜終了） -->
+        <!-- 深夜時間帯 -->
         <div class="row">
-          <label>深夜時間帯（開始〜終了）</label>
+          <label>
+            深夜時間帯（開始〜終了）
+          </label>
           <div class="time-range">
             <input type="time" name="nightStart" value="${data.nightStart || '22:00'}">
             <span>〜</span>
@@ -2934,14 +2960,20 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
 
         <!-- 休日割増倍率 -->
         <div class="row">
-          <label>休日割増倍率</label>
+          <label>
+            休日割増倍率
+            <small>例: 1.35倍 = 時給×135%</small>
+          </label>
           <input type="number" step="0.01" name="holidayRate" value="${data.holidayRate || 1.35}">
         </div>
 
-        <!-- 締め日（入力式） -->
+        <!-- 締め日 -->
         <div class="row">
-          <label>締め日（◯日締め）</label>
-          <input type="number" name="closingDay" value="${data.closingDay || ''}" placeholder="例：25 → 25日締め">
+          <label>
+            締め日（◯日締め）
+            <small>例: 25 → 25日締め</small>
+          </label>
+          <input type="number" name="closingDay" value="${data.closingDay || ''}" placeholder="25">
         </div>
 
         <button class="save-btn">💾 設定を保存</button>
@@ -2953,6 +2985,7 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
   </html>
   `);
 });
+
 
 
 app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) => {
