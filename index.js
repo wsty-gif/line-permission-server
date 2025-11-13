@@ -3343,6 +3343,12 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
       let editUserId = null;
       let selectedType = "";
 
+      function jsonForHtml(obj) {
+        return JSON.stringify(obj)
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
       function openEdit(id, name, type, salaryJson) {
         const salary = JSON.parse(salaryJson);
 
