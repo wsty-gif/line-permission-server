@@ -3096,7 +3096,12 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
 
       </form>
     </div>
-
+  <script>
+    const params = new URLSearchParams(location.search);
+    if (params.get("success") === "1") {
+      alert("設定を保存しました！");
+    }
+  </script>
   </body>
   </html>
   `);
@@ -3104,32 +3109,18 @@ app.get("/:store/admin/settings/general", ensureStore, async (req, res) => {
 
 
 
-app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) => {
+app.post("/:store/admin/settings/general/save", async (req, res) => {
   const store = req.store;
+  
+  // 保存処理
+  await db.collection("companies").doc(store)
+    .collection("settings").doc("storeGeneral")
+    .set(req.body, { merge: true });
 
-  const data = {
-    overtimeRate: Number(req.body.overtimeRate),
-    nightRate: Number(req.body.nightRate),
-    nightStart: req.body.nightStart,
-    nightEnd: req.body.nightEnd,
-    holidayRate: Number(req.body.holidayRate),
-    closingDay: Number(req.body.closingDay),  // ← 修正
-    updatedAt: new Date(),
-  };
-
-  await db.collection("companies")
-    .doc(store)
-    .collection("settings")
-    .doc("storeGeneral")
-    .set(data, { merge: true });
-
-  res.send(`
-    <html><body style="font-family:sans-serif;text-align:center;padding-top:30vh;">
-      <h2 style="color:#16a34a;">✅ 設定を保存しました</h2>
-      <a href="/${store}/admin/settings/general" style="color:#2563eb;">← 戻る</a>
-    </body></html>
-  `);
+  // 保存後に設定画面へ戻す
+  res.redirect(`/${store}/admin/settings/general?success=1`);
 });
+
 
 app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
