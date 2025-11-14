@@ -1311,6 +1311,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         await loadStaff();
         await loadRecords(); // 初期表示＝全てのスタッフ
       }
+      document.getElementById("monthSelect").addEventListener("change", loadRecords);
 
       async function loadStaff() {
         const res = await fetch("/${store}/admin/staff");
@@ -3246,7 +3247,7 @@ app.get("/:store/admin/settings/staff", ensureStore, async (req, res) => {
         ← 店舗設定に戻る
       </button>
     </div>
-    <h1>👤 従業員個別設定</h1>
+    <h1>従業員個別設定</h1>
 
     <!-- 👇 ここからテーブル全体を差し替え -->
 
