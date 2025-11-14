@@ -1301,6 +1301,30 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       </table>
     </div>
 
+    <div id="editModal" class="modal">
+      <div class="modal-content">
+        <h3>勤怠を修正</h3>
+
+        <input type="hidden" id="editUserId">
+        <input type="hidden" id="editDate">
+
+        <label>出勤</label>
+        <input type="time" id="editClockIn">
+
+        <label>退勤</label>
+        <input type="time" id="editClockOut">
+
+        <label>休憩開始</label>
+        <input type="time" id="editBreakStart">
+
+        <label>休憩終了</label>
+        <input type="time" id="editBreakEnd">
+
+        <button onclick="saveEdit()">保存する</button>
+        <button onclick="closeEditModal()" style="background:#dc2626;">閉じる</button>
+      </div>
+    </div>
+
     <script>
       const store = "${store}";
       let allStaff = [], allRecords = [];
@@ -1367,6 +1391,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
               "<td>" + (r.clockOut || "--:--") + "</td>" +
               "<td>" + (r.breakStart || "--:--") + "</td>" +
               "<td>" + (r.breakEnd || "--:--") + "</td>" +
+              "<td><button class='btn-edit' onclick='openEditModal(\"" + r.userId + "\",\"" + r.date + "\")'>修正</button></td>" +
             "</tr>";
         });
 
@@ -1378,6 +1403,44 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
         document.getElementById("summary").textContent =
           "勤務日数：" + workDays + "日";
+      }
+
+      function openEditModal(userId, date) {
+        document.getElementById("editUserId").value = userId;
+        document.getElementById("editDate").value = date;
+
+        // 既存データを検索
+        const rec = allRecords.find(r => r.userId === userId && r.date === date);
+
+        document.getElementById("editClockIn").value     = rec?.clockIn     ? rec.clockIn.slice(-5)     : "";
+        document.getElementById("editClockOut").value    = rec?.clockOut    ? rec.clockOut.slice(-5)    : "";
+        document.getElementById("editBreakStart").value  = rec?.breakStart  ? rec.breakStart.slice(-5)  : "";
+        document.getElementById("editBreakEnd").value    = rec?.breakEnd    ? rec.breakEnd.slice(-5)    : "";
+
+        document.getElementById("editModal").style.display = "flex";
+      }
+      function closeEditModal() {
+        document.getElementById("editModal").style.display = "none";
+      }
+      async function saveEdit() {
+        const body = {
+          userId: document.getElementById("editUserId").value,
+          date: document.getElementById("editDate").value,
+          clockIn: document.getElementById("editClockIn").value,
+          clockOut: document.getElementById("editClockOut").value,
+          breakStart: document.getElementById("editBreakStart").value,
+          breakEnd: document.getElementById("editBreakEnd").value,
+        };
+
+        const res = await fetch("/${store}/admin/attendance/update-full", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(body)
+        });
+
+        alert(await res.text());
+        closeEditModal();
+        loadRecords();
       }
 
       init();
@@ -3996,6 +4059,29 @@ app.get("/:store/admin/payroll/export", ensureStore, async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="${store}_給与集計_${now.getFullYear()}-${now.getMonth()+1}.csv"`);
   res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
   res.send('\uFEFF' + csv); // Excelで文字化け防止
+});
+
+app.post("/:store/admin/attendance/update-full", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.status(403).send("権限がありません。");
+
+  const { store } = req;
+  const { userId, date, clockIn, clockOut, breakStart, breakEnd } = req.body;
+
+  const docRef = db.collection("companies").doc(store)
+    .collection("attendance").doc(userId)
+    .collection("records").doc(date);
+
+  const updates = {};
+
+  if (clockIn)     updates.clockIn    = `${date} ${clockIn}`;
+  if (clockOut)    updates.clockOut   = `${date} ${clockOut}`;
+  if (breakStart)  updates.breakStart = `${date} ${breakStart}`;
+  if (breakEnd)    updates.breakEnd   = `${date} ${breakEnd}`;
+
+  await docRef.set(updates, { merge: true });
+
+  res.send("勤怠を更新しました");
 });
 
 // ==============================
