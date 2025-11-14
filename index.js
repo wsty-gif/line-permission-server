@@ -667,12 +667,10 @@ app.get("/:store/apply", ensureStore, (req, res) => {
     <script>
       document.addEventListener("DOMContentLoaded", async () => {
         try {
-          // ★★★ 重要 ★★★
-          // redirectUri を指定しない → contextToken の 404 を回避
           await liff.init({ liffId: "${storeConf.liffId}" });
 
           if (!liff.isLoggedIn()) {
-            liff.login();
+            liff.login({ redirectUri: location.href });
             return;
           }
 
@@ -689,6 +687,7 @@ app.get("/:store/apply", ensureStore, (req, res) => {
   </html>
   `);
 });
+
 
 app.post("/:store/apply/submit", ensureStore, async (req, res) => {
   const { store, lineClient, storeConf } = req;
