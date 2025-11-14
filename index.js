@@ -614,102 +614,79 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 });
 
 // ==============================
-// 従業員用 LINEログイン（LIFF）
+// 🧾 権限申請フォーム（完全版 LIFF）
 // ==============================
-app.get("/:store/employee-login", async (req, res) => {
-  const { store } = req.params;
+app.get("/:store/apply", ensureStore, (req, res) => {
+  const { store, storeConf } = req;
 
-  // LIFF SDKを使う前提（ユーザーID取得）
   res.send(`
-    <html><body>
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${store} 権限申請</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script>
-      async function main() {
-        await liff.init({ liffId: "あなたのLIFF ID" });
 
-        if (!liff.isLoggedIn()) {
-          return liff.login({ redirectUri: window.location.href });
-        }
-
-        const profile = await liff.getProfile();
-        const userId = profile.userId;
-
-        // サーバーへセッション保存
-        await fetch("/${store}/employee-login-session", {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ userId })
-        });
-
-        // apply に戻す
-        location.href = "/${store}/apply";
+    <style>
+      body { 
+        font-family: sans-serif; background:#f9fafb; 
+        display:flex; justify-content:center; align-items:center; 
+        height:100vh; margin:0;
       }
+      .box {
+        background:white; padding:24px; border-radius:12px; 
+        box-shadow:0 2px 10px rgba(0,0,0,0.1); width:90%; 
+        max-width:360px; text-align:center;
+      }
+      h1 { font-size:1.4rem; color:#2563eb; margin-bottom:16px; }
+      input {
+        width:100%; padding:10px; font-size:1rem;
+        border:1px solid #ccc; border-radius:6px;
+        margin-bottom:12px;
+      }
+      button {
+        width:100%; padding:10px; font-size:1rem;
+        background:#2563eb; color:white;
+        border:none; border-radius:6px; cursor:pointer;
+      }
+      button:hover { background:#1e40af; }
+    </style>
+  </head>
 
-      main();
-    </script>
-    </body></html>
-  `);
-});
-
-app.post("/:store/employee-login-session", (req, res) => {
-  req.session.userId = req.body.userId;
-  res.json({ status: "ok" });
-});
-
-app.get("/:store/apply", async (req, res) => {
-  const { store } = req.params;
-
-  // 従業員ログインが必要
-  if (!req.session.userId) {
-    return res.redirect(`/${store}/employee-login`);
-  }
-
-  const permRef = db.collection("companies").doc(store)
-    .collection("permissions").doc(req.session.userId);
-  const permDoc = await permRef.get();
-
-  // 申請済
-  if (permDoc.exists && permDoc.data().approved === true) {
-    return res.redirect(`/${store}/attendance`);
-  }
-
-  // 初回 or 未承認 → 申請画面を表示
-  res.send(`
-    <html><body style="text-align:center;padding-top:20vh;font-family:sans-serif;">
-      <h2>権限申請</h2>
-      <p>お名前を入力して申請してください</p>
-      <form method="POST" action="/${store}/apply">
-        <input name="name" placeholder="お名前" required
-          style="padding:8px;width:200px;border-radius:6px;border:1px solid #ccc;">
-        <br><br>
-        <button style="padding:8px 20px;background:#2563eb;color:white;border-radius:6px;border:none;">
-          申請する
-        </button>
+  <body>
+    <div class="box">
+      <h1>${store} 権限申請</h1>
+      <form id="applyForm" method="POST" action="/${store}/apply/submit">
+        <input type="hidden" id="userId" name="userId" />
+        <input type="text" id="name" name="name" placeholder="名前を入力" required />
+        <button type="submit">申請する</button>
       </form>
-    </body></html>
-  `);
-});
+    </div>
 
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // ★★★ 重要 ★★★
+          // redirectUri を指定しない → contextToken の 404 を回避
+          await liff.init({ liffId: "${storeConf.liffId}" });
 
-app.post("/:store/apply", async (req, res) => {
-  const { store } = req.params;
-  const { name } = req.body;
-  const userId = req.session.userId;
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
 
-  await db.collection("companies").doc(store)
-    .collection("permissions")
-    .doc(userId)
-    .set({
-      name,
-      approved: false,
-      requestedAt: new Date(),
-    });
+          const profile = await liff.getProfile();
+          document.getElementById("userId").value = profile.userId;
 
-  res.send(`
-    <html><body style="text-align:center; padding-top:30vh;">
-      <h2>申請が完了しました</h2>
-      <p>管理者の承認をお待ちください。</p>
-    </body></html>
+        } catch (e) {
+          document.body.innerHTML =
+            "<h3>LIFF初期化に失敗しました<br>" + e.message + "</h3>";
+        }
+      });
+    </script>
+  </body>
+  </html>
   `);
 });
 
@@ -720,25 +697,26 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
   if (!userId || !name)
     return res.status(400).send("名前またはLINE情報が取得できませんでした。");
 
-  try {
-    await db.collection("companies").doc(store).collection("permissions").doc(userId)
-      .set({ name, approved: false, requestedAt: new Date() }, { merge: true });
+  await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId)
+    .set(
+      { name, approved: false, requestedAt: new Date() },
+      { merge: true }
+    );
 
-    // 🔹 申請直後に BEFORE メニューを設定
-    if (storeConf.richmenuBefore) {
-      await lineClient.linkRichMenuToUser(userId, storeConf.richmenuBefore);
-    }
-
-    res.send(`
-    <html><head><meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>body{font-family:sans-serif;text-align:center;padding-top:30vh;}h2{color:#16a34a;}</style></head>
-    <body><h2>申請を受け付けました！</h2><p>管理者の承認をお待ちください。</p></body></html>`);
-  } catch (error) {
-    console.error("Firestore保存失敗:", error);
-    res.status(500).send("申請処理中にエラーが発生しました。");
+  // 初期リッチメニュー設定
+  if (storeConf.richmenuBefore) {
+    await lineClient.linkRichMenuToUser(userId, storeConf.richmenuBefore);
   }
+
+  res.send(`
+    <html><body style="text-align:center; padding-top:30vh;">
+      <h2>申請を受け付けました！</h2>
+      <p>管理者の承認をお待ちください。</p>
+    </body></html>
+  `);
 });
+
 
 // ==============================
 // 🕒 従業員勤怠打刻画面（修正申請付き）
