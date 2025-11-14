@@ -615,61 +615,68 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 
 
 // ==============================
-// 🧾 権限申請フォーム（LIFF）
+// 👤 権限申請（名前入力画面）
 // ==============================
-app.get("/:store/apply", ensureStore, (req, res) => {
-  const { store, storeConf } = req;
+app.get("/:store/apply", async (req, res) => {
+  const store = req.params.store;
+
+  // セッションに userId が無ければまずLINEログインへ
+  if (!req.session.userId) {
+    return res.redirect(`/${store}/login?redirect=apply`);
+  }
+
+  // すでに申請済み or 承認済みなら自動遷移
+  const permRef = db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(req.session.userId);
+  const permDoc = await permRef.get();
+
+  if (permDoc.exists && permDoc.data().approved === true) {
+    return res.redirect(`/${store}/attendance`);
+  }
+
+  // ▼ ここが重要：必ず申請画面を表示する
+  res.send(`
+    <html>
+    <body style="font-family:sans-serif; text-align:center; padding-top:20vh;">
+      <h2>権限申請</h2>
+      <p>お名前を入力して申請してください</p>
+
+      <form method="POST" action="/${store}/apply">
+        <input name="name" placeholder="お名前" required
+         style="padding:8px; width:200px; border-radius:6px; border:1px solid #ccc;">
+        <br><br>
+        <button style="padding:8px 20px; border:none; background:#2563eb; color:white; border-radius:6px;">
+          申請する
+        </button>
+      </form>
+    </body>
+    </html>
+  `);
+});
+
+app.post("/:store/apply", async (req, res) => {
+  const { store } = req.params;
+  const { name } = req.body;
+  const userId = req.session.userId;
+
+  await db.collection("companies").doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .set({
+      name,
+      approved: false,
+      requestedAt: new Date(),
+    });
 
   res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${store} 権限申請</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-      body { font-family: 'Segoe UI', sans-serif; background:#f9fafb; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
-      .form-box { background:#fff; padding:24px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:90%; max-width:360px; text-align:center; }
-      h1 { color:#2563eb; margin-bottom:16px; font-size:1.4rem; }
-      input { width:100%; padding:10px; margin-bottom:12px; border-radius:6px; border:1px solid #d1d5db; font-size:1rem; }
-      button { width:100%; background:#2563eb; color:white; border:none; padding:10px; border-radius:6px; font-size:1rem; cursor:pointer; }
-      button:hover { background:#1d4ed8; }
-    </style>
-  </head>
-  <body>
-    <div class="form-box">
-      <h1>${store} 権限申請</h1>
-      <form id="applyForm" method="POST" action="/${store}/apply/submit">
-        <input type="hidden" name="userId" id="userId">
-        <input type="text" name="name" id="name" placeholder="名前を入力" required>
-        <button type="submit">申請</button>
-      </form>
-    </div>
-    <script>
-      document.addEventListener("DOMContentLoaded", async () => {
-        try {
-          await liff.init({ liffId: "${storeConf.liffId}" });
-
-          // ✅ 未ログインならログイン処理（redirectUri指定しない）
-          if (!liff.isLoggedIn()) {
-            liff.login();
-            return;
-          }
-
-          // ✅ ログイン済みならフォームをそのまま表示し、userIdをセット
-          const profile = await liff.getProfile();
-          document.getElementById("userId").value = profile.userId;
-          document.getElementById("name").focus();
-        } catch (err) {
-          console.error("LIFF初期化エラー:", err);
-          document.body.innerHTML =
-            "<h3>LIFF初期化に失敗しました。<br>" + err.message + "</h3>";
-        }
-      });
-    </script>
-  </body>
-  </html>`);
+    <html><body style="text-align:center; padding-top:30vh;">
+      <h2>申請が完了しました</h2>
+      <p>管理者の承認をお待ちください。</p>
+    </body></html>
+  `);
 });
 
 app.post("/:store/apply/submit", ensureStore, async (req, res) => {
