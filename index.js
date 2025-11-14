@@ -1391,8 +1391,9 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
               "<td>" + (r.clockOut || "--:--") + "</td>" +
               "<td>" + (r.breakStart || "--:--") + "</td>" +
               "<td>" + (r.breakEnd || "--:--") + "</td>" +
-              "<td><button class='btn-edit' onclick=\"openEditModal('" + r.userId + "','" + r.date + "')\">修正</button></td>" +
+              "<td><button class='btn-edit' data-user='" + r.userId + "' data-date='" + r.date + "' onclick='handleEditClick(this)'>修正</button></td>" +
             "</tr>";
+
         });
 
         tbody.innerHTML = html;
@@ -1419,6 +1420,12 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
         document.getElementById("editModal").style.display = "flex";
       }
+      function handleEditClick(btn) {
+        const userId = btn.getAttribute("data-user");
+        const date = btn.getAttribute("data-date");
+        openEditModal(userId, date);
+      }
+
       function closeEditModal() {
         document.getElementById("editModal").style.display = "none";
       }
