@@ -1391,7 +1391,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
               "<td>" + (r.clockOut || "--:--") + "</td>" +
               "<td>" + (r.breakStart || "--:--") + "</td>" +
               "<td>" + (r.breakEnd || "--:--") + "</td>" +
-              "<td><button class='btn-edit' onclick='openEditModal(\"" + r.userId + "\",\"" + r.date + "\")'>修正</button></td>" +
+              "<td><button class='btn-edit' onclick=\"openEditModal('" + r.userId + "','" + r.date + "')\">修正</button></td>" +
             "</tr>";
         });
 
