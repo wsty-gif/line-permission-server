@@ -613,49 +613,83 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 
 });
 
+// ==============================
+// 従業員用 LINEログイン（LIFF）
+// ==============================
+app.get("/:store/employee-login", async (req, res) => {
+  const { store } = req.params;
 
-// ==============================
-// 👤 権限申請（名前入力画面）
-// ==============================
+  // LIFF SDKを使う前提（ユーザーID取得）
+  res.send(`
+    <html><body>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+      async function main() {
+        await liff.init({ liffId: "あなたのLIFF ID" });
+
+        if (!liff.isLoggedIn()) {
+          return liff.login({ redirectUri: window.location.href });
+        }
+
+        const profile = await liff.getProfile();
+        const userId = profile.userId;
+
+        // サーバーへセッション保存
+        await fetch("/${store}/employee-login-session", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ userId })
+        });
+
+        // apply に戻す
+        location.href = "/${store}/apply";
+      }
+
+      main();
+    </script>
+    </body></html>
+  `);
+});
+
+app.post("/:store/employee-login-session", (req, res) => {
+  req.session.userId = req.body.userId;
+  res.json({ status: "ok" });
+});
+
 app.get("/:store/apply", async (req, res) => {
-  const store = req.params.store;
+  const { store } = req.params;
 
-  // セッションに userId が無ければまずLINEログインへ
+  // 従業員ログインが必要
   if (!req.session.userId) {
-    return res.redirect(`/${store}/login?redirect=apply`);
+    return res.redirect(`/${store}/employee-login`);
   }
 
-  // すでに申請済み or 承認済みなら自動遷移
-  const permRef = db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .doc(req.session.userId);
+  const permRef = db.collection("companies").doc(store)
+    .collection("permissions").doc(req.session.userId);
   const permDoc = await permRef.get();
 
+  // 申請済
   if (permDoc.exists && permDoc.data().approved === true) {
     return res.redirect(`/${store}/attendance`);
   }
 
-  // ▼ ここが重要：必ず申請画面を表示する
+  // 初回 or 未承認 → 申請画面を表示
   res.send(`
-    <html>
-    <body style="font-family:sans-serif; text-align:center; padding-top:20vh;">
+    <html><body style="text-align:center;padding-top:20vh;font-family:sans-serif;">
       <h2>権限申請</h2>
       <p>お名前を入力して申請してください</p>
-
       <form method="POST" action="/${store}/apply">
         <input name="name" placeholder="お名前" required
-         style="padding:8px; width:200px; border-radius:6px; border:1px solid #ccc;">
+          style="padding:8px;width:200px;border-radius:6px;border:1px solid #ccc;">
         <br><br>
-        <button style="padding:8px 20px; border:none; background:#2563eb; color:white; border-radius:6px;">
+        <button style="padding:8px 20px;background:#2563eb;color:white;border-radius:6px;border:none;">
           申請する
         </button>
       </form>
-    </body>
-    </html>
+    </body></html>
   `);
 });
+
 
 app.post("/:store/apply", async (req, res) => {
   const { store } = req.params;
