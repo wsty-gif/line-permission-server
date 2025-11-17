@@ -1008,6 +1008,8 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
   </div>
 </div>
 
+
+
     <script>
       let userId, name, allRecords = [];
 
@@ -2433,6 +2435,49 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
             <tr><td colspan="3" class="empty">申請はありません</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- 修正申請モーダル -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h3>打刻時間修正申請</h3>
+
+        <label>修正対象日</label>
+        <input type="date" id="reqDate" onchange="loadCurrentRecord()">
+
+        <div class="current-record" id="currentRecord">
+          現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--
+        </div>
+
+        <label>修正後の日時</label>
+        <div class="time-grid">
+          <div>
+            <label>出勤</label>
+            <input type="datetime-local" id="newClockIn" />
+          </div>
+          <div>
+            <label>退勤</label>
+            <input type="datetime-local" id="newClockOut" />
+          </div>
+          <div>
+            <label>休憩開始</label>
+            <input type="datetime-local" id="newBreakStart" />
+          </div>
+          <div>
+            <label>休憩終了</label>
+            <input type="datetime-local" id="newBreakEnd" />
+          </div>
+        </div>
+
+
+        <label>修正理由</label>
+        <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
+
+        <div class="btn-row">
+          <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+          <button class="btn-send" onclick="submitFix()">申請</button>
+        </div>
       </div>
     </div>
 
