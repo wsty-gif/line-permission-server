@@ -1309,25 +1309,36 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
     <div id="editModal" class="modal">
       <div class="modal-content">
+
         <h3>勤怠を修正</h3>
 
         <input type="hidden" id="editUserId">
-        <input type="hidden" id="editDate">
+
+        <label>日付</label>
+        <input type="date" id="editDate" style="width:100%;">
 
         <label>出勤</label>
-        <input type="time" id="editClockIn">
+        <input type="time" id="editClockIn" style="width:100%;">
 
         <label>退勤</label>
-        <input type="time" id="editClockOut">
+        <input type="time" id="editClockOut" style="width:100%;">
 
         <label>休憩開始</label>
-        <input type="time" id="editBreakStart">
+        <input type="time" id="editBreakStart" style="width:100%;">
 
         <label>休憩終了</label>
-        <input type="time" id="editBreakEnd">
+        <input type="time" id="editBreakEnd" style="width:100%;">
 
-        <button onclick="saveEdit()">保存する</button>
-        <button onclick="closeEditModal()" style="background:#dc2626;">閉じる</button>
+        <button onclick="saveEdit()" 
+          style="background:#16a34a;color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:10px;cursor:pointer;width:100%;">
+          保存する
+        </button>
+
+        <button onclick="closeEditModal()" 
+          style="background:#dc2626;color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:10px;cursor:pointer;width:100%;">
+          閉じる
+        </button>
+
       </div>
     </div>
 
@@ -1397,7 +1408,13 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
               "<td>" + (r.clockOut || "--:--") + "</td>" +
               "<td>" + (r.breakStart || "--:--") + "</td>" +
               "<td>" + (r.breakEnd || "--:--") + "</td>" +
-              "<td><button class='btn-edit' data-user='" + r.userId + "' data-date='" + r.date + "' onclick='handleEditClick(this)'>修正</button></td>" +
+              <button class='btn-edit' 
+                style="background:#3b82f6;color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;"
+                data-user='` + r.userId + `'
+                data-date='` + r.date + `'
+                onclick='handleEditClick(this)'>
+                ✏ 修正
+              </button>
             "</tr>";
 
         });
@@ -1415,8 +1432,8 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       function openEditModal(userId, date) {
         document.getElementById("editUserId").value = userId;
         document.getElementById("editDate").value = date;
+        document.getElementById("editDate").setAttribute("data-old", date);
 
-        // 既存データを検索
         const rec = allRecords.find(r => r.userId === userId && r.date === date);
 
         document.getElementById("editClockIn").value     = rec?.clockIn     ? rec.clockIn.slice(-5)     : "";
@@ -1426,6 +1443,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
         document.getElementById("editModal").style.display = "flex";
       }
+
       function handleEditClick(btn) {
         const userId = btn.getAttribute("data-user");
         const date = btn.getAttribute("data-date");
@@ -1436,13 +1454,18 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         document.getElementById("editModal").style.display = "none";
       }
       async function saveEdit() {
+
+        const oldDate = document.getElementById("editDate").getAttribute("data-old");
+        const newDate = document.getElementById("editDate").value;
+
         const body = {
           userId: document.getElementById("editUserId").value,
-          date: document.getElementById("editDate").value,
+          oldDate: oldDate,
+          newDate: newDate,
           clockIn: document.getElementById("editClockIn").value,
           clockOut: document.getElementById("editClockOut").value,
           breakStart: document.getElementById("editBreakStart").value,
-          breakEnd: document.getElementById("editBreakEnd").value,
+          breakEnd: document.getElementById("editBreakEnd").value
         };
 
         const res = await fetch("/${store}/admin/attendance/update-full", {
@@ -1455,6 +1478,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         closeEditModal();
         loadRecords();
       }
+
 
       init();
     </script>
@@ -4150,27 +4174,44 @@ app.get("/:store/admin/payroll/export", ensureStore, async (req, res) => {
 });
 
 app.post("/:store/admin/attendance/update-full", ensureStore, async (req, res) => {
-  if (!req.session.loggedIn || req.session.store !== req.store)
-    return res.status(403).send("権限がありません。");
+  try {
+    const { store } = req.params;
+    const { userId, oldDate, newDate, clockIn, clockOut, breakStart, breakEnd } = req.body;
 
-  const { store } = req;
-  const { userId, date, clockIn, clockOut, breakStart, breakEnd } = req.body;
+    const baseRef = db.collection("companies").doc(store)
+      .collection("attendance").doc(userId).collection("records");
 
-  const docRef = db.collection("companies").doc(store)
-    .collection("attendance").doc(userId)
-    .collection("records").doc(date);
+    // 🔹 日付が変わった場合 → レコード移動
+    if (oldDate !== newDate) {
+      const oldRef = baseRef.doc(oldDate);
+      const newRef = baseRef.doc(newDate);
 
-  const updates = {};
+      const oldSnap = await oldRef.get();
+      if (oldSnap.exists) {
+        await newRef.set({ ...oldSnap.data(), date:newDate }, { merge: true });
+        await oldRef.delete();
+      }
+    }
 
-  if (clockIn)     updates.clockIn    = `${date} ${clockIn}`;
-  if (clockOut)    updates.clockOut   = `${date} ${clockOut}`;
-  if (breakStart)  updates.breakStart = `${date} ${breakStart}`;
-  if (breakEnd)    updates.breakEnd   = `${date} ${breakEnd}`;
+    // 🔹 新しい日付へデータ上書き
+    await baseRef.doc(newDate).set({
+      clockIn,
+      clockOut,
+      breakStart,
+      breakEnd,
+      userId,
+      date: newDate,
+      updatedAt: new Date()
+    }, { merge: true });
 
-  await docRef.set(updates, { merge: true });
-
-  res.send("勤怠を更新しました");
+    res.send("勤怠データを更新しました");
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).send("更新中にエラーが発生しました");
+  }
 });
+
 
 // 勤怠修正申請を承認 → attendance に反映
 app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
