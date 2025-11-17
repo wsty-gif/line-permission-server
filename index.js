@@ -2845,7 +2845,19 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
     const before = data.before || {};
     const after = data.after || {};
 
-    // ★ 更新対象のレコード
+    // ★ ここで T 形式を除去する変換
+    function normalize(v) {
+      if (!v) return "";
+      if (v.includes("T")) {
+        // "2025-11-13T09:36" → "2025/11/13 09:36"
+        const [d, t] = v.split("T");
+        const parts = d.split("-");
+        return `${parts[0]}/${parts[1]}/${parts[2]} ${t}`;
+      }
+      return v; // もともと "/" 形式ならそのまま
+    }
+
+    // === 勤怠ドキュメント ===
     const recRef = db
       .collection("companies")
       .doc(store)
@@ -2857,24 +2869,24 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
     let updateData = {};
 
     if (status === "承認") {
-      // === 承認 → after の内容を反映 ===
+      // ★ after を正規化して保存
       updateData = {
-        clockIn: after.clockIn || "",
-        clockOut: after.clockOut || "",
-        breakStart: after.breakStart || "",
-        breakEnd: after.breakEnd || "",
+        clockIn:     normalize(after.clockIn),
+        clockOut:    normalize(after.clockOut),
+        breakStart:  normalize(after.breakStart),
+        breakEnd:    normalize(after.breakEnd),
       };
     } else if (status === "却下") {
-      // === 却下 → before の内容に戻す ===
+      // ★ before を正規化して保存
       updateData = {
-        clockIn: before.clockIn || "",
-        clockOut: before.clockOut || "",
-        breakStart: before.breakStart || "",
-        breakEnd: before.breakEnd || "",
+        clockIn:     normalize(before.clockIn),
+        clockOut:    normalize(before.clockOut),
+        breakStart:  normalize(before.breakStart),
+        breakEnd:    normalize(before.breakEnd),
       };
     }
 
-    // 勤怠保存
+    // 保存
     await recRef.set(
       {
         ...updateData,
@@ -2886,7 +2898,7 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
       { merge: true }
     );
 
-    // 申請ステータス更新
+    // 修正申請のステータス更新
     await reqRef.set(
       {
         status: status,
@@ -2901,6 +2913,7 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
     res.status(500).send("修正処理に失敗しました");
   }
 });
+
 
 
 app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) => {
