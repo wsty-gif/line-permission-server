@@ -1489,20 +1489,41 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
 async function saveEdit() {
 
+  function mergeDT(d, t) {
+    if (!d || !t) return "";
+    return d + " " + t;
+  }
+
   const body = {
     userId: document.getElementById("editUserId").value,
+
+    // レコード本体の日付
     oldDate: document.getElementById("editBaseDate").value,
     newDate: document.getElementById("editBaseDate").value,
-    clockIn: document.getElementById("editClockInDate").value + " " + document.getElementById("editClockIn").value,
-    clockOut: document.getElementById("editClockOutDate").value + " " + document.getElementById("editClockOut").value,
-    breakStart: document.getElementById("editBreakStartDate").value + " " + document.getElementById("editBreakStart").value,
-    breakEnd: document.getElementById("editBreakEndDate").value + " " + document.getElementById("editBreakEnd").value
+
+    // 日付＋時刻を合体
+    clockIn: mergeDT(
+      document.getElementById("editClockInDate").value,
+      document.getElementById("editClockIn").value
+    ),
+    clockOut: mergeDT(
+      document.getElementById("editClockOutDate").value,
+      document.getElementById("editClockOut").value
+    ),
+    breakStart: mergeDT(
+      document.getElementById("editBreakStartDate").value,
+      document.getElementById("editBreakStart").value
+    ),
+    breakEnd: mergeDT(
+      document.getElementById("editBreakEndDate").value,
+      document.getElementById("editBreakEnd").value
+    ),
   };
 
-  // 🔥 fetch 呼び出しを閉じ忘れがないようにする
-  const res = await fetch("/${store}/admin/attendance/update-full", {
+  // 🔥 ${store} を必ず \${store} へエスケープ
+  const res = await fetch("/\${store}/admin/attendance/update-full", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type": "application/json"},
     body: JSON.stringify(body)
   });
 
