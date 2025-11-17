@@ -2439,47 +2439,58 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     </div>
 
     <!-- 修正申請モーダル -->
-    <div id="modal" class="modal">
-      <div class="modal-content">
-        <h3>打刻時間修正申請</h3>
+<!-- 🔵 打刻修正申請モーダル（統一デザイン） -->
+<div id="modal" class="modal">
+  <div class="modal-content">
 
-        <label>修正対象日</label>
-        <input type="date" id="reqDate" onchange="loadCurrentRecord()">
+    <h3 class="modal-title">打刻時間修正申請</h3>
 
-        <div class="current-record" id="currentRecord">
-          現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--
-        </div>
+    <div class="form-group">
+      <label>修正対象日</label>
+      <input type="date" id="reqDate" class="input-date">
+    </div>
 
-        <label>修正後の日時</label>
-        <div class="time-grid">
-          <div>
-            <label>出勤</label>
-            <input type="datetime-local" id="newClockIn" />
-          </div>
-          <div>
-            <label>退勤</label>
-            <input type="datetime-local" id="newClockOut" />
-          </div>
-          <div>
-            <label>休憩開始</label>
-            <input type="datetime-local" id="newBreakStart" />
-          </div>
-          <div>
-            <label>休憩終了</label>
-            <input type="datetime-local" id="newBreakEnd" />
-          </div>
-        </div>
+    <div class="current-record" id="currentRecord">
+      現在の記録: データ取得中...
+    </div>
 
+    <div class="form-group">
+      <label>修正後の日付・時間</label>
 
-        <label>修正理由</label>
-        <textarea id="reqMessage" placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
+      <div class="row">
+        <input type="date" id="newDateIn" class="input-date">
+        <input type="time" id="newClockIn" class="input-time">
+      </div>
 
-        <div class="btn-row">
-          <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
-          <button class="btn-send" onclick="submitFix()">申請</button>
-        </div>
+      <div class="row">
+        <input type="date" id="newDateOut" class="input-date">
+        <input type="time" id="newClockOut" class="input-time">
+      </div>
+
+      <div class="row">
+        <input type="date" id="newDateBreakStart" class="input-date">
+        <input type="time" id="newBreakStart" class="input-time">
+      </div>
+
+      <div class="row">
+        <input type="date" id="newDateBreakEnd" class="input-date">
+        <input type="time" id="newBreakEnd" class="input-time">
       </div>
     </div>
+
+    <div class="form-group">
+      <label>修正理由</label>
+      <textarea id="reqMessage" class="input-textarea"></textarea>
+    </div>
+
+    <div class="modal-buttons">
+      <button class="btn-save" onclick="submitRequest()">申請</button>
+      <button class="btn-close" onclick="closeModal()">閉じる</button>
+    </div>
+
+  </div>
+</div>
+
 
     <script>
       let userId, name; // ← 関数の外に宣言（★重要）
