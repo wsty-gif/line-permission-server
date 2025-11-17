@@ -1314,19 +1314,28 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
         <input type="hidden" id="editUserId">
 
-        <label>日付</label>
-        <input type="date" id="editDate" style="width:100%;">
+        <!-- ■ 日付 -->
+        <label>勤務日</label>
+        <input type="date" id="editBaseDate" style="width:100%;">
 
+        <!-- ■ 出勤 -->
         <label>出勤</label>
+        <input type="date" id="editClockInDate" style="width:100%;">
         <input type="time" id="editClockIn" style="width:100%;">
 
+        <!-- ■ 退勤 -->
         <label>退勤</label>
+        <input type="date" id="editClockOutDate" style="width:100%;">
         <input type="time" id="editClockOut" style="width:100%;">
 
+        <!-- ■ 休憩開始 -->
         <label>休憩開始</label>
+        <input type="date" id="editBreakStartDate" style="width:100%;">
         <input type="time" id="editBreakStart" style="width:100%;">
 
+        <!-- ■ 休憩終了 -->
         <label>休憩終了</label>
+        <input type="date" id="editBreakEndDate" style="width:100%;">
         <input type="time" id="editBreakEnd" style="width:100%;">
 
         <button onclick="saveEdit()" 
@@ -1402,13 +1411,13 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         list.forEach(function (r) {
           html +=
             "<tr>" +
+              "<td><button class='btn-edit' style='background:#3b82f6;color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;' data-user='" + r.userId + "' data-date='" + r.date + "' onclick='handleEditClick(this)'>修正</button></td>" +
               "<td>" + (r.date || "") + "</td>" +
               "<td>" + (r.name || "未登録") + "</td>" +
               "<td>" + (r.clockIn || "--:--") + "</td>" +
               "<td>" + (r.clockOut || "--:--") + "</td>" +
               "<td>" + (r.breakStart || "--:--") + "</td>" +
               "<td>" + (r.breakEnd || "--:--") + "</td>" +
-              "<td><button class='btn-edit' style='background:#3b82f6;color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;' data-user='" + r.userId + "' data-date='" + r.date + "' onclick='handleEditClick(this)'>修正</button></td>" +
             "</tr>";
 
         });
@@ -1423,20 +1432,40 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
           "勤務日数：" + workDays + "日";
       }
 
-      function openEditModal(userId, date) {
-        document.getElementById("editUserId").value = userId;
-        document.getElementById("editDate").value = date;
-        document.getElementById("editDate").setAttribute("data-old", date);
+    function openEditModal(userId, date) {
+      document.getElementById("editUserId").value = userId;
 
-        const rec = allRecords.find(r => r.userId === userId && r.date === date);
+      // 基本の勤務日（レコード自体のキー）
+      document.getElementById("editBaseDate").value = date;
 
-        document.getElementById("editClockIn").value     = rec?.clockIn     ? rec.clockIn.slice(-5)     : "";
-        document.getElementById("editClockOut").value    = rec?.clockOut    ? rec.clockOut.slice(-5)    : "";
-        document.getElementById("editBreakStart").value  = rec?.breakStart  ? rec.breakStart.slice(-5)  : "";
-        document.getElementById("editBreakEnd").value    = rec?.breakEnd    ? rec.breakEnd.slice(-5)    : "";
+      const rec = allRecords.find(r => r.userId === userId && r.date === date);
 
-        document.getElementById("editModal").style.display = "flex";
+      function splitDT(v) {
+        if (!v) return { d: "", t: "" };
+        const [d, t] = v.split(" ");
+        return { d, t };
       }
+
+      const ci = splitDT(rec?.clockIn);
+      const co = splitDT(rec?.clockOut);
+      const bs = splitDT(rec?.breakStart);
+      const be = splitDT(rec?.breakEnd);
+
+      document.getElementById("editClockInDate").value    = ci.d;
+      document.getElementById("editClockIn").value        = ci.t;
+
+      document.getElementById("editClockOutDate").value   = co.d;
+      document.getElementById("editClockOut").value       = co.t;
+
+      document.getElementById("editBreakStartDate").value = bs.d;
+      document.getElementById("editBreakStart").value     = bs.t;
+
+      document.getElementById("editBreakEndDate").value   = be.d;
+      document.getElementById("editBreakEnd").value       = be.t;
+
+      document.getElementById("editModal").style.display = "flex";
+    }
+
 
       function handleEditClick(btn) {
         const userId = btn.getAttribute("data-user");
@@ -1447,19 +1476,34 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       function closeEditModal() {
         document.getElementById("editModal").style.display = "none";
       }
+
       async function saveEdit() {
 
-        const oldDate = document.getElementById("editDate").getAttribute("data-old");
-        const newDate = document.getElementById("editDate").value;
+        function mergeDT(d, t) {
+          if (!d || !t) return "";
+          return d + " " + t;
+        }
 
         const body = {
           userId: document.getElementById("editUserId").value,
-          oldDate: oldDate,
-          newDate: newDate,
-          clockIn: document.getElementById("editClockIn").value,
-          clockOut: document.getElementById("editClockOut").value,
-          breakStart: document.getElementById("editBreakStart").value,
-          breakEnd: document.getElementById("editBreakEnd").value
+
+          // レコード本体の日付
+          oldDate: document.getElementById("editBaseDate").value,
+          newDate: document.getElementById("editBaseDate").value, // 日付変更したいならここを UI 追加して変更可
+
+          // 日付＋時刻を合体
+          clockIn:     mergeDT(
+                          document.getElementById("editClockInDate").value,
+                          document.getElementById("editClockIn").value),
+          clockOut:    mergeDT(
+                          document.getElementById("editClockOutDate").value,
+                          document.getElementById("editClockOut").value),
+          breakStart:  mergeDT(
+                          document.getElementById("editBreakStartDate").value,
+                          document.getElementById("editBreakStart").value),
+          breakEnd:    mergeDT(
+                          document.getElementById("editBreakEndDate").value,
+                          document.getElementById("editBreakEnd").value),
         };
 
         const res = await fetch("/${store}/admin/attendance/update-full", {
@@ -1472,8 +1516,6 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
         closeEditModal();
         loadRecords();
       }
-
-
       init();
     </script>
   </body>
