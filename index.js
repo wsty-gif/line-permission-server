@@ -1433,40 +1433,49 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
           "勤務日数：" + workDays + "日";
       }
 
-    function openEditModal(userId, date) {
-      document.getElementById("editUserId").value = userId;
+      function openEditModal(userId, date) {
+        document.getElementById("editUserId").value = userId;
 
-      // 基本の勤務日（レコード自体のキー）
-      document.getElementById("editBaseDate").value = date;
+        // 基本の勤務日（レコードのキー）
+        document.getElementById("editBaseDate").value = date;
 
-      const rec = allRecords.find(r => r.userId === userId && r.date === date);
+        const rec = allRecords.find(r => r.userId === userId && r.date === date);
 
-      function splitDT(v) {
-        if (!v) return { d: "", t: "" };
-        const [d, t] = v.split(" ");
-        return { d, t };
+        // ▼ 登録データの日付＋時刻を安全に分割する関数
+        function splitDT(v) {
+          if (!v) return { d: "", t: "" };
+
+          // "2025/11/13 09:31" 形式 → 正規化
+          let val = v.replace(/\//g, "-");
+
+          // "YYYY-MM-DD HH:MM" に統一
+          const parts = val.split(" ");
+          const d = parts[0] || "";
+          const t = parts[1] ? parts[1].slice(0, 5) : "";
+
+          return { d, t };
+        }
+
+        const ci = splitDT(rec?.clockIn);
+        const co = splitDT(rec?.clockOut);
+        const bs = splitDT(rec?.breakStart);
+        const be = splitDT(rec?.breakEnd);
+
+        // ▼ モーダルの各項目に反映（登録済の正しい日付を表示）
+        document.getElementById("editClockInDate").value    = ci.d;
+        document.getElementById("editClockIn").value        = ci.t;
+
+        document.getElementById("editClockOutDate").value   = co.d;
+        document.getElementById("editClockOut").value       = co.t;
+
+        document.getElementById("editBreakStartDate").value = bs.d;
+        document.getElementById("editBreakStart").value     = bs.t;
+
+        document.getElementById("editBreakEndDate").value   = be.d;
+        document.getElementById("editBreakEnd").value       = be.t;
+
+        document.getElementById("editModal").style.display = "flex";
       }
-
-      const ci = splitDT(rec?.clockIn);
-      const co = splitDT(rec?.clockOut);
-      const bs = splitDT(rec?.breakStart);
-      const be = splitDT(rec?.breakEnd);
-
-      document.getElementById("editClockInDate").value    = ci.d;
-      document.getElementById("editClockIn").value        = ci.t;
-
-      document.getElementById("editClockOutDate").value   = co.d;
-      document.getElementById("editClockOut").value       = co.t;
-
-      document.getElementById("editBreakStartDate").value = bs.d;
-      document.getElementById("editBreakStart").value     = bs.t;
-
-      document.getElementById("editBreakEndDate").value   = be.d;
-      document.getElementById("editBreakEnd").value       = be.t;
-
-      document.getElementById("editModal").style.display = "flex";
-    }
-
 
       function handleEditClick(btn) {
         const userId = btn.getAttribute("data-user");
