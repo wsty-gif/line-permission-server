@@ -2603,7 +2603,6 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
   `);
 });
 
-// 🎯 管理者：打刻修正申請の承認・却下
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
   try {
     const { store } = req.params;
@@ -2619,9 +2618,9 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
       return res.status(400).json({ error: "申請データが存在しません" });
     }
 
-    const request = reqSnap.data();  // before / after / userId / date 含む
+    const request = reqSnap.data();  // before / after / userId / date / name など
 
-    // 🔹 却下の場合
+    // ❌ 却下
     if (!approve) {
       await reqRef.update({
         status: "却下",
@@ -2630,26 +2629,33 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
       return res.json({ status: "rejected" });
     }
 
-    // 🔹 承認の場合（ここで attendance を更新）
+    // ----------------------------------------
+    // 🔥 承認処理：実際に勤怠データを更新（★重要★）
+    // ----------------------------------------
+
     const userId = request.userId;
-    const dateKey = request.date;  // 例: "2025-11-13"
+    const dateKey = request.date;   // "2025-11-13" の形式
 
-    const attRef = db.collection("companies").doc(store)
-      .collection("attendance").doc(userId)
-      .collection("records").doc(dateKey);
+    const attRef = db.collection("companies")
+      .doc(store)
+      .collection("attendance")
+      .doc(userId)
+      .collection("records")
+      .doc(dateKey);
 
-    // 🔥 after をそのまま上書き
-    await attRef.set(
-      {
-        ...request.after,
-        userId,
-        name: request.name,
-        date: dateKey
-      },
-      { merge: true }
-    );
+    // 更新内容 after は以下の構造
+    // { clockIn: "...", clockOut: "...", breakStart: "...", breakEnd: "..." }
+    const newData = {
+      ...request.after,
+      userId: userId,
+      name: request.name,
+      date: dateKey
+    };
 
-    // 🔥 申請側も承認済みに更新
+    // 🔥 本命：打刻データを上書きする
+    await attRef.set(newData, { merge: true });
+
+    // 🔥 申請側のステータスも更新
     await reqRef.update({
       status: "承認",
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -2658,11 +2664,10 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
     return res.json({ status: "approved" });
 
   } catch (err) {
-    console.error("❌ fix/update error:", err);
+    console.error("❌ fix/update 错误:", err);
     res.status(500).json({ error: "更新処理でエラーが発生しました" });
   }
 });
-
 
 app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store) {
