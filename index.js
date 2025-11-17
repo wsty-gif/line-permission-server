@@ -2483,16 +2483,27 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
           currentRecord.innerHTML = "現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--";
         }
       }
+      // 🔧 従業員入力値を "YYYY/MM/DD HH:mm" に変換
+      function formatNewTime(date, time) {
+        if (!date || !time) return "";
+        // 例: 2025-11-17 → 2025/11/17
+        var d = String(date).replace(/-/g, "/");
+        return d + " " + time;   // ← ここをテンプレートリテラルではなく連結に
+      }
+
 
       async function submitFix() {
         const date = document.getElementById("reqDate").value;
         const message = document.getElementById("reqMessage").value;
+        const baseDate = document.getElementById("reqDate").value; // YYYY-MM-DD
+
         const newData = {
-          clockIn: document.getElementById("newClockIn").value,
-          clockOut: document.getElementById("newClockOut").value,
-          breakStart: document.getElementById("newBreakStart").value,
-          breakEnd: document.getElementById("newBreakEnd").value
+          clockIn:     formatNewTime(baseDate, document.getElementById("newClockIn").value),
+          clockOut:    formatNewTime(baseDate, document.getElementById("newClockOut").value),
+          breakStart:  formatNewTime(baseDate, document.getElementById("newBreakStart").value),
+          breakEnd:    formatNewTime(baseDate, document.getElementById("newBreakEnd").value)
         };
+
         if (!date || !message) return alert("日付と理由を入力してください。");
 
         const before = allRecords.find(r => r.date === date) || {};
