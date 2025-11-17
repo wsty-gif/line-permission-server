@@ -1295,6 +1295,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       <table id="records">
         <thead>
           <tr>
+            <th>時刻修正</th>
             <th>日付</th>
             <th>名前</th>
             <th>出勤</th>
