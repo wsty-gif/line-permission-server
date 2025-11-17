@@ -2888,13 +2888,15 @@ app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
     let updateData = {};
 
     if (status === "承認") {
-      // ★ after を正規化して保存
-      updateData = {
-        clockIn:     normalize(after.clockIn),
-        clockOut:    normalize(after.clockOut),
-        breakStart:  normalize(after.breakStart),
-        breakEnd:    normalize(after.breakEnd),
-      };
+      const updates = {};
+
+      // after の値が空なら上書きしない
+      if (after.clockIn) updates.clockIn = after.clockIn;
+      if (after.clockOut) updates.clockOut = after.clockOut;
+      if (after.breakStart) updates.breakStart = after.breakStart;
+      if (after.breakEnd) updates.breakEnd = after.breakEnd;
+
+      await recRef.set(updates, { merge: true });
     } else if (status === "却下") {
       // ★ before を正規化して保存
       updateData = {
