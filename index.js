@@ -2490,19 +2490,27 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         var d = String(date).replace(/-/g, "/");
         return d + " " + time;   // ← ここをテンプレートリテラルではなく連結に
       }
+      function normalizeTimeInput(value) {
+        if (!value) return "";
+        // 2025-11-17T16:55 → 16:55
+        if (value.includes("T")) return value.split("T")[1].slice(0,5);
+        // 16:55 の場合はそのまま
+        return value;
+      }
 
 
       async function submitFix() {
         const date = document.getElementById("reqDate").value;
         const message = document.getElementById("reqMessage").value;
-        const baseDate = document.getElementById("reqDate").value; // YYYY-MM-DD
+        const baseDate = document.getElementById("reqDate").value;
 
         const newData = {
-          clockIn:     formatNewTime(baseDate, document.getElementById("newClockIn").value),
-          clockOut:    formatNewTime(baseDate, document.getElementById("newClockOut").value),
-          breakStart:  formatNewTime(baseDate, document.getElementById("newBreakStart").value),
-          breakEnd:    formatNewTime(baseDate, document.getElementById("newBreakEnd").value)
+          clockIn:    formatNewTime(baseDate, normalizeTimeInput(document.getElementById("newClockIn").value)),
+          clockOut:   formatNewTime(baseDate, normalizeTimeInput(document.getElementById("newClockOut").value)),
+          breakStart: formatNewTime(baseDate, normalizeTimeInput(document.getElementById("newBreakStart").value)),
+          breakEnd:   formatNewTime(baseDate, normalizeTimeInput(document.getElementById("newBreakEnd").value)),
         };
+
 
         if (!date || !message) return alert("日付と理由を入力してください。");
 
