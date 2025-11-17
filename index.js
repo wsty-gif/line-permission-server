@@ -4097,6 +4097,58 @@ app.post("/:store/admin/attendance/update-full", ensureStore, async (req, res) =
   res.send("勤怠を更新しました");
 });
 
+// 勤怠修正申請を承認 → attendance に反映
+app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { requestId } = req.body;
+
+  const reqRef = db.collection("companies")
+    .doc(store)
+    .collection("attendanceRequests")
+    .doc(requestId);
+
+  const reqDoc = await reqRef.get();
+  if (!reqDoc.exists) return res.status(404).send("申請が見つかりません");
+
+  const data = reqDoc.data();
+  const userId = data.userId;
+  const date = data.date;
+  const after = data.after;  // ← 修正後の値（T形式）
+
+  // attendance の保存先
+  const attRef = db.collection("companies")
+    .doc(store)
+    .collection("attendance")
+    .doc(userId)
+    .collection("records")
+    .doc(date);
+
+  // Firestore 保存形式に合わせて T を "/"区切りに変換
+  const toDisplayFormat = t => {
+    // 2025-11-13T09:31 → 2025/11/13 09:31
+    if (!t) return null;
+    return t.replace("T", " ").replace(/-/g, "/");
+  };
+
+  const fixed = {
+    clockIn:    toDisplayFormat(after.clockIn),
+    clockOut:   toDisplayFormat(after.clockOut),
+    breakStart: toDisplayFormat(after.breakStart),
+    breakEnd:   toDisplayFormat(after.breakEnd),
+    updatedAt: new Date()
+  };
+
+  await attRef.set(fixed, { merge: true });
+
+  // 申請の状態を「承認済」に更新
+  await reqRef.update({
+    status: "承認",
+    updatedAt: new Date()
+  });
+
+  res.send("勤怠データを更新し、申請を承認しました");
+});
+
 // ==============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
