@@ -2378,41 +2378,110 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
       .waiting { background:#fef3c7; color:#92400e; }
 
       /* モーダル */
-      .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
-      .modal-content { background:white; border-radius:12px; padding:20px; width:90%; max-width:400px; max-height:90%; overflow-y:auto; }
-      .modal-content h3 { text-align:center; margin-bottom:12px; font-size:16px; color:#111; }
-      label { display:block; margin-top:10px; font-weight:bold; font-size:13px; }
-      input, textarea { width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px; margin-top:4px; font-size:13px; }
-      textarea { height:80px; resize:none; }
-      .time-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
-      .btn-row { display:flex; justify-content:space-between; margin-top:16px; }
-      .btn-cancel { background:#9ca3af; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
-      .btn-send { background:#2563eb; color:white; border:none; border-radius:8px; padding:8px 16px; cursor:pointer; }
-      .current-record { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; margin-top:8px; font-size:13px; color:#374151; line-height:1.6; }
-      .new-time { color:#16a34a; font-weight:bold; }
+/* ===== モーダル基礎 ===== */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
 
-      .top-bar {
-        position: sticky;   /* スクロールしても上部に固定 */
-        top: 0;
-        display: flex;
-        justify-content: flex-end;
-        background: #f9fafb; /* 背景と同じ色 */
-        padding: 8px 0;
-        z-index: 100; /* モーダルより上に出るように */
-      }
-      .btn-back {
-        background: #6b7280;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 8px 16px;
-        cursor: pointer;
-        font-size: 13px;
-        transition: background 0.2s;
-      }
-      .btn-back:hover {
-        background: #4b5563;
-      }
+.modal-content {
+  background: #fff;
+  padding: 24px;
+  width: 90%;
+  max-width: 420px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.2);
+}
+
+/* ===== タイトル ===== */
+.modal-title {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 20px;
+  color: #111;
+  font-weight: 600;
+}
+
+/* ===== フォーム要素 ===== */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.label {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #f8f8f8;
+}
+
+/* ===== 2列グリッド ===== */
+.grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field-block label {
+  font-size: 13px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.textarea {
+  height: 80px;
+  resize: vertical;
+}
+
+/* ===== 現在記録 ===== */
+.current-record {
+  background: #f1f5f9;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* ===== ボタン ===== */
+.btn-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.btn-cancel {
+  padding: 10px 16px;
+  background: #e5e7eb;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.btn-send {
+  padding: 10px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
     </style>
   </head>
   <body>
@@ -2439,7 +2508,6 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
     </div>
 
     <!-- 修正申請モーダル -->
-<!-- 🔵 打刻修正申請モーダル（統一デザイン） -->
 <div id="modal" class="modal">
   <div class="modal-content">
 
@@ -2447,45 +2515,52 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
 
     <div class="form-group">
       <label>修正対象日</label>
-      <input type="date" id="reqDate" class="input-date">
+      <input type="date" id="reqDate" onchange="loadCurrentRecord()" class="input">
     </div>
 
-    <div class="current-record" id="currentRecord">
-      現在の記録: データ取得中...
+    <div id="currentRecord" class="current-record">
+      現在の記録:<br>
+      出勤: --:--　退勤: --:--<br>
+      休憩開始: --:--　休憩終了: --:--
     </div>
 
     <div class="form-group">
-      <label>修正後の日付・時間</label>
+      <label>修正後の日時</label>
 
-      <div class="row">
-        <input type="date" id="newDateIn" class="input-date">
-        <input type="time" id="newClockIn" class="input-time">
-      </div>
+      <div class="grid-2col">
 
-      <div class="row">
-        <input type="date" id="newDateOut" class="input-date">
-        <input type="time" id="newClockOut" class="input-time">
-      </div>
+        <div class="field-block">
+          <label>出勤</label>
+          <input type="datetime-local" id="newClockIn" class="input">
+        </div>
 
-      <div class="row">
-        <input type="date" id="newDateBreakStart" class="input-date">
-        <input type="time" id="newBreakStart" class="input-time">
-      </div>
+        <div class="field-block">
+          <label>退勤</label>
+          <input type="datetime-local" id="newClockOut" class="input">
+        </div>
 
-      <div class="row">
-        <input type="date" id="newDateBreakEnd" class="input-date">
-        <input type="time" id="newBreakEnd" class="input-time">
+        <div class="field-block">
+          <label>休憩開始</label>
+          <input type="datetime-local" id="newBreakStart" class="input">
+        </div>
+
+        <div class="field-block">
+          <label>休憩終了</label>
+          <input type="datetime-local" id="newBreakEnd" class="input">
+        </div>
+
       </div>
     </div>
 
     <div class="form-group">
       <label>修正理由</label>
-      <textarea id="reqMessage" class="input-textarea"></textarea>
+      <textarea id="reqMessage" class="input textarea"
+        placeholder="打刻を忘れた、誤って打刻した等の理由を記載してください"></textarea>
     </div>
 
-    <div class="modal-buttons">
-      <button class="btn-save" onclick="submitRequest()">申請</button>
-      <button class="btn-close" onclick="closeModal()">閉じる</button>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-send" onclick="submitFix()">申請</button>
     </div>
 
   </div>
