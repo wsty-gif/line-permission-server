@@ -2822,100 +2822,86 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
 });
 
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.status(403).send("権限がありません。");
+
+  const { store } = req.params;
+  const { id, status } = req.body;
+
   try {
-    const { store } = req.params;
-
-    // ▼ フロントが送る形式をそのまま受け取る
-    const requestId = req.body.id;
-    const statusLabel = req.body.status; // "承認" or "却下"
-
-    console.log("🔥受信:", requestId, statusLabel);
-
-    if (!requestId) {
-      return res.status(400).json({ error: "requestId がありません" });
-    }
-
-    const reqRef = db.collection("companies")
+    const reqRef = db
+      .collection("companies")
       .doc(store)
       .collection("attendanceRequests")
-      .doc(requestId);
+      .doc(id);
 
-    const reqSnap = await reqRef.get();
-    if (!reqSnap.exists) {
-      return res.status(404).json({ error: "申請データが見つかりません" });
-    }
+    const snap = await reqRef.get();
+    if (!snap.exists) return res.status(404).send("リクエストが存在しません。");
 
-    const request = reqSnap.data();
-    const before = request.before || {};
-    const after = request.after || {};
+    const data = snap.data();
 
-    // ★必ず before.date を使う（after に date が無いため）
-    const dateKey = request.date || before.date;
+    const userId = data.userId;
+    const date = data.date;
+    const before = data.before || {};
+    const after = data.after || {};
 
-    if (!dateKey) {
-      console.error("❌ dateKey が特定できません", request);
-      return res.status(500).json({ error: "日付が特定できません" });
-    }
+    // ★ 更新対象のレコード
+    const recRef = db
+      .collection("companies")
+      .doc(store)
+      .collection("attendance")
+      .doc(userId)
+      .collection("records")
+      .doc(date);
 
-    // -------------------------------
-    // 🔥 却下処理
-    // -------------------------------
-    if (statusLabel === "却下") {
-      await reqRef.update({
-        status: "却下",
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      return res.json({ status: "rejected" });
-    }
+    let updateData = {};
 
-    // -------------------------------
-    // 🔥 承認処理（勤怠データへ反映）
-    // -------------------------------
-    if (statusLabel === "承認") {
-
-      const userId = request.userId;
-
-      const attRef = db.collection("companies")
-        .doc(store)
-        .collection("attendance")
-        .doc(userId)
-        .collection("records")
-        .doc(dateKey);
-
-      // 形式変換（T → 空白）
-      const format = t =>
-        t ? t.replace("T", " ").replace(/-/g, "/") : null;
-
-      const newData = {
-        clockIn: format(after.clockIn),
-        clockOut: format(after.clockOut),
-        breakStart: format(after.breakStart),
-        breakEnd: format(after.breakEnd),
-        userId,
-        name: request.name,
-        date: dateKey,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    if (status === "承認") {
+      // === 承認 → after の内容を反映 ===
+      updateData = {
+        clockIn: after.clockIn || "",
+        clockOut: after.clockOut || "",
+        breakStart: after.breakStart || "",
+        breakEnd: after.breakEnd || "",
       };
-
-      // 🔥 上書き保存
-      await attRef.set(newData, { merge: true });
-
-      // 申請ステータス更新
-      await reqRef.update({
-        status: "承認",
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      return res.json({ status: "approved" });
+    } else if (status === "却下") {
+      // === 却下 → before の内容に戻す ===
+      updateData = {
+        clockIn: before.clockIn || "",
+        clockOut: before.clockOut || "",
+        breakStart: before.breakStart || "",
+        breakEnd: before.breakEnd || "",
+      };
     }
 
-    return res.status(400).json({ error: "不正なステータス値です" });
+    // 勤怠保存
+    await recRef.set(
+      {
+        ...updateData,
+        userId: userId,
+        name: data.name,
+        date: date,
+        updatedAt: new Date(),
+      },
+      { merge: true }
+    );
 
-  } catch (err) {
-    console.error("❌ fix/update エラー:", err);
-    return res.status(500).json({ error: "処理中にエラーが発生しました" });
+    // 申請ステータス更新
+    await reqRef.set(
+      {
+        status: status,
+        updatedAt: new Date(),
+      },
+      { merge: true }
+    );
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("❌ 修正/更新 エラー:", e);
+    res.status(500).send("修正処理に失敗しました");
   }
 });
+
 
 app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store) {
