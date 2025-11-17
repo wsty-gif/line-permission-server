@@ -1399,6 +1399,9 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 <div id="editModal" class="modal">
   <div class="modal-content">
 
+    <!-- ★ これが無かったためエラーが発生していました！ -->
+    <input type="hidden" id="editUserId">
+
     <h3 class="modal-title">勤怠修正</h3>
 
     <div class="form-group">
@@ -1445,6 +1448,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
   </div>
 </div>
+
 
 
 
