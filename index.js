@@ -1002,40 +1002,40 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
         document.getElementById("currentRecord").innerText = "現在の記録: " + recText;
         document.getElementById("reqDate").value = today;
       }
+function mergeDT(date, time) {
+  if (!date || !time) return "";
+  // YYYY-MM-DD → YYYY/MM/DD
+  const d = date.replace(/-/g, "/");
+  return d + " " + time;   // T を入れない
+}
 
-      async function submitRequest() {
-        const date = document.getElementById("reqDate").value;
-        const msg = document.getElementById("reqMessage").value;
-        const newData = {
-          clockIn: document.getElementById("newClockIn").value,
-          clockOut: document.getElementById("newClockOut").value,
-          breakStart: document.getElementById("newBreakStart").value,
-          breakEnd: document.getElementById("newBreakEnd").value
-        };
+async function submitRequest() {
+  const date = document.getElementById("reqDate").value;
+  const msg = document.getElementById("reqMessage").value;
 
-        if (!date || !msg) {
-          alert("対象日と理由を入力してください。");
-          return;
-        }
+  const after = {
+    clockIn:     mergeDT(document.getElementById("newDateIn").value, document.getElementById("newClockIn").value),
+    clockOut:    mergeDT(document.getElementById("newDateOut").value, document.getElementById("newClockOut").value),
+    breakStart:  mergeDT(document.getElementById("newDateBreakStart").value, document.getElementById("newBreakStart").value),
+    breakEnd:    mergeDT(document.getElementById("newDateBreakEnd").value, document.getElementById("newBreakEnd").value)
+  };
 
-        await fetch("/${store}/attendance/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId,
-            name,
-            date,
-            message: msg,
-            after: newData,
-          }),
-        });
+  await fetch("/storeA/attendance/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId,
+      name,
+      date,
+      message: msg,
+      after
+    }),
+  });
 
-        alert("修正申請を送信しました。");
-        closeModal();
+  alert("修正申請を送信しました。");
+  closeModal();
+}
 
-        // 🔹 Firestoreから最新ステータスを再取得して反映
-        await loadRequests();
-      }
 
       async function loadRecords() {
         const month = document.getElementById("monthSelect").value;
