@@ -665,24 +665,30 @@ app.get("/:store/apply", ensureStore, (req, res) => {
     </div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", async () => {
-        try {
-          await liff.init({ liffId: "${storeConf.liffId}" });
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        await liff.init({
+          liffId: "${storeConf.liffId}",
+          withLoginOnExternalBrowser: false
+        });
 
-          if (!liff.isLoggedIn()) {
-            liff.login({ redirectUri: location.href });
-            return;
-          }
-
-          const profile = await liff.getProfile();
-          document.getElementById("userId").value = profile.userId;
-
-        } catch (e) {
-          document.body.innerHTML =
-            "<h3>LIFF初期化に失敗しました<br>" + e.message + "</h3>";
+        // LINEアプリ内 or ブラウザでログイン状態が自動判定される
+        if (!liff.isLoggedIn()) {
+          // redirectUri を指定しない → 400 回避
+          liff.login();
+          return;
         }
-      });
+
+        const profile = await liff.getProfile();
+        document.getElementById("userId").value = profile.userId;
+
+      } catch (e) {
+        document.body.innerHTML =
+          "<div style='padding:20px;'>LIFF初期化エラー<br>" + e.message + "</div>";
+      }
+    });
     </script>
+
   </body>
   </html>
   `);
