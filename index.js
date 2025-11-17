@@ -2603,77 +2603,66 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
   `);
 });
 
-
-
-// ==============================
-// 🔥 修正申請の承認・却下
-// ==============================
+// 🎯 管理者：打刻修正申請の承認・却下
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
-  if (!req.session.loggedIn || req.session.store !== req.store)
-    return res.status(403).send("権限がありません。");
-
-  const store = req.store;
-  const { requestId, action } = req.body; 
-  // action: "approve" または "reject"
-
   try {
-    const reqRef = db
-      .collection("companies").doc(store)
-      .collection("attendanceRequests").doc(requestId);
+    const { store } = req.params;
+    const { requestId, approve } = req.body;
 
-    const snap = await reqRef.get();
-    if (!snap.exists) return res.status(404).send("申請が見つかりません。");
+    const reqRef = db.collection("companies")
+      .doc(store)
+      .collection("attendanceRequests")
+      .doc(requestId);
 
-    const data = snap.data();
-    const { userId, date, before, after } = data;
-
-    // ====== 承認処理 ======
-    if (action === "approve") {
-      const attendanceRef = db
-        .collection("companies").doc(store)
-        .collection("attendance").doc(userId)
-        .collection("records").doc(date);
-
-      // Firestoreへ反映
-      await attendanceRef.set(
-        {
-          userId,
-          name: data.name,
-          date,
-          clockIn: after.clockIn || null,
-          clockOut: after.clockOut || null,
-          breakStart: after.breakStart || null,
-          breakEnd: after.breakEnd || null,
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
-
-      // 申請ステータス更新
-      await reqRef.set(
-        { status: "承認", updatedAt: new Date() },
-        { merge: true }
-      );
-
-      return res.send("承認し、勤怠データを更新しました。");
+    const reqSnap = await reqRef.get();
+    if (!reqSnap.exists) {
+      return res.status(400).json({ error: "申請データが存在しません" });
     }
 
-    // ====== 却下処理 ======
-    if (action === "reject") {
-      await reqRef.set(
-        { status: "却下", updatedAt: new Date() },
-        { merge: true }
-      );
+    const request = reqSnap.data();  // before / after / userId / date 含む
 
-      return res.send("却下しました。");
+    // 🔹 却下の場合
+    if (!approve) {
+      await reqRef.update({
+        status: "却下",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      return res.json({ status: "rejected" });
     }
 
-    res.status(400).send("不正なアクションです。");
+    // 🔹 承認の場合（ここで attendance を更新）
+    const userId = request.userId;
+    const dateKey = request.date;  // 例: "2025-11-13"
+
+    const attRef = db.collection("companies").doc(store)
+      .collection("attendance").doc(userId)
+      .collection("records").doc(dateKey);
+
+    // 🔥 after をそのまま上書き
+    await attRef.set(
+      {
+        ...request.after,
+        userId,
+        name: request.name,
+        date: dateKey
+      },
+      { merge: true }
+    );
+
+    // 🔥 申請側も承認済みに更新
+    await reqRef.update({
+      status: "承認",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return res.json({ status: "approved" });
+
   } catch (err) {
-    console.error("❌ fix/update ERROR:", err);
-    res.status(500).send("処理中にエラーが発生しました。");
+    console.error("❌ fix/update error:", err);
+    res.status(500).json({ error: "更新処理でエラーが発生しました" });
   }
 });
+
 
 app.post("/:store/admin/attendance/fix/approve", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store) {
