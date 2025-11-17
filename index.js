@@ -2605,22 +2605,73 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
 
 
 
+// ==============================
+// 🔥 修正申請の承認・却下
+// ==============================
 app.post("/:store/admin/fix/update", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { id, status } = req.body;
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.status(403).send("権限がありません。");
+
+  const store = req.store;
+  const { requestId, action } = req.body; 
+  // action: "approve" または "reject"
 
   try {
-    await db.collection("companies").doc(store)
-      .collection("attendanceRequests").doc(id)
-      .update({
-        status,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+    const reqRef = db
+      .collection("companies").doc(store)
+      .collection("attendanceRequests").doc(requestId);
 
-    res.json({ success: true });
+    const snap = await reqRef.get();
+    if (!snap.exists) return res.status(404).send("申請が見つかりません。");
+
+    const data = snap.data();
+    const { userId, date, before, after } = data;
+
+    // ====== 承認処理 ======
+    if (action === "approve") {
+      const attendanceRef = db
+        .collection("companies").doc(store)
+        .collection("attendance").doc(userId)
+        .collection("records").doc(date);
+
+      // Firestoreへ反映
+      await attendanceRef.set(
+        {
+          userId,
+          name: data.name,
+          date,
+          clockIn: after.clockIn || null,
+          clockOut: after.clockOut || null,
+          breakStart: after.breakStart || null,
+          breakEnd: after.breakEnd || null,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+
+      // 申請ステータス更新
+      await reqRef.set(
+        { status: "承認", updatedAt: new Date() },
+        { merge: true }
+      );
+
+      return res.send("承認し、勤怠データを更新しました。");
+    }
+
+    // ====== 却下処理 ======
+    if (action === "reject") {
+      await reqRef.set(
+        { status: "却下", updatedAt: new Date() },
+        { merge: true }
+      );
+
+      return res.send("却下しました。");
+    }
+
+    res.status(400).send("不正なアクションです。");
   } catch (err) {
-    console.error("❌ update fix error:", err);
-    res.status(500).json({ error: "更新に失敗しました" });
+    console.error("❌ fix/update ERROR:", err);
+    res.status(500).send("処理中にエラーが発生しました。");
   }
 });
 
