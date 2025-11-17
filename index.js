@@ -1421,73 +1421,89 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       }
 
 function openEditModal(userId, date) {
-  // 対象レコードのキー（日付）
   document.getElementById("editUserId").value = userId;
-  document.getElementById("editBaseDate").value = date; // これは "2025-11-13" 形式なのでそのままOK
 
-  const rec = allRecords.find(r => r.userId === userId && r.date === date);
+  // レコード本体の日付（ベース日付）
+  var baseDateInput = document.getElementById("editBaseDate");
+  if (baseDateInput) {
+    baseDateInput.value = date; // ここは "2025-11-13" 形式が入っている想定
+  }
+
+  // 既存データを検索
+  var rec = allRecords.find(function (r) {
+    return r.userId === userId && r.date === date;
+  });
 
   // "2025/11/13" や "2025-11-13" → "2025-11-13" に正規化
   function normalizeDateString(d) {
     if (!d) return "";
-    // まず / を - に揃える
-    const parts = d.replace(/\//g, "-").split("-");
+    // まず - を / に揃えてから分解
+    d = String(d).replace(/-/g, "/");
+    var parts = d.split("/");
     if (parts.length !== 3) return "";
-    const [y, m, day] = parts;
-    return [
-      y,
-      String(m).padStart(2, "0"),
-      String(day).padStart(2, "0")
-    ].join("-");
+    var Y = parts[0];
+    var M = parts[1];
+    var D = parts[2];
+
+    // ゼロ埋め
+    M = ("0" + M).slice(-2);
+    D = ("0" + D).slice(-2);
+
+    // 🔴 ここをテンプレートリテラルではなく文字列連結に変更
+    return Y + "-" + M + "-" + D;
   }
 
   // 日付＋時刻の文字列を input[type=date], input[type=time] にセット
-  function setDT(fieldDateId, fieldTimeId, v) {
-    if (!v) return;
+  function setDT(dateInputId, timeInputId, dt) {
+    var dateEl = document.getElementById(dateInputId);
+    var timeEl = document.getElementById(timeInputId);
 
-    let d = "";
-    let t = "";
-    const s = String(v).trim();
+    if (!dateEl || !timeEl) return;
+    if (!dt) {
+      dateEl.value = "";
+      timeEl.value = "";
+      return;
+    }
 
-    const parts = s.split(" ");
+    dt = String(dt).trim();
+    var d = "";
+    var t = "";
 
+    var parts = dt.split(" ");
     if (parts.length === 2) {
-      // "2025/11/13 09:31" / "2025-11-13 09:31"
       d = parts[0];
       t = parts[1];
     } else {
-      // 片方しか無いパターン (保険)
-      if (s.includes("/") || s.includes("-")) {
-        d = s;
+      // 念のための保険
+      if (dt.indexOf("/") >= 0 || dt.indexOf("-") >= 0) {
+        d = dt;
       } else {
-        t = s;
+        t = dt;
       }
     }
 
-    const dateInput = document.getElementById(fieldDateId);
-    const timeInput = document.getElementById(fieldTimeId);
-
-    if (d && dateInput) {
-      const normalized = normalizeDateString(d);
+    if (d) {
+      var normalized = normalizeDateString(d);
       if (normalized) {
-        // ✅ ここで "2025-11-13" をセット → input[type=date] で正しく表示される
-        dateInput.value = normalized;
+        dateEl.value = normalized;  // 例: 2025-11-13
       }
     }
-    if (t && timeInput) {
-      // "09:31:20" のように秒が入っていても上5文字だけ使用
-      timeInput.value = t.slice(0, 5);
+
+    if (t) {
+      timeEl.value = t.slice(0, 5); // "09:31:20" → "09:31"
     }
   }
 
-  // DBに "2025/11/13 09:31" が入っている場合でも、正しく日付と時刻に分解して表示
-  setDT("editClockInDate", "editClockIn", rec && rec.clockIn);
-  setDT("editClockOutDate", "editClockOut", rec && rec.clockOut);
+  // DBに "2025/11/13 09:31" が入っている場合でも正しくセットされる
+  setDT("editClockInDate",    "editClockIn",    rec && rec.clockIn);
+  setDT("editClockOutDate",   "editClockOut",   rec && rec.clockOut);
   setDT("editBreakStartDate", "editBreakStart", rec && rec.breakStart);
-  setDT("editBreakEndDate", "editBreakEnd", rec && rec.breakEnd);
+  setDT("editBreakEndDate",   "editBreakEnd",   rec && rec.breakEnd);
 
   document.getElementById("editModal").style.display = "flex";
 }
+
+
 
 
 
