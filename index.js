@@ -1420,26 +1420,76 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
           "勤務日数：" + workDays + "日";
       }
 
-      function openEditModal(userId, date) {
-        document.getElementById("editUserId").value = userId;
-        document.getElementById("editBaseDate").value = date;
+function openEditModal(userId, date) {
+  // 対象レコードのキー（日付）
+  document.getElementById("editUserId").value = userId;
+  document.getElementById("editBaseDate").value = date; // これは "2025-11-13" 形式なのでそのままOK
 
-        const rec = allRecords.find(r => r.userId === userId && r.date === date);
+  const rec = allRecords.find(r => r.userId === userId && r.date === date);
 
-        function setDT(fieldDate, fieldTime, v) {
-          if (!v) return;
-          const [d, t] = v.split(" ");
-          if (d) document.getElementById(fieldDate).value = d;
-          if (t) document.getElementById(fieldTime).value = t.slice(0,5);
-        }
+  // "2025/11/13" や "2025-11-13" → "2025-11-13" に正規化
+  function normalizeDateString(d) {
+    if (!d) return "";
+    // まず / を - に揃える
+    const parts = d.replace(/\//g, "-").split("-");
+    if (parts.length !== 3) return "";
+    const [y, m, day] = parts;
+    return [
+      y,
+      String(m).padStart(2, "0"),
+      String(day).padStart(2, "0")
+    ].join("-");
+  }
 
-        setDT("editClockInDate", "editClockIn", rec?.clockIn);
-        setDT("editClockOutDate", "editClockOut", rec?.clockOut);
-        setDT("editBreakStartDate", "editBreakStart", rec?.breakStart);
-        setDT("editBreakEndDate", "editBreakEnd", rec?.breakEnd);
+  // 日付＋時刻の文字列を input[type=date], input[type=time] にセット
+  function setDT(fieldDateId, fieldTimeId, v) {
+    if (!v) return;
 
-        document.getElementById("editModal").style.display = "flex";
+    let d = "";
+    let t = "";
+    const s = String(v).trim();
+
+    const parts = s.split(" ");
+
+    if (parts.length === 2) {
+      // "2025/11/13 09:31" / "2025-11-13 09:31"
+      d = parts[0];
+      t = parts[1];
+    } else {
+      // 片方しか無いパターン (保険)
+      if (s.includes("/") || s.includes("-")) {
+        d = s;
+      } else {
+        t = s;
       }
+    }
+
+    const dateInput = document.getElementById(fieldDateId);
+    const timeInput = document.getElementById(fieldTimeId);
+
+    if (d && dateInput) {
+      const normalized = normalizeDateString(d);
+      if (normalized) {
+        // ✅ ここで "2025-11-13" をセット → input[type=date] で正しく表示される
+        dateInput.value = normalized;
+      }
+    }
+    if (t && timeInput) {
+      // "09:31:20" のように秒が入っていても上5文字だけ使用
+      timeInput.value = t.slice(0, 5);
+    }
+  }
+
+  // DBに "2025/11/13 09:31" が入っている場合でも、正しく日付と時刻に分解して表示
+  setDT("editClockInDate", "editClockIn", rec && rec.clockIn);
+  setDT("editClockOutDate", "editClockOut", rec && rec.clockOut);
+  setDT("editBreakStartDate", "editBreakStart", rec && rec.breakStart);
+  setDT("editBreakEndDate", "editBreakEnd", rec && rec.breakEnd);
+
+  document.getElementById("editModal").style.display = "flex";
+}
+
+
 
 
       function handleEditClick(btn) {
