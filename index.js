@@ -1408,7 +1408,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
               "<td>" + (r.clockOut || "--:--") + "</td>" +
               "<td>" + (r.breakStart || "--:--") + "</td>" +
               "<td>" + (r.breakEnd || "--:--") + "</td>" +
-              "<td><button class='btn-edit' style="background:#3b82f6;color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;" data-user='" + r.userId + "' data-date='" + r.date + "' onclick='handleEditClick(this)'>修正</button></td>" +
+              "<td><button class='btn-edit' style='background:#3b82f6;color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;' data-user='" + r.userId + "' data-date='" + r.date + "' onclick='handleEditClick(this)'>修正</button></td>" +
             "</tr>";
 
         });
