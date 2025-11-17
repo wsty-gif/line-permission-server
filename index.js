@@ -1269,6 +1269,94 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
       .modal-content { background:white; padding:20px; border-radius:8px; max-width:320px; width:90%; }
       .table-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .modal {
+        display:none;
+        position:fixed;
+        top:0; left:0;
+        width:100%; height:100%;
+        background:rgba(0,0,0,0.4);
+        align-items:center;
+        justify-content:center;
+        z-index:1000;
+      }
+
+      .modal-content {
+        background:white;
+        width:90%;
+        max-width:420px;
+        padding:24px;
+        border-radius:12px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.2);
+      }
+
+      .modal-title {
+        text-align:center;
+        margin-bottom:20px;
+        font-size:18px;
+        color:#2563eb;
+      }
+
+      .form-group {
+        margin-bottom:16px;
+      }
+
+      .form-group label {
+        font-size:14px;
+        color:#374151;
+        display:block;
+        margin-bottom:4px;
+      }
+
+      .row {
+        display:flex;
+        gap:8px;
+      }
+
+      .input-date, .input-time {
+        width:100%;
+        padding:8px;
+        border:1px solid #d1d5db;
+        border-radius:6px;
+        font-size:14px;
+      }
+
+      .modal-buttons {
+        display:flex;
+        justify-content:space-between;
+        margin-top:24px;
+      }
+
+      .btn-save {
+        background:#2563eb;
+        color:white;
+        padding:10px 20px;
+        border:none;
+        border-radius:6px;
+        cursor:pointer;
+        font-size:14px;
+        flex:1;
+        margin-right:8px;
+      }
+
+      .btn-close {
+        background:#dc2626;
+        color:white;
+        padding:10px 20px;
+        border:none;
+        border-radius:6px;
+        cursor:pointer;
+        font-size:14px;
+        flex:1;
+        margin-left:8px;
+      }
+
+      .btn-save:hover {
+        background:#1d4ed8;
+      }
+
+      .btn-close:hover {
+        background:#b91c1c;
+      }
     </style>
   </head>
 
@@ -1308,35 +1396,56 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
       </table>
     </div>
 
-    <div id="editModal" class="modal">
-      <div class="modal-content">
-        <h3>勤怠を修正</h3>
+<div id="editModal" class="modal">
+  <div class="modal-content">
 
-        <input type="hidden" id="editUserId">
+    <h3 class="modal-title">勤怠修正</h3>
 
-        <label>レコード日付</label>
-        <input type="date" id="editBaseDate">
+    <div class="form-group">
+      <label>レコード日付</label>
+      <input type="date" id="editBaseDate" class="input-date">
+    </div>
 
-        <label>出勤</label>
-        <input type="date" id="editClockInDate">
-        <input type="time" id="editClockIn">
-
-        <label>退勤</label>
-        <input type="date" id="editClockOutDate">
-        <input type="time" id="editClockOut">
-
-        <label>休憩開始</label>
-        <input type="date" id="editBreakStartDate">
-        <input type="time" id="editBreakStart">
-
-        <label>休憩終了</label>
-        <input type="date" id="editBreakEndDate">
-        <input type="time" id="editBreakEnd">
-
-        <button onclick="saveEdit()">保存する</button>
-        <button onclick="closeEditModal()" style="background:#dc2626;">閉じる</button>
+    <div class="form-group">
+      <label>出勤</label>
+      <div class="row">
+        <input type="date" id="editClockInDate" class="input-date">
+        <input type="time" id="editClockIn" class="input-time">
       </div>
     </div>
+
+    <div class="form-group">
+      <label>退勤</label>
+      <div class="row">
+        <input type="date" id="editClockOutDate" class="input-date">
+        <input type="time" id="editClockOut" class="input-time">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>休憩開始</label>
+      <div class="row">
+        <input type="date" id="editBreakStartDate" class="input-date">
+        <input type="time" id="editBreakStart" class="input-time">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>休憩終了</label>
+      <div class="row">
+        <input type="date" id="editBreakEndDate" class="input-date">
+        <input type="time" id="editBreakEnd" class="input-time">
+      </div>
+    </div>
+
+    <div class="modal-buttons">
+      <button class="btn-save" onclick="saveEdit()">保存する</button>
+      <button class="btn-close" onclick="closeEditModal()">閉じる</button>
+    </div>
+
+  </div>
+</div>
+
 
 
     <script>
