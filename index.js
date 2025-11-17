@@ -2520,8 +2520,8 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
 
     <div id="currentRecord" class="current-record">
       現在の記録:<br>
-      出勤: --:--　退勤: --:--<br>
-      休憩開始: --:--　休憩終了: --:--
+      出勤: --:--<br>退勤: --:--<br>
+      休憩開始: --:--<br>休憩終了: --:--
     </div>
 
     <div class="form-group">
