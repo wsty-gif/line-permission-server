@@ -2683,10 +2683,10 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
         if (record) {
           currentRecord.innerHTML = 
             "現在の記録:<br>" +
-            "出勤: " + (record.clockIn || "--:--") + "　退勤: " + (record.clockOut || "--:--") + "<br>" +
-            "休憩開始: " + (record.breakStart || "--:--") + "　休憩終了: " + (record.breakEnd || "--:--");
+            "出勤: " + (record.clockIn || "--:--") + "<br>" + "退勤: " + (record.clockOut || "--:--") + "<br>" +
+            "休憩開始: " + (record.breakStart || "--:--") + "<br>" + "休憩終了: " + (record.breakEnd || "--:--");
         } else {
-          currentRecord.innerHTML = "現在の記録:<br>出勤: --:--　退勤: --:--<br>休憩開始: --:--　休憩終了: --:--";
+          currentRecord.innerHTML = "現在の記録:<br>出勤: --:--<br>退勤: --:--<br>休憩開始: --:--<br>休憩終了: --:--";
         }
       }
       // 🔧 従業員入力値を "YYYY/MM/DD HH:mm" に変換
