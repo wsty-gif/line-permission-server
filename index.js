@@ -1310,47 +1310,34 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
     <div id="editModal" class="modal">
       <div class="modal-content">
-
         <h3>勤怠を修正</h3>
 
         <input type="hidden" id="editUserId">
 
-        <!-- ■ 日付 -->
-        <label>勤務日</label>
-        <input type="date" id="editBaseDate" style="width:100%;">
+        <label>レコード日付</label>
+        <input type="date" id="editBaseDate">
 
-        <!-- ■ 出勤 -->
         <label>出勤</label>
-        <input type="date" id="editClockInDate" style="width:100%;">
-        <input type="time" id="editClockIn" style="width:100%;">
+        <input type="date" id="editClockInDate">
+        <input type="time" id="editClockIn">
 
-        <!-- ■ 退勤 -->
         <label>退勤</label>
-        <input type="date" id="editClockOutDate" style="width:100%;">
-        <input type="time" id="editClockOut" style="width:100%;">
+        <input type="date" id="editClockOutDate">
+        <input type="time" id="editClockOut">
 
-        <!-- ■ 休憩開始 -->
         <label>休憩開始</label>
-        <input type="date" id="editBreakStartDate" style="width:100%;">
-        <input type="time" id="editBreakStart" style="width:100%;">
+        <input type="date" id="editBreakStartDate">
+        <input type="time" id="editBreakStart">
 
-        <!-- ■ 休憩終了 -->
         <label>休憩終了</label>
-        <input type="date" id="editBreakEndDate" style="width:100%;">
-        <input type="time" id="editBreakEnd" style="width:100%;">
+        <input type="date" id="editBreakEndDate">
+        <input type="time" id="editBreakEnd">
 
-        <button onclick="saveEdit()" 
-          style="background:#16a34a;color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:10px;cursor:pointer;width:100%;">
-          保存する
-        </button>
-
-        <button onclick="closeEditModal()" 
-          style="background:#dc2626;color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:10px;cursor:pointer;width:100%;">
-          閉じる
-        </button>
-
+        <button onclick="saveEdit()">保存する</button>
+        <button onclick="closeEditModal()" style="background:#dc2626;">閉じる</button>
       </div>
     </div>
+
 
     <script>
       const store = "${store}";
@@ -1435,47 +1422,25 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
       function openEditModal(userId, date) {
         document.getElementById("editUserId").value = userId;
-
-        // 基本の勤務日（レコードのキー）
         document.getElementById("editBaseDate").value = date;
 
         const rec = allRecords.find(r => r.userId === userId && r.date === date);
 
-        // ▼ 登録データの日付＋時刻を安全に分割する関数
-        function splitDT(v) {
-          if (!v) return { d: "", t: "" };
-
-          // "2025/11/13 09:31" 形式 → 正規化
-          let val = v.replace(/\//g, "-");
-
-          // "YYYY-MM-DD HH:MM" に統一
-          const parts = val.split(" ");
-          const d = parts[0] || "";
-          const t = parts[1] ? parts[1].slice(0, 5) : "";
-
-          return { d, t };
+        function setDT(fieldDate, fieldTime, v) {
+          if (!v) return;
+          const [d, t] = v.split(" ");
+          if (d) document.getElementById(fieldDate).value = d;
+          if (t) document.getElementById(fieldTime).value = t.slice(0,5);
         }
 
-        const ci = splitDT(rec?.clockIn);
-        const co = splitDT(rec?.clockOut);
-        const bs = splitDT(rec?.breakStart);
-        const be = splitDT(rec?.breakEnd);
-
-        // ▼ モーダルの各項目に反映（登録済の正しい日付を表示）
-        document.getElementById("editClockInDate").value    = ci.d;
-        document.getElementById("editClockIn").value        = ci.t;
-
-        document.getElementById("editClockOutDate").value   = co.d;
-        document.getElementById("editClockOut").value       = co.t;
-
-        document.getElementById("editBreakStartDate").value = bs.d;
-        document.getElementById("editBreakStart").value     = bs.t;
-
-        document.getElementById("editBreakEndDate").value   = be.d;
-        document.getElementById("editBreakEnd").value       = be.t;
+        setDT("editClockInDate", "editClockIn", rec?.clockIn);
+        setDT("editClockOutDate", "editClockOut", rec?.clockOut);
+        setDT("editBreakStartDate", "editBreakStart", rec?.breakStart);
+        setDT("editBreakEndDate", "editBreakEnd", rec?.breakEnd);
 
         document.getElementById("editModal").style.display = "flex";
       }
+
 
       function handleEditClick(btn) {
         const userId = btn.getAttribute("data-user");
@@ -1489,7 +1454,7 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
 async function saveEdit() {
 
-  function mergeDT(d, t) {
+  function merge(d, t) {
     if (!d || !t) return "";
     return d + " " + t;
   }
@@ -1497,31 +1462,28 @@ async function saveEdit() {
   const body = {
     userId: document.getElementById("editUserId").value,
 
-    // レコード本体の日付
     oldDate: document.getElementById("editBaseDate").value,
     newDate: document.getElementById("editBaseDate").value,
 
-    // 日付＋時刻を合体
-    clockIn: mergeDT(
+    clockIn: merge(
       document.getElementById("editClockInDate").value,
       document.getElementById("editClockIn").value
     ),
-    clockOut: mergeDT(
+    clockOut: merge(
       document.getElementById("editClockOutDate").value,
       document.getElementById("editClockOut").value
     ),
-    breakStart: mergeDT(
+    breakStart: merge(
       document.getElementById("editBreakStartDate").value,
       document.getElementById("editBreakStart").value
     ),
-    breakEnd: mergeDT(
+    breakEnd: merge(
       document.getElementById("editBreakEndDate").value,
       document.getElementById("editBreakEnd").value
     ),
   };
 
-  // 🔥 ${store} を必ず \${store} へエスケープ
-  const res = await fetch("/\${store}/admin/attendance/update-full", {
+  const res = await fetch("/storeA/admin/attendance/update-full", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify(body)
@@ -1531,6 +1493,7 @@ async function saveEdit() {
   closeEditModal();
   loadRecords();
 }
+
 
       init();
     </script>
