@@ -2784,10 +2784,17 @@ app.get("/:store/admin/fix", ensureStore, async (req, res) => {
                   <td>${r.name || "未登録"}<br><small style="color:#dc2626;">${r.status || "承認待ち"}</small></td>
                   <td>${r.date || "-"}</td>
                   <td style="text-align:left;">
-                    出勤: ${r.before?.clockIn || "--:--"} → <span class="new-time">${r.after?.clockIn || "--:--"}</span><br>
-                    退勤: ${r.before?.clockOut || "--:--"} → <span class="new-time">${r.after?.clockOut || "--:--"}</span><br>
-                    休憩開始: ${r.before?.breakStart || "--:--"} → <span class="new-time">${r.after?.breakStart || "--:--"}</span><br>
-                    休憩終了: ${r.before?.breakEnd || "--:--"} → <span class="new-time">${r.after?.breakEnd || "--:--"}</span>
+                    出勤: ${r.before?.clockIn || "--:--"} →
+                      <span class="new-time">${r.after?.clockIn || r.before?.clockIn || "--:--"}</span><br>
+
+                    退勤: ${r.before?.clockOut || "--:--"} →
+                      <span class="new-time">${r.after?.clockOut || r.before?.clockOut || "--:--"}</span><br>
+
+                    休憩開始: ${r.before?.breakStart || "--:--"} →
+                      <span class="new-time">${r.after?.breakStart || r.before?.breakStart || "--:--"}</span><br>
+
+                    休憩終了: ${r.before?.breakEnd || "--:--"} →
+                      <span class="new-time">${r.after?.breakEnd || r.before?.breakEnd || "--:--"}</span>
                   </td>
                   <td>${r.message || ""}</td>
                   <td>
