@@ -520,26 +520,36 @@ app.post("/:store/revoke", ensureStore, async (req, res) => {
   res.redirect(`/${store}/admin`);
 });
 
-// ==============================
-// 📘 マニュアル表示（承認後 Notion へ）
-// ==============================
-app.get("/:store/manual", ensureStore, (req, res) => {
-  const { liffId } = req.storeConf;
-  res.send(`
-  <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  </head><body><p>LINEログイン中です...</p>
-  <script>
-    const liffId="${liffId}";
-    async function main(){
-      await liff.init({liffId});
-      if(!liff.isLoggedIn()) return liff.login();
-      const p=await liff.getProfile();
-      location.href="/${req.store}/manual-check?userId="+encodeURIComponent(p.userId);
-    }
-    main();
-  </script></body></html>`);
+app.get("/:store/manual", ensureStore, async (req, res) => {
+  const { store } = req.params;
+
+  // ログインしているID
+  const userId = req.query.userId;
+  if (!userId) return res.status(403).send("権限がありません（userIdなし）");
+
+  // Firestore で権限チェック（★ ここ修正）
+  const memberRef = db.collection("companies")
+    .doc(store)
+    .collection("permissions")   // ★ 修正：members → permissions
+    .doc(userId);
+
+  const memberSnap = await memberRef.get();
+  if (!memberSnap.exists) {
+    return res.status(403).send("権限がありません（未登録）");
+  }
+
+  const member = memberSnap.data();
+
+  // ★ 修正：isApproved → approved
+  if (!member.approved) {
+    return res.status(403).send("権限がありません（承認待ち）");
+  }
+
+  // 権限OK → マニュアル表示
+  res.sendFile(__dirname + "/public/manual.html");
 });
+
+
 
 // 📘 マニュアル表示（カードタイプに対応、未承認はメッセージ表示）
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
