@@ -1012,6 +1012,8 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
     <script>
       let userId, name, allRecords = [];
+      const STORE = "${store}";
+
 
       async function main() {
         try {
@@ -1022,15 +1024,13 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
 
           if (!liff.isLoggedIn()) {
 
-            // 🔧 redirectUri を正しい形式で設定（必ずエンコードする）
             const redirect = encodeURIComponent(
-              location.origin + "/" + store + "/attendance"
+              location.origin + "/" + STORE + "/attendance"
             );
 
             liff.login({ redirectUri: redirect });
             return;
           }
-
 
           const p = await liff.getProfile();
           userId = p.userId;
