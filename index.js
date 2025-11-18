@@ -521,93 +521,78 @@ app.post("/:store/revoke", ensureStore, async (req, res) => {
 });
 
 app.get("/:store/manual", ensureStore, (req, res) => {
-  const { store } = req.params;
-  const qs = new URLSearchParams(req.query);
+  const { store, storeConf } = req;
+  const liffId = storeConf.liffId;
 
-  return res.redirect(`/${store}/manual-check?${qs.toString()}`);
+  res.send(`
+  <!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  </head>
+  <body><p>LINEログイン中です...</p>
+
+  <script>
+    async function main(){
+      await liff.init({ liffId: "${liffId}" });
+
+      if(!liff.isLoggedIn()) return liff.login();
+
+      const p = await liff.getProfile();
+      const uid = p.userId;
+
+      const params = new URLSearchParams(location.search);
+      params.set("userId", uid);
+
+      location.href = "/${store}/manual-check?" + params.toString();
+    }
+    main();
+  </script>
+
+  </body></html>
+  `);
 });
 
 
-
-
-
-// 📘 マニュアル表示（カードタイプに対応、未承認はメッセージ表示）
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
-  const { type, userId } = req.query;
   const { store, storeConf } = req;
 
-  // 1️⃣ userIdが無ければ LIFFでログイン → userIdを取得
+  const userId = req.query.userId;
+  const type = req.query.type; // line / todo / other
+
   if (!userId) {
-    return res.send(`
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-      <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-      </head>
-      <body><p>LINEログイン中...</p>
-      <script>
-        async function main(){
-          try {
-            await liff.init({ liffId: "${storeConf.liffId}" });
-            if(!liff.isLoggedIn()) return liff.login();
-            const p = await liff.getProfile();
-            const q = new URLSearchParams(location.search);
-            q.set("userId", p.userId);
-            location.href = location.pathname + "?" + q.toString();
-          } catch(e){
-            document.body.innerHTML = "<h3>LIFF初期化に失敗しました：" + e.message + "</h3>";
-          }
-        }
-        main();
-      </script>
-      </body>
-      </html>
-    `);
+    return res.status(400).send("userId がありません（LIFFを経由してください）");
   }
 
-  // 2️⃣ Firestoreの承認確認
-  const doc = await db.collection("companies").doc(store)
-    .collection("permissions").doc(userId).get();
+  // 🔹 Firestore 権限チェック
+  const doc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
 
-  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!doc.exists)
+    return res.status(404).send("権限申請が未登録です。");
+
   if (!doc.data().approved)
-    return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
+    return res.status(403).send("承認待ちです。<br>管理者の承認をお待ちください。");
 
-  // 3️⃣ typeパラメータ別にURLをenvから読み込み
+  // 🔹 マニュアルURLの取得（複数マニュアル）
+  let redirectUrl = null;
   const urls = storeConf.manualUrls || {};
-  let redirectUrl;
 
-  if (
-    storeConf.manualUrls &&
-    (
-      storeConf.manualUrls.line ||
-      storeConf.manualUrls.todo ||
-      storeConf.manualUrls.default
-    )
-  ) {
-    const urls = storeConf.manualUrls;
+  if (type === "line") redirectUrl = urls.line;
+  else if (type === "todo") redirectUrl = urls.todo;
+  else redirectUrl = urls.default;
 
-    redirectUrl =
-      (type === "line" && urls.line) ||
-      (type === "todo" && urls.todo) ||
-      urls.default;
+  if (!redirectUrl)
+    return res.status(404).send("該当するマニュアルURLが設定されていません。");
 
-  } else if (storeConf.manualUrl) {
-    // 単一URLモード（storeA など）
-    redirectUrl = storeConf.manualUrl;
-  }
-
-  // URLが設定されていない場合のエラーハンドリング
-  if (!redirectUrl) {
-    return res
-      .status(404)
-      .send("<h3>マニュアルURLが設定されていません。</h3>");
-  }
-
-  // 4️⃣ 承認済みなら対象Notionマニュアルへリダイレクト
+  // 🔹 承認済み → Notion にリダイレクト
   res.redirect(redirectUrl);
-
 });
+
 
 // ==============================
 // 🧾 権限申請フォーム（完全版 LIFF）
