@@ -520,34 +520,14 @@ app.post("/:store/revoke", ensureStore, async (req, res) => {
   res.redirect(`/${store}/admin`);
 });
 
-app.get("/:store/manual", ensureStore, async (req, res) => {
+app.get("/:store/manual", ensureStore, (req, res) => {
   const { store } = req.params;
+  const qs = new URLSearchParams(req.query);
 
-  // ログインしているID
-  const userId = req.query.userId;
-  if (!userId) return res.status(403).send("権限がありません（userIdなし）");
-
-  // Firestore で権限チェック（★ ここ修正）
-  const memberRef = db.collection("companies")
-    .doc(store)
-    .collection("permissions")   // ★ 修正：members → permissions
-    .doc(userId);
-
-  const memberSnap = await memberRef.get();
-  if (!memberSnap.exists) {
-    return res.status(403).send("権限がありません（未登録）");
-  }
-
-  const member = memberSnap.data();
-
-  // ★ 修正：isApproved → approved
-  if (!member.approved) {
-    return res.status(403).send("権限がありません（承認待ち）");
-  }
-
-  // 権限OK → マニュアル表示
-  res.sendFile(__dirname + "/public/manual.html");
+  return res.redirect(`/${store}/manual-check?${qs.toString()}`);
 });
+
+
 
 
 
@@ -595,19 +575,25 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 
   // 3️⃣ typeパラメータ別にURLをenvから読み込み
   const urls = storeConf.manualUrls || {};
-  // 3️⃣ typeパラメータ別にURLをenvから読み込み
   let redirectUrl;
 
-  // ✅ 単一URL（storeAなど）対応を追加
-  if (storeConf.manualUrls) {
-    // 複数マニュアル対応（storeBなど）
+  if (
+    storeConf.manualUrls &&
+    (
+      storeConf.manualUrls.line ||
+      storeConf.manualUrls.todo ||
+      storeConf.manualUrls.default
+    )
+  ) {
     const urls = storeConf.manualUrls;
+
     redirectUrl =
       (type === "line" && urls.line) ||
       (type === "todo" && urls.todo) ||
       urls.default;
+
   } else if (storeConf.manualUrl) {
-    // ✅ 単一マニュアル対応（storeAなど）
+    // 単一URLモード（storeA など）
     redirectUrl = storeConf.manualUrl;
   }
 
