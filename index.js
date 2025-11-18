@@ -950,63 +950,63 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
     </div>
 
     <!-- ✅ 修正申請モーダル -->
-<!-- 🔵 打刻修正申請モーダル（統一デザイン） -->
-<div id="modal" class="modal">
-  <div class="modal-content">
+    <!-- 🔵 打刻修正申請モーダル（統一デザイン） -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
 
-    <h3 class="modal-title">打刻時間修正申請</h3>
+        <h3 class="modal-title">打刻時間修正申請</h3>
 
-    <!-- 修正対象日 -->
-    <div class="form-group">
-      <label>修正対象日</label>
-      <input type="date" id="reqDate" class="input-date">
-    </div>
+        <!-- 修正対象日 -->
+        <div class="form-group">
+          <label>修正対象日</label>
+          <input type="date" id="reqDate" class="input-date">
+        </div>
 
-    <!-- 現在の記録 -->
-    <div class="current-record" id="currentRecord">
-      現在の記録: データ取得中...
-    </div>
+        <!-- 現在の記録 -->
+        <div class="current-record" id="currentRecord">
+          現在の記録: データ取得中...
+        </div>
 
-    <!-- 修正後 -->
-    <div class="form-group">
-      <label>修正後の日付・時間</label>
+        <!-- 修正後 -->
+        <div class="form-group">
+          <label>修正後の日付・時間</label>
 
-      <div class="row">
-        <input type="date" id="newDateIn" class="input-date">
-        <input type="time" id="newClockIn" class="input-time">
+          <div class="row">
+            <input type="date" id="newDateIn" class="input-date">
+            <input type="time" id="newClockIn" class="input-time">
+          </div>
+
+          <div class="row">
+            <input type="date" id="newDateOut" class="input-date">
+            <input type="time" id="newClockOut" class="input-time">
+          </div>
+
+          <div class="row">
+            <input type="date" id="newDateBreakStart" class="input-date">
+            <input type="time" id="newBreakStart" class="input-time">
+          </div>
+
+          <div class="row">
+            <input type="date" id="newDateBreakEnd" class="input-date">
+            <input type="time" id="newBreakEnd" class="input-time">
+          </div>
+        </div>
+
+        <!-- 修正理由 -->
+        <div class="form-group">
+          <label>修正理由</label>
+          <textarea id="reqMessage" class="input-textarea"
+            placeholder="打刻忘れ・誤打刻などの理由を記載してください"></textarea>
+        </div>
+
+        <!-- ボタン -->
+        <div class="modal-buttons">
+          <button class="btn-save" onclick="submitRequest()">申請</button>
+          <button class="btn-close" onclick="closeModal()">閉じる</button>
+        </div>
+
       </div>
-
-      <div class="row">
-        <input type="date" id="newDateOut" class="input-date">
-        <input type="time" id="newClockOut" class="input-time">
-      </div>
-
-      <div class="row">
-        <input type="date" id="newDateBreakStart" class="input-date">
-        <input type="time" id="newBreakStart" class="input-time">
-      </div>
-
-      <div class="row">
-        <input type="date" id="newDateBreakEnd" class="input-date">
-        <input type="time" id="newBreakEnd" class="input-time">
-      </div>
     </div>
-
-    <!-- 修正理由 -->
-    <div class="form-group">
-      <label>修正理由</label>
-      <textarea id="reqMessage" class="input-textarea"
-        placeholder="打刻忘れ・誤打刻などの理由を記載してください"></textarea>
-    </div>
-
-    <!-- ボタン -->
-    <div class="modal-buttons">
-      <button class="btn-save" onclick="submitRequest()">申請</button>
-      <button class="btn-close" onclick="closeModal()">閉じる</button>
-    </div>
-
-  </div>
-</div>
 
 
 
@@ -1021,10 +1021,16 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
           if (location.pathname.includes("/manual")) return;
 
           if (!liff.isLoggedIn()) {
-            // ✅ manualではない画面のみでログイン誘導
-            liff.login({ redirectUri: location.href });
+
+            // 🔧 redirectUri を正しい形式で設定（必ずエンコードする）
+            const redirect = encodeURIComponent(
+              location.origin + "/" + store + "/attendance"
+            );
+
+            liff.login({ redirectUri: redirect });
             return;
           }
+
 
           const p = await liff.getProfile();
           userId = p.userId;
