@@ -1319,61 +1319,132 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, action } = req.body;
 
+  // JST 時刻
   const now = new Date();
-  const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  jstNow.setSeconds(0, 0);
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  jst.setSeconds(0, 0);
 
-  const formattedTime = jstNow.getFullYear() + "/" +
-    (jstNow.getMonth() + 1) + "/" +
-    jstNow.getDate() + " " +
-    String(jstNow.getHours()).padStart(2, "0") + ":" +
-    String(jstNow.getMinutes()).padStart(2, "0");
+  const dateKey = jst.toISOString().split("T")[0];
+  const timeStr =
+    `${jst.getFullYear()}/${String(jst.getMonth() + 1).padStart(2, "0")}/${String(jst.getDate()).padStart(2, "0")} ` +
+    `${String(jst.getHours()).padStart(2, "0")}:${String(jst.getMinutes()).padStart(2, "0")}`;
 
   const recordsRef = db.collection("companies").doc(store)
     .collection("attendance").doc(userId)
     .collection("records");
 
-  // 🔹 直近の勤務データを取得
-  const snapshot = await recordsRef.orderBy("date", "desc").limit(1).get();
-  const latestData = !snapshot.empty ? snapshot.docs[0].data() : null;
+  // 🔹 最後の勤務を取得
+  const latestSnap = await recordsRef.orderBy("workId", "desc").limit(1).get();
+  const latest = latestSnap.empty ? null : latestSnap.docs[0].data();
 
-  let workDate;
+  // 🔍 休憩状況確認関数
+  const getLastBreak = (rec) =>
+    !rec || !rec.breaks || rec.breaks.length === 0
+      ? null
+      : rec.breaks[rec.breaks.length - 1];
 
-  if (action === "clockOut" && latestData) {
-    // ⏰ 前日の出勤データに退勤登録
-    workDate = latestData.date;
-  } else {
-    workDate = jstNow.toISOString().split("T")[0];
+  /* ----------------------------------------
+      🟩 出勤（新しい勤務を作成）
+  ---------------------------------------- */
+  if (action === "clockIn") {
+    if (latest && !latest.clockOut) {
+      return res.send("前の勤務が退勤されていません。退勤してください。");
+    }
+
+    // 勤務番号（例: 2025-11-20-2）
+    let workId = `${dateKey}-1`;
+
+    if (latest && latest.date === dateKey) {
+      // 同日の勤務回数が増える
+      const lastNum = Number(latest.workId.split("-").pop());
+      workId = `${dateKey}-${lastNum + 1}`;
+    }
+
+    await recordsRef.doc(workId).set({
+      workId,
+      date: dateKey,
+      clockIn: timeStr,
+      clockOut: "",
+      breaks: [],
+      userId,
+      name
+    });
+
+    return res.send("出勤を記録しました。");
   }
 
-  const ref = recordsRef.doc(workDate);
-  const snap = await ref.get();
-  const data = snap.exists ? snap.data() : {};
+  /* ----------------------------------------
+      🟧 休憩開始
+  ---------------------------------------- */
+  if (action === "breakStart") {
+    if (!latest || !latest.clockIn) {
+      return res.send("出勤後に休憩開始できます。");
+    }
+    if (latest.clockOut) {
+      return res.send("退勤済みの勤務です。");
+    }
 
-  // 🔹 退勤漏れ補正
-  if (action === "clockIn" && latestData && !latestData.clockOut) {
-    await recordsRef.doc(latestData.date).update({ clockOut: formattedTime });
-    console.log(`自動退勤処理: ${latestData.date}`);
+    const lastBreak = getLastBreak(latest);
+    if (lastBreak && !lastBreak.end) {
+      return res.send("前の休憩が終了していません。休憩終了を押してください。");
+    }
+
+    latest.breaks = latest.breaks || [];
+    latest.breaks.push({ start: timeStr, end: "" });
+
+    await recordsRef.doc(latest.workId).update({ breaks: latest.breaks });
+    return res.send("休憩を開始しました。");
   }
 
-  if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
-  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
-  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
-  if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
+  /* ----------------------------------------
+      🟦 休憩終了
+  ---------------------------------------- */
+  if (action === "breakEnd") {
+    if (!latest || !latest.clockIn) {
+      return res.send("出勤後に休憩終了できます。");
+    }
+    if (latest.clockOut) {
+      return res.send("退勤済みの勤務です。");
+    }
 
-  if (action === "clockIn") data.clockIn = formattedTime;
-  if (action === "breakStart") data.breakStart = formattedTime;
-  if (action === "breakEnd") data.breakEnd = formattedTime;
-  if (action === "clockOut") data.clockOut = formattedTime;
+    const lastBreak = getLastBreak(latest);
+    if (!lastBreak) {
+      return res.send("休憩開始がありません。");
+    }
+    if (lastBreak.end) {
+      return res.send("既に休憩終了済みです。");
+    }
 
-  data.userId = userId;
-  data.name = name;
-  data.date = workDate;
+    lastBreak.end = timeStr;
+    await recordsRef.doc(latest.workId).update({ breaks: latest.breaks });
 
-  await ref.set(data, { merge: true });
+    return res.send("休憩を終了しました。");
+  }
 
-  res.send("打刻を記録しました（日跨ぎ対応＋前日退勤補正）");
+  /* ----------------------------------------
+      🟥 退勤
+  ---------------------------------------- */
+  if (action === "clockOut") {
+    if (!latest || !latest.clockIn) {
+      return res.send("出勤していません。");
+    }
+    if (latest.clockOut) {
+      return res.send("既に退勤済みです。");
+    }
+
+    const lastBreak = getLastBreak(latest);
+    if (lastBreak && !lastBreak.end) {
+      return res.send("休憩が終了していません。休憩終了を押してください。");
+    }
+
+    await recordsRef.doc(latest.workId).update({ clockOut: timeStr });
+    return res.send("退勤を記録しました。");
+  }
+
+  res.send("不明なアクションです");
 });
+
+
 
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
