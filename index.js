@@ -1319,130 +1319,103 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, action } = req.body;
 
-  // JST 時刻
+  // JST 現在時刻
   const now = new Date();
   const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   jst.setSeconds(0, 0);
 
-  const dateKey = jst.toISOString().split("T")[0];
-  const timeStr =
-    `${jst.getFullYear()}/${String(jst.getMonth() + 1).padStart(2, "0")}/${String(jst.getDate()).padStart(2, "0")} ` +
-    `${String(jst.getHours()).padStart(2, "0")}:${String(jst.getMinutes()).padStart(2, "0")}`;
+  const y = jst.getFullYear();
+  const m = String(jst.getMonth() + 1).padStart(2, "0");
+  const d = String(jst.getDate()).padStart(2, "0");
+  const h = String(jst.getHours()).padStart(2, "0");
+  const min = String(jst.getMinutes()).padStart(2, "0");
 
-  const recordsRef = db.collection("companies").doc(store)
+  const dateKey = `${y}-${m}-${d}`;   // 例: 2025-11-17
+  const timeStr = `${y}/${m}/${d} ${h}:${min}`; // 例: 2025/11/17 17:10
+
+  const userRef = db.collection("companies").doc(store)
     .collection("attendance").doc(userId)
-    .collection("records");
+    .collection("records").doc(dateKey);
 
-  // 🔹 最後の勤務を取得
-  const latestSnap = await recordsRef.orderBy("workId", "desc").limit(1).get();
-  const latest = latestSnap.empty ? null : latestSnap.docs[0].data();
+  // ===== 現在のデータ取得 =====
+  let baseData = {};
+  const snap = await userRef.get();
+  if (snap.exists) baseData = snap.data();
 
-  // 🔍 休憩状況確認関数
-  const getLastBreak = (rec) =>
-    !rec || !rec.breaks || rec.breaks.length === 0
-      ? null
-      : rec.breaks[rec.breaks.length - 1];
+  // 勤務一覧
+  let shifts = baseData.shifts || [];
 
-  /* ----------------------------------------
-      🟩 出勤（新しい勤務を作成）
-  ---------------------------------------- */
+  // === 勤務中のシフトを探す（clockIn があり、clockOut がないもの） ===
+  let activeShiftIndex = shifts.findIndex(s => s.clockIn && !s.clockOut);
+  let activeShift = activeShiftIndex >= 0 ? shifts[activeShiftIndex] : null;
+
+  // === 出勤 ===
   if (action === "clockIn") {
-    if (latest && !latest.clockOut) {
-      return res.send("前の勤務が退勤されていません。退勤してください。");
+    // 勤務中データが残っていたら強制終了
+    if (activeShift) {
+      activeShift.clockOut = timeStr;
+      shifts[activeShiftIndex] = activeShift;
     }
 
-    // 勤務番号（例: 2025-11-20-2）
-    let workId = `${dateKey}-1`;
-
-    if (latest && latest.date === dateKey) {
-      // 同日の勤務回数が増える
-      const lastNum = Number(latest.workId.split("-").pop());
-      workId = `${dateKey}-${lastNum + 1}`;
-    }
-
-    await recordsRef.doc(workId).set({
-      workId,
-      date: dateKey,
+    // 新しい勤務を作成
+    shifts.push({
+      shiftId: Date.now().toString(),
       clockIn: timeStr,
-      clockOut: "",
-      breaks: [],
-      userId,
-      name
+      breaks: []   // ← 複数休憩対応
     });
 
+    await userRef.set({ date: dateKey, shifts }, { merge: true });
     return res.send("出勤を記録しました。");
   }
 
-  /* ----------------------------------------
-      🟧 休憩開始
-  ---------------------------------------- */
+  // === 休憩開始 ===
   if (action === "breakStart") {
-    if (!latest || !latest.clockIn) {
-      return res.send("出勤後に休憩開始できます。");
-    }
-    if (latest.clockOut) {
-      return res.send("退勤済みの勤務です。");
-    }
+    if (!activeShift) return res.send("出勤していません。");
 
-    const lastBreak = getLastBreak(latest);
-    if (lastBreak && !lastBreak.end) {
-      return res.send("前の休憩が終了していません。休憩終了を押してください。");
-    }
+    const isResting = activeShift.breaks.some(b => b.start && !b.end);
+    if (isResting) return res.send("休憩終了を先にしてください。");
 
-    latest.breaks = latest.breaks || [];
-    latest.breaks.push({ start: timeStr, end: "" });
+    activeShift.breaks.push({ start: timeStr });
 
-    await recordsRef.doc(latest.workId).update({ breaks: latest.breaks });
+    shifts[activeShiftIndex] = activeShift;
+
+    await userRef.set({ shifts }, { merge: true });
     return res.send("休憩を開始しました。");
   }
 
-  /* ----------------------------------------
-      🟦 休憩終了
-  ---------------------------------------- */
+  // === 休憩終了 ===
   if (action === "breakEnd") {
-    if (!latest || !latest.clockIn) {
-      return res.send("出勤後に休憩終了できます。");
-    }
-    if (latest.clockOut) {
-      return res.send("退勤済みの勤務です。");
-    }
+    if (!activeShift) return res.send("出勤していません。");
 
-    const lastBreak = getLastBreak(latest);
-    if (!lastBreak) {
-      return res.send("休憩開始がありません。");
-    }
-    if (lastBreak.end) {
-      return res.send("既に休憩終了済みです。");
-    }
+    const b = activeShift.breaks.find(b => b.start && !b.end);
+    if (!b) return res.send("休憩開始がありません。");
 
-    lastBreak.end = timeStr;
-    await recordsRef.doc(latest.workId).update({ breaks: latest.breaks });
+    b.end = timeStr;
+
+    shifts[activeShiftIndex] = activeShift;
+    await userRef.set({ shifts }, { merge: true });
 
     return res.send("休憩を終了しました。");
   }
 
-  /* ----------------------------------------
-      🟥 退勤
-  ---------------------------------------- */
+  // === 退勤 ===
   if (action === "clockOut") {
-    if (!latest || !latest.clockIn) {
-      return res.send("出勤していません。");
-    }
-    if (latest.clockOut) {
-      return res.send("既に退勤済みです。");
-    }
+    if (!activeShift) return res.send("出勤していません。");
 
-    const lastBreak = getLastBreak(latest);
-    if (lastBreak && !lastBreak.end) {
-      return res.send("休憩が終了していません。休憩終了を押してください。");
-    }
+    // 開いてる休憩があれば強制終了
+    const openBreak = activeShift.breaks.find(b => b.start && !b.end);
+    if (openBreak) openBreak.end = timeStr;
 
-    await recordsRef.doc(latest.workId).update({ clockOut: timeStr });
+    activeShift.clockOut = timeStr;
+    shifts[activeShiftIndex] = activeShift;
+
+    await userRef.set({ shifts }, { merge: true });
     return res.send("退勤を記録しました。");
   }
 
   res.send("不明なアクションです");
 });
+
 
 
 
