@@ -6,8 +6,6 @@ const cors = require("cors");
 const session = require("express-session");
 // ファイル先頭付近に追記
 const { Parser } = require('json2csv');
-const https = require("https");
-
 
 const STORES = {
   storeA: {
@@ -76,27 +74,6 @@ for (const [store, conf] of Object.entries(STORES)) {
   lineClients[store] = new Client({
     channelAccessToken: conf.channelAccessToken,
     channelSecret: conf.channelSecret,
-  });
-}
-// ▼ Notion などのHTMLをサーバー側で取得する簡易プロキシ関数
-function fetchHtml(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      // リダイレクト対応（301,302 など）
-      if (
-        res.statusCode >= 300 &&
-        res.statusCode < 400 &&
-        res.headers.location
-      ) {
-        return resolve(fetchHtml(res.headers.location));
-      }
-
-      let data = "";
-      res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => resolve(data));
-    }).on("error", (err) => {
-      reject(err);
-    });
   });
 }
 
@@ -577,180 +554,43 @@ app.get("/:store/manual", ensureStore, (req, res) => {
 });
 
 
-// ==============================
-// 📘 マニュアル権限チェック + プロキシ表示
-// ==============================
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
   const { store, storeConf } = req;
-  const { type, userId } = req.query;
 
-  // 1️⃣ userId が無いときは LIFF で取得しなおす
-  if (!userId) {
-    return res.send(`
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1.0">
-        <title>マニュアル読み込み中...</title>
-        <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-      </head>
-      <body>
-        <p>LINEログイン中...</p>
-        <script>
-          async function main(){
-            try {
-              await liff.init({ liffId: "${storeConf.liffId}" });
-              if (!liff.isLoggedIn()) {
-                return liff.login();
-              }
-              const p = await liff.getProfile();
-              const q = new URLSearchParams(location.search);
-              q.set("userId", p.userId);
-              location.href = location.pathname + "?" + q.toString();
-            } catch(e){
-              document.body.innerHTML =
-                "<h3>LIFF初期化に失敗しました：" + e.message + "</h3>";
-            }
-          }
-          main();
-        </script>
-      </body>
-      </html>
-    `);
-  }
-
-  // 2️⃣ Firestore の承認確認
-  const permSnap = await db
-    .collection("companies").doc(store)
-    .collection("permissions").doc(userId)
-    .get();
-
-  if (!permSnap.exists) {
-    return res
-      .status(404)
-      .send("<h3>権限申請が未登録です。LINEから申請を行ってください。</h3>");
-  }
-
-  if (!permSnap.data().approved) {
-    return res
-      .status(403)
-      .send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
-  }
-
-  // 3️⃣ 権限 OK の場合は、同一ドメインの manual-proxy を iframe で表示
-  const safeType = type || ""; // null 対策
-
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1.0">
-      <title>マニュアル</title>
-      <style>
-        body {
-          margin:0;
-          padding:0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-            Roboto, "Noto Sans JP", sans-serif;
-          background:#f9fafb;
-        }
-        header {
-          padding:10px 12px;
-          background:#2563eb;
-          color:white;
-          font-size:15px;
-        }
-        .frame-wrap {
-          padding:0;
-          height: calc(100vh - 44px);
-        }
-        iframe {
-          border:none;
-          width:100%;
-          height:100%;
-        }
-      </style>
-    </head>
-    <body>
-      <header>マニュアル</header>
-      <div class="frame-wrap">
-        <iframe
-          src="/${store}/manual-proxy?type=${safeType}&userId=${encodeURIComponent(
-    userId
-  )}"
-          allowfullscreen
-        ></iframe>
-      </div>
-    </body>
-    </html>
-  `);
-});
-
-// ==============================
-// 📘 Notion マニュアル本体プロキシ
-//  - ここでも必ず権限チェックを行う
-// ==============================
-app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
-  const { store, storeConf } = req;
-  const { type, userId } = req.query;
+  const userId = req.query.userId;
+  const type = req.query.type; // line / todo / other
 
   if (!userId) {
-    return res
-      .status(400)
-      .send("userId がありません（LIFF 経由でアクセスしてください）");
+    return res.status(400).send("userId がありません（LIFFを経由してください）");
   }
 
-  // 1️⃣ 再度 権限チェック（URL直叩き対策）
-  const permSnap = await db
-    .collection("companies").doc(store)
-    .collection("permissions").doc(userId)
+  // 🔹 Firestore 権限チェック
+  const doc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
     .get();
 
-  if (!permSnap.exists) {
-    return res
-      .status(404)
-      .send("<h3>権限申請が未登録です。LINEから申請を行ってください。</h3>");
-  }
+  if (!doc.exists)
+    return res.status(404).send("権限申請が未登録です。");
 
-  if (!permSnap.data().approved) {
-    return res
-      .status(403)
-      .send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
-  }
+  if (!doc.data().approved)
+    return res.status(403).send("承認待ちです。<br>管理者の承認をお待ちください。");
 
-  // 2️⃣ type に応じて Notion の URL を決定
-  let targetUrl;
+  // 🔹 マニュアルURLの取得（複数マニュアル）
+  let redirectUrl = null;
+  const urls = storeConf.manualUrls || {};
 
-  if (storeConf.manualUrls) {
-    const urls = storeConf.manualUrls;  // 例: { line: "...", todo: "...", default: "..." }
-    targetUrl =
-      (type === "line" && urls.line) ||
-      (type === "todo" && urls.todo) ||
-      urls.default;
-  } else if (storeConf.manualUrl) {
-    // 単一マニュアル
-    targetUrl = storeConf.manualUrl;
-  }
+  if (type === "line") redirectUrl = urls.line;
+  else if (type === "todo") redirectUrl = urls.todo;
+  else redirectUrl = urls.default;
 
-  if (!targetUrl) {
-    return res
-      .status(404)
-      .send("<h3>マニュアルURLが設定されていません。</h3>");
-  }
+  if (!redirectUrl)
+    return res.status(404).send("該当するマニュアルURLが設定されていません。");
 
-  try {
-    // 3️⃣ サーバー側で Notion の HTML を取得して、そのまま返す
-    const html = await fetchHtml(targetUrl);
-    res.set("Content-Type", "text/html; charset=utf-8");
-    res.send(html);
-  } catch (err) {
-    console.error("manual-proxy error:", err);
-    res
-      .status(500)
-      .send("<h3>マニュアルを取得できませんでした。時間をおいて再度お試しください。</h3>");
-  }
+  // 🔹 承認済み → Notion にリダイレクト
+  res.redirect(redirectUrl);
 });
 
 
