@@ -1080,7 +1080,15 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
           } else {
             showToast("エラー: " + text);
           }
+          if (action === "clockOut") {
+            document.getElementById("timeIn").innerText = "--:--";
+            document.getElementById("timeOut").innerText = "--:--";
+            document.getElementById("timeBreakStart").innerText = "--:--";
+            document.getElementById("timeBreakEnd").innerText = "--:--";
 
+            document.getElementById("btnIn").disabled = false;
+            document.getElementById("btnOut").disabled = true;
+          }
           if (!skipReload) loadRecords();
 
         } catch (error) {
