@@ -1023,11 +1023,7 @@ app.get("/:store/attendance", ensureStore, (req, res) => {
           if (location.pathname.includes("/manual")) return;
 
           if (!liff.isLoggedIn()) {
-
-            const redirect = encodeURIComponent(
-              location.origin + "/" + STORE + "/attendance"
-            );
-
+            const redirect = location.origin + "/" + STORE + "/attendance";
             liff.login({ redirectUri: redirect });
             return;
           }
