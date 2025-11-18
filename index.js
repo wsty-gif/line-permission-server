@@ -1319,105 +1319,61 @@ app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId, name, action } = req.body;
 
-  // JST 現在時刻
   const now = new Date();
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  jst.setSeconds(0, 0);
+  const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  jstNow.setSeconds(0, 0);
 
-  const y = jst.getFullYear();
-  const m = String(jst.getMonth() + 1).padStart(2, "0");
-  const d = String(jst.getDate()).padStart(2, "0");
-  const h = String(jst.getHours()).padStart(2, "0");
-  const min = String(jst.getMinutes()).padStart(2, "0");
+  const formattedTime = jstNow.getFullYear() + "/" +
+    (jstNow.getMonth() + 1) + "/" +
+    jstNow.getDate() + " " +
+    String(jstNow.getHours()).padStart(2, "0") + ":" +
+    String(jstNow.getMinutes()).padStart(2, "0");
 
-  const dateKey = `${y}-${m}-${d}`;   // 例: 2025-11-17
-  const timeStr = `${y}/${m}/${d} ${h}:${min}`; // 例: 2025/11/17 17:10
-
-  const userRef = db.collection("companies").doc(store)
+  const recordsRef = db.collection("companies").doc(store)
     .collection("attendance").doc(userId)
-    .collection("records").doc(dateKey);
+    .collection("records");
 
-  // ===== 現在のデータ取得 =====
-  let baseData = {};
-  const snap = await userRef.get();
-  if (snap.exists) baseData = snap.data();
+  // 🔹 直近の勤務データを取得
+  const snapshot = await recordsRef.orderBy("date", "desc").limit(1).get();
+  const latestData = !snapshot.empty ? snapshot.docs[0].data() : null;
 
-  // 勤務一覧
-  let shifts = baseData.shifts || [];
+  let workDate;
 
-  // === 勤務中のシフトを探す（clockIn があり、clockOut がないもの） ===
-  let activeShiftIndex = shifts.findIndex(s => s.clockIn && !s.clockOut);
-  let activeShift = activeShiftIndex >= 0 ? shifts[activeShiftIndex] : null;
-
-  // === 出勤 ===
-  if (action === "clockIn") {
-    // 勤務中データが残っていたら強制終了
-    if (activeShift) {
-      activeShift.clockOut = timeStr;
-      shifts[activeShiftIndex] = activeShift;
-    }
-
-    // 新しい勤務を作成
-    shifts.push({
-      shiftId: Date.now().toString(),
-      clockIn: timeStr,
-      breaks: []   // ← 複数休憩対応
-    });
-
-    await userRef.set({ date: dateKey, shifts }, { merge: true });
-    return res.send("出勤を記録しました。");
+  if (action === "clockOut" && latestData) {
+    // ⏰ 前日の出勤データに退勤登録
+    workDate = latestData.date;
+  } else {
+    workDate = jstNow.toISOString().split("T")[0];
   }
 
-  // === 休憩開始 ===
-  if (action === "breakStart") {
-    if (!activeShift) return res.send("出勤していません。");
+  const ref = recordsRef.doc(workDate);
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : {};
 
-    const isResting = activeShift.breaks.some(b => b.start && !b.end);
-    if (isResting) return res.send("休憩終了を先にしてください。");
-
-    activeShift.breaks.push({ start: timeStr });
-
-    shifts[activeShiftIndex] = activeShift;
-
-    await userRef.set({ shifts }, { merge: true });
-    return res.send("休憩を開始しました。");
+  // 🔹 退勤漏れ補正
+  if (action === "clockIn" && latestData && !latestData.clockOut) {
+    await recordsRef.doc(latestData.date).update({ clockOut: formattedTime });
+    console.log(`自動退勤処理: ${latestData.date}`);
   }
 
-  // === 休憩終了 ===
-  if (action === "breakEnd") {
-    if (!activeShift) return res.send("出勤していません。");
+  if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
+  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は出勤後のみです。");
+  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は休憩開始後のみです。");
+  if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
 
-    const b = activeShift.breaks.find(b => b.start && !b.end);
-    if (!b) return res.send("休憩開始がありません。");
+  if (action === "clockIn") data.clockIn = formattedTime;
+  if (action === "breakStart") data.breakStart = formattedTime;
+  if (action === "breakEnd") data.breakEnd = formattedTime;
+  if (action === "clockOut") data.clockOut = formattedTime;
 
-    b.end = timeStr;
+  data.userId = userId;
+  data.name = name;
+  data.date = workDate;
 
-    shifts[activeShiftIndex] = activeShift;
-    await userRef.set({ shifts }, { merge: true });
+  await ref.set(data, { merge: true });
 
-    return res.send("休憩を終了しました。");
-  }
-
-  // === 退勤 ===
-  if (action === "clockOut") {
-    if (!activeShift) return res.send("出勤していません。");
-
-    // 開いてる休憩があれば強制終了
-    const openBreak = activeShift.breaks.find(b => b.start && !b.end);
-    if (openBreak) openBreak.end = timeStr;
-
-    activeShift.clockOut = timeStr;
-    shifts[activeShiftIndex] = activeShift;
-
-    await userRef.set({ shifts }, { merge: true });
-    return res.send("退勤を記録しました。");
-  }
-
-  res.send("不明なアクションです");
+  res.send("打刻を記録しました（日跨ぎ対応＋前日退勤補正）");
 });
-
-
-
 
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
