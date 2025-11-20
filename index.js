@@ -599,7 +599,7 @@ app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
   const { type, userId } = req.query;
   const { store, storeConf } = req;
 
-  // 1. 権限チェック
+  // 権限チェック
   const doc = await db.collection("companies").doc(store)
     .collection("permissions").doc(userId).get();
 
@@ -607,9 +607,8 @@ app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
     return res.status(403).send("<h2>閲覧権限がありません</h2>");
   }
 
-  // 2. マニュアルURL取得
+  // マニュアルURL取得
   let targetUrl = null;
-
   if (storeConf.manualUrls) {
     targetUrl =
       (type === "todo" && storeConf.manualUrls.todo) ||
@@ -619,28 +618,43 @@ app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
     targetUrl = storeConf.manualUrl;
   }
 
-  if (!targetUrl) {
-    return res.status(404).send("URL 不明です");
-  }
+  if (!targetUrl) return res.status(404).send("URL 不明です");
 
   try {
-    // 3. Notion HTML をサーバー側で取得（ブラウザには見せない）
-    const notionRes = await fetch(targetUrl);
-    let html = await notionRes.text();
+    const fetchRes = await fetch(targetUrl);
+    let html = await fetchRes.text();
 
-    // 4. HTML の中の全URLを proxy 経由に書き換える
-    //    Notion内の JS/CSS/画像もURLが絶対パスなので同じく取得可能
-    html = html.replace(/https:\/\/www\.notion\.so/g, `/${store}/manual-asset`);
-    html = html.replace(/https:\/\/file\.notion\.so/g, `/${store}/manual-asset`);
+    // 🎯 ここが重要：外部JS/CSSは削除して純テキストだけ抽出
+    html = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<link[^>]*>/gi, "");
 
-    // 5. クライアントに返す（本物URLは絶対に見えない）
-    res.send(html);
+    // 🎨 あなた側のデザインで囲う
+    const wrapped = `
+      <!DOCTYPE html>
+      <html lang="ja">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { font-family: sans-serif; padding:16px; line-height:1.6; }
+          h1,h2,h3 { color:#2563eb; }
+        </style>
+      </head>
+      <body>
+        ${html}
+      </body>
+      </html>
+    `;
+
+    res.send(wrapped);
 
   } catch (e) {
     console.error(e);
-    res.status(500).send("プロキシエラー");
+    res.status(500).send("マニュアル読み込みに失敗しました");
   }
 });
+
 
 app.get("/:store/manual-asset/*", ensureStore, async (req, res) => {
   const assetPath = req.params[0];
