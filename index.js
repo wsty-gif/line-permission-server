@@ -639,20 +639,29 @@ app.get("/:store/manual-render", ensureStore, async (req, res) => {
     // cheerio 初期化
     const $ = cheerio.load(html);
 
-    // Notion内の本文部分は .notion-page-content などにある
-    let content = $(".notion-page-content").html();
+    // ① Notion の実際の DOM パターンから本文を取り出す
+    let content =
+      $(".notion-page-content").html() ||        // 古い Notion
+      $("main .notion-page-content").html() ||   // 一部ページ
+      $("article").html() ||                     // 新 UI
+      $(".notion-text").html() ||                // テキストブロック
+      $("main").html() ||                        // fallback 1
+      $("body").html();                          // fallback 2
 
-    // fallback: body内のdivを収集
-    if (!content) {
-      content = $("body").find("div").first().html() || "内容を表示できませんでした";
+    if (!content || content.trim() === "") {
+      content = "<p>表示可能なコンテンツが見つかりませんでした。</p>";
     }
+
+    // ② 画像のパス変換（proxy化）
     const rewriteImg = cheerio.load(content);
     rewriteImg("img").each((i, el) => {
       const src = rewriteImg(el).attr("src");
-      if (src) rewriteImg(el).attr("src", "/manual-asset?url=" + encodeURIComponent(src));
+      if (src) {
+        rewriteImg(el).attr("src", "/manual-asset?url=" + encodeURIComponent(src));
+      }
     });
-
     content = rewriteImg.html();
+
 
     // script / css 削除（CSP回避）
     $("script").remove();
