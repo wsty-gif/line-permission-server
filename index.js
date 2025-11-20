@@ -630,67 +630,86 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 // });
 
 
+// ==============================
+// マニュアルHTMLプロキシ
+// ==============================
 app.get("/:store/manual-render", ensureStore, async (req, res) => {
-  const store = req.store;
-  const type = req.query.type;
-  const userId = req.query.userId;
+  try {
+    const { type, userId } = req.query;
+    const { store, storeConf } = req;
 
-  // userId がない場合 → manual-check に戻す
-  if (!userId) {
-    return res.redirect(`/${store}/manual-check?type=${type}`);
+    if (!userId) {
+      return res.status(400).send("userId がありません（LIFF を経由してください）");
+    }
+
+    // Firestore権限チェック
+    const doc = await db.collection("companies").doc(store)
+      .collection("permissions").doc(userId).get();
+
+    if (!doc.exists) return res.status(403).send("権限申請が未登録です。");
+    if (!doc.data().approved) return res.status(403).send("承認待ちです。");
+
+    // 目的URLの判定
+    const urls = storeConf.manualUrls || {};
+    let targetUrl = null;
+
+    if (urls && type) {
+      targetUrl = urls[type] || urls.default;
+    } else if (storeConf.manualUrl) {
+      targetUrl = storeConf.manualUrl;
+    }
+
+    if (!targetUrl) {
+      return res.status(404).send("マニュアルURLが設定されていません。");
+    }
+
+    console.log("📘 manual-render 取得先URL:", targetUrl);
+
+    // HTML取得
+    const upstream = await fetch(targetUrl);
+    const html = await upstream.text();
+
+    console.log("📘 HTML取得成功:", html.length, "bytes");
+
+    // cheerioでパース
+    const $ = cheerio.load(html);
+
+    // JS と CSS を除去（Notion 再構成）
+    $("script").remove();
+    $("link[rel='stylesheet']").remove();
+
+    // bodyの中だけにする
+    const body = $("body").html() || "";
+
+    if (!body || body.trim() === "") {
+      console.log("❌ パース後 body が空です");
+      return res.status(500).send("<h2>マニュアルの読み込みに失敗しました（body 空）</h2>");
+    }
+
+    // サーバーのURLのまま表示
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="ja">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>マニュアル</title>
+        <style>
+          body { font-family: sans-serif; margin: 16px; background: #fff; }
+        </style>
+      </head>
+      <body>
+        ${body}
+      </body>
+      </html>
+    `);
+
+  } catch (err) {
+    console.error("❌ manual-render エラー:", err);
+    res.status(500).send("<h2>マニュアルの取得中にエラーが発生しました。<br>" + err.message + "</h2>");
   }
-
-  // Firestore 権限チェック
-  const doc = await db.collection("companies").doc(store)
-    .collection("permissions").doc(userId).get();
-
-  if (!doc.exists || !doc.data().approved) {
-    return res.status(403).send("<h3>権限がありません。</h3>");
-  }
-
-  // Notion URL を取得
-  const urls = req.storeConf.manualUrls || {};
-  const notionUrl =
-    type === "line" ? urls.line :
-    type === "todo" ? urls.todo :
-    urls.default;
-
-  if (!notionUrl) {
-    return res.status(500).send("マニュアルURLが設定されていません。");
-  }
-
-  // Notion ページを取得
-  const response = await fetch(notionUrl);
-  let html = await response.text();
-
-  // Notion の JS / asset / frameは禁止されるため削除
-  const $ = cheerio.load(html);
-
-  $("script").remove();  // JS 削除
-  $('link[rel="stylesheet"]').remove(); // Notion CSS 削除
-
-  // body のみ抽出
-  const bodyHtml = $("body").html();
-
-  // 独自 HTML として書き換え
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width,initial-scale=1" />
-      <style>
-        body { font-family: sans-serif; padding: 16px; }
-        img { max-width: 100%; }
-        a { color: #2563eb; }
-      </style>
-    </head>
-    <body>
-      ${bodyHtml}
-    </body>
-    </html>
-  `);
 });
+
 
 // ==============================
 // 🧾 権限申請フォーム（完全版 LIFF）
