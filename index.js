@@ -93,7 +93,7 @@ function ensureStore(req, res, next) {
   req.lineClient = lineClients[store];
   next();
 }
-
+app.use("/manuals", express.static("manuals"));
 // ==============================
 // 🔐 管理者ログイン
 // ==============================
@@ -562,21 +562,31 @@ app.get("/:store/manual", ensureStore, (req, res) => {
 
 
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
-  const { type, userId } = req.query;
   const { store, storeConf } = req;
+  const { type, userId } = req.query;
 
-  if (!userId) return res.status(400).send("userId がありません（LIFF経由してください）");
-
-  // Firestore 権限チェック
+  // 1. 権限チェック
   const doc = await db.collection("companies").doc(store)
     .collection("permissions").doc(userId).get();
 
-  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
-  if (!doc.data().approved) return res.status(403).send("承認待ちです。");
+  if (!doc.exists) return res.status(404).send("権限申請が未登録です");
+  if (!doc.data().approved) return res.status(403).send("承認待ちです");
 
-  // manual-render に転送
-  return res.redirect(`/${store}/manual-render?type=${type}&userId=${userId}`);
+  // 2. type → マニュアルパス
+  const manualMap = {
+    line: "line",
+    todo: "todo",
+    default: "todo"
+  };
+  const m = manualMap[type] || manualMap.default;
+
+  // 3. 生 Notion URL へリダイレクトしない！
+  //    → 代わりにサーバー内の静的 HTML 倉庫へ
+  const target = `/manuals/${store}/${m}/index.html`;
+
+  return res.redirect(target);
 });
+
 
 
 // ============================================
