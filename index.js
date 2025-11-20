@@ -523,7 +523,6 @@ app.post("/:store/revoke", ensureStore, async (req, res) => {
 app.get("/:store/manual", ensureStore, (req, res) => {
   const { store, storeConf } = req;
   const liffId = storeConf.liffId;
-  const { type } = req.query;
 
   res.send(`
   <!DOCTYPE html><html><head>
@@ -545,7 +544,7 @@ app.get("/:store/manual", ensureStore, (req, res) => {
       const params = new URLSearchParams(location.search);
       params.set("userId", uid);
 
-      location.href="/${store}/manual-check?userId=" + p.userId + "&type=${type}";
+      location.href = "/${store}/manual-check?" + params.toString();
     }
     main();
   </script>
@@ -554,133 +553,45 @@ app.get("/:store/manual", ensureStore, (req, res) => {
   `);
 });
 
-const axios = require("axios"); // ← 必要
 
-app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
+app.get("/:store/manual-check", ensureStore, async (req, res) => {
   const { store, storeConf } = req;
-  const { type, userId } = req.query;
+
+  const userId = req.query.userId;
+  const type = req.query.type; // line / todo / other
 
   if (!userId) {
-    return res.status(400).send("userId がありません（LIFF 経由でアクセスしてください）");
+    return res.status(400).send("userId がありません（LIFFを経由してください）");
   }
 
-  // 権限チェック（二重チェック）
-  const permSnap = await db.collection("companies").doc(store)
-    .collection("permissions").doc(userId).get();
-  if (!permSnap.exists || !permSnap.data().approved) {
-    return res.status(403).send("<h3>権限がありません</h3>");
-  }
+  // 🔹 Firestore 権限チェック
+  const doc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
 
-  // 目的の外部 URL を決める
-  let targetUrl;
-  if (storeConf.manualUrls) {
-    const urls = storeConf.manualUrls;
-    targetUrl =
-      (type === "line" && urls.line) ||
-      (type === "todo" && urls.todo) ||
-      urls.default;
-  } else if (storeConf.manualUrl) {
-    targetUrl = storeConf.manualUrl;
-  }
-  if (!targetUrl) return res.status(404).send("マニュアルが設定されていません");
+  if (!doc.exists)
+    return res.status(404).send("権限申請が未登録です。");
 
-  try {
-    // Notion等の HTML を取得
-    const resp = await axios.get(targetUrl, { headers: { "User-Agent": req.headers['user-agent'] || "" }});
-    let html = resp.data;
+  if (!doc.data().approved)
+    return res.status(403).send("承認待ちです。<br>管理者の承認をお待ちください。");
 
-    // 1) 不要な CSP メタを削除（ブラウザ側のブロックを回避）
-    html = html.replace(/<meta[^>]*http-equiv=["']?Content-Security-Policy["']?[^>]*>/ig, "");
+  // 🔹 マニュアルURLの取得（複数マニュアル）
+  let redirectUrl = null;
+  const urls = storeConf.manualUrls || {};
 
-    // 2) 相対パス（"/...") を当サーバーの manual-proxy-asset に差し替える
-    //    例: src="/_assets/x.js" -> src="/{store}/manual-proxy-asset?u=<origin>/_assets/x.js&userId=<userId>"
-    const targetOrigin = (new URL(targetUrl)).origin;
+  if (type === "line") redirectUrl = urls.line;
+  else if (type === "todo") redirectUrl = urls.todo;
+  else redirectUrl = urls.default;
 
-    // href/src が "/" で始まるものを置換
-    html = html.replace(/(?:src|href)\s*=\s*["']\/([^"'>\s]+)["']/ig, (m, path) => {
-      const abs = targetOrigin + "/" + path;
-      const prox = `/${store}/manual-proxy-asset?u=${encodeURIComponent(abs)}&userId=${encodeURIComponent(userId)}`;
-      return m.replace(`"/${path}"`, `"${prox}"`).replace(`'/${path}'`, `'${prox}'`);
-    });
+  if (!redirectUrl)
+    return res.status(404).send("該当するマニュアルURLが設定されていません。");
 
-    // 3) また、data-src 等で使われるケースもあるので一通りのパターンを置換（任意）
-    html = html.replace(/data-src\s*=\s*["']\/([^"'>\s]+)["']/ig, (m, path) => {
-      const abs = targetOrigin + "/" + path;
-      const prox = `/${store}/manual-proxy-asset?u=${encodeURIComponent(abs)}&userId=${encodeURIComponent(userId)}`;
-      return `data-src="${prox}"`;
-    });
-
-    // 4) 最後に返す
-    res.set("Content-Type", "text/html; charset=utf-8");
-    res.send(html);
-  } catch (e) {
-    console.error("manual-proxy fetch error:", e.message);
-    res.status(502).send("マニュアル取得に失敗しました");
-  }
+  // 🔹 承認済み → Notion にリダイレクト
+  res.redirect(redirectUrl);
 });
-
-// --- manual-proxy-asset: 外部資産をサーバー経由で中継して返す ---
-// クエリ: ?u=<絶対URL>&userId=<userId>
-app.get("/:store/manual-proxy-asset", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { u: targetUrl, userId } = req.query;
-
-  if (!targetUrl) return res.status(400).send("asset url required");
-  if (!userId) return res.status(400).send("userId required");
-
-  // 再度権限チェック（直叩き対策）
-  const permSnap = await db.collection("companies").doc(store)
-    .collection("permissions").doc(userId).get();
-  if (!permSnap.exists || !permSnap.data().approved) {
-    return res.status(403).send("権限がありません");
-  }
-
-  try {
-    // axiosで取得（stream で返す）
-    const resp = await axios.get(targetUrl, { responseType: "arraybuffer", headers: { "User-Agent": req.headers['user-agent'] || "" }});
-    const ctype = resp.headers['content-type'] || "application/octet-stream";
-    res.set("Content-Type", ctype);
-    // キャッシュ可能ならキャッシュヘッダを付けても良い（任意）
-    if (resp.headers['cache-control']) res.set('Cache-Control', resp.headers['cache-control']);
-    res.send(resp.data);
-  } catch (e) {
-    console.error("manual-proxy-asset fetch error:", e.message);
-    res.status(502).send("asset fetch failed");
-  }
-});
-
-// ==============================
-// 🔐 manual-check  (表示用HTMLを返す)
-// ==============================
-app.get("/:store/manual-check", ensureStore, async (req, res) => {
-  const { type, userId } = req.query;
-  const { store, storeConf } = req;
-
-  // --- Firestore 権限チェック ---
-  const doc = await db.collection("companies").doc(store)
-    .collection("permissions").doc(userId).get();
-  if (!doc.exists) return res.status(404).send("権限申請が未登録です");
-  if (!doc.data().approved) return res.status(403).send("承認待ちです");
-
-  // --- 表示用ページ（URLは "偽のまま"）---
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1.0">
-      <style>
-        body { margin:0; display:flex; flex-direction:column; height:100vh;}
-        iframe { flex:1; border:none; }
-      </style>
-    </head>
-    <body>
-      <iframe src="/${store}/manual-proxy?type=${type}&userId=${userId}"></iframe>
-    </body>
-    </html>
-  `);
-});
-
 
 
 // ==============================
