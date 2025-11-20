@@ -526,77 +526,58 @@ app.post("/:store/revoke", ensureStore, async (req, res) => {
 });
 
 app.get("/:store/manual", ensureStore, (req, res) => {
-  const { store, storeConf } = req;
-  const liffId = storeConf.liffId;
+  const { liffId } = req.storeConf;
 
   res.send(`
   <!DOCTYPE html><html><head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  </head>
-  <body><p>LINEログイン中です...</p>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <title>Loading...</title>
+  </head><body>ログイン中...</body>
   <script>
     async function main(){
-      await liff.init({ liffId: "${liffId}" });
+      try{
+        await liff.init({liffId: "${liffId}"});
+        if(!liff.isLoggedIn()) return liff.login();
 
-      if(!liff.isLoggedIn()) return liff.login();
+        const profile = await liff.getProfile();
+        const userId  = profile.userId;
 
-      const p = await liff.getProfile();
-      const uid = p.userId;
+        const q = new URLSearchParams(location.search);
+        q.set("userId", userId);
 
-      const params = new URLSearchParams(location.search);
-      params.set("userId", uid);
-
-      location.href = "/${store}/manual-check?" + params.toString();
+        // manual-check に転送
+        location.href = "/${req.store}/manual-check?" + q.toString();
+      }catch(e){
+        document.body.innerHTML = "<h3>LIFFエラー：" + e.message + "</h3>";
+      }
     }
     main();
   </script>
-
-  </body></html>
+  </html>
   `);
 });
 
 
+
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
+  const { type, userId } = req.query;
   const { store, storeConf } = req;
 
-  const userId = req.query.userId;
-  const type = req.query.type; // line / todo / other
+  if (!userId) return res.status(400).send("userId がありません（LIFF経由してください）");
 
-  if (!userId) {
-    return res.status(400).send("userId がありません（LIFFを経由してください）");
-  }
+  // Firestore 権限チェック
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
 
-  // 🔹 Firestore 権限チェック
-  const doc = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .doc(userId)
-    .get();
+  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!doc.data().approved) return res.status(403).send("承認待ちです。");
 
-  if (!doc.exists)
-    return res.status(404).send("権限申請が未登録です。");
-
-  if (!doc.data().approved)
-    return res.status(403).send("承認待ちです。<br>管理者の承認をお待ちください。");
-
-  // 🔹 マニュアルURLの取得（複数マニュアル）
-  let redirectUrl = null;
-  const urls = storeConf.manualUrls || {};
-
-  if (type === "line") redirectUrl = urls.line;
-  else if (type === "todo") redirectUrl = urls.todo;
-  else redirectUrl = urls.default;
-
-  if (!redirectUrl)
-    return res.status(404).send("該当するマニュアルURLが設定されていません。");
-
-  // 🔹 承認済み → Notion にリダイレクト
-  res.redirect(`/${store}/manual-render?type=${type}&userId=${userId}`);
+  // manual-render に転送
+  return res.redirect(`/${store}/manual-render?type=${type}&userId=${userId}`);
 });
+
 
 // ============================================
 // 🔐 毎回権限をチェックしてマニュアルに飛ばす中継ページ
@@ -629,101 +610,86 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 //   res.redirect(url);
 // });
 
-
-// ==============================
-// マニュアルHTMLプロキシ
-// ==============================
 app.get("/:store/manual-render", ensureStore, async (req, res) => {
+  const { store, storeConf } = req;
+  const { type, userId } = req.query;
+
+  if (!userId) return res.status(400).send("userId missing");
+
+  // Firestore 権限チェック（ブラウザからでも防ぐ）
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+
+  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!doc.data().approved) return res.status(403).send("承認待ちです。");
+
+  // 生URL選択（storeConf の構造に完全対応）
+  const urls = storeConf.manualUrls || {};
+  const targetUrl =
+    (type && urls[type]) ||
+    urls.default ||
+    storeConf.manualUrl;
+
+  if (!targetUrl) return res.status(404).send("マニュアルURLが設定されていません。");
+
   try {
-    const { type, userId } = req.query;
-    const { store, storeConf } = req;
-
-    if (!userId) {
-      return res.status(400).send("userId がありません（LIFF を経由してください）");
-    }
-
-    // Firestore権限チェック
-    const doc = await db.collection("companies").doc(store)
-      .collection("permissions").doc(userId).get();
-
-    if (!doc.exists) return res.status(403).send("権限申請が未登録です。");
-    if (!doc.data().approved) return res.status(403).send("承認待ちです。");
-
-    // 目的URLの判定
-    const urls = storeConf.manualUrls || {};
-    let targetUrl = null;
-
-    if (urls && type) {
-      targetUrl = urls[type] || urls.default;
-    } else if (storeConf.manualUrl) {
-      targetUrl = storeConf.manualUrl;
-    }
-
-    if (!targetUrl) {
-      return res.status(404).send("マニュアルURLが設定されていません。");
-    }
-    // 画像やリンクの参照URLを proxy に向ける
-    $('img').each((i, el) => {
-      const src = $(el).attr('src');
-      if (!src) return;
-
-      $(el).attr('src', `/proxy?url=` + encodeURIComponent(src));
-    });
-
-    $('a').each((i, el) => {
-      const href = $(el).attr('href');
-      if (!href) return;
-
-      // 外部URLを踏ませない
-      $(el).attr('href', '#');
-    });
-
-    console.log("📘 manual-render 取得先URL:", targetUrl);
-
-    // HTML取得
     const upstream = await fetch(targetUrl);
     const html = await upstream.text();
 
-    console.log("📘 HTML取得成功:", html.length, "bytes");
-
-    // cheerioでパース
+    // cheerio 初期化
     const $ = cheerio.load(html);
 
-    // JS と CSS を除去（Notion 再構成）
+    // script / css 削除（CSP回避）
     $("script").remove();
     $("link[rel='stylesheet']").remove();
 
-    // bodyの中だけにする
-    const body = $("body").html() || "";
+    // 外部リンク全て無効化（URL漏れ防止）
+    $("a").each((i, el) => {
+      $(el).attr("href", "#");
+    });
 
-    if (!body || body.trim() === "") {
-      console.log("❌ パース後 body が空です");
-      return res.status(500).send("<h2>マニュアルの読み込みに失敗しました（body 空）</h2>");
-    }
+    // Notion画像やPDFなどを proxy 化
+    $("img").each((i, el) => {
+      const src = $(el).attr("src");
+      if (src) {
+        $(el).attr("src", `/manual-asset?url=${encodeURIComponent(src)}`);
+      }
+    });
 
-    // サーバーのURLのまま表示
+    // 安全な偽URLのまま表示
     res.send(`
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>マニュアル</title>
-        <style>
-          body { font-family: sans-serif; margin: 16px; background: #fff; }
-        </style>
-      </head>
-      <body>
-        ${body}
-      </body>
-      </html>
+      <!DOCTYPE html><html><head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>マニュアル</title>
+      <style>
+        body { font-family:sans-serif; padding:10px; }
+      </style>
+      </head><body>
+        ${$("body").html() || ""}
+      </body></html>
     `);
 
-  } catch (err) {
-    console.error("❌ manual-render エラー:", err);
-    res.status(500).send("<h2>マニュアルの取得中にエラーが発生しました。<br>" + err.message + "</h2>");
+  } catch (e) {
+    console.error("manual-render error:", e);
+    res.status(500).send("マニュアルの取得中にエラーが発生しました。");
   }
 });
+
+
+app.get("/manual-asset", async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).send("url missing");
+
+  try {
+    const upstream = await fetch(url);
+    res.setHeader("Content-Type", upstream.headers.get("content-type"));
+    upstream.body.pipe(res);
+  } catch {
+    res.status(500).send("asset fetch error");
+  }
+});
+
 
 app.get("/proxy", async (req, res) => {
   const url = req.query.url;
