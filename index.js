@@ -590,7 +590,57 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
     return res.status(404).send("該当するマニュアルURLが設定されていません。");
 
   // 🔹 承認済み → Notion にリダイレクト
-  res.redirect(redirectUrl);
+  res.redirect(`/${store}/manual-proxy?type=${type}&userId=${userId}`);
+});
+
+app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
+  const { type, userId } = req.query;
+  const { store, storeConf } = req;
+
+  // 権限確認
+  const doc = await db
+    .collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+
+  if (!doc.exists || !doc.data().approved) {
+    return res.status(403).send("<h3>権限がありません</h3>");
+  }
+
+  // URL取得（本物の Notion URL）
+  let targetUrl = null;
+
+  if (storeConf.manualUrls) {
+    targetUrl =
+      (type === "todo" && storeConf.manualUrls.todo) ||
+      (type === "line" && storeConf.manualUrls.line) ||
+      storeConf.manualUrls.default;
+  } else {
+    targetUrl = storeConf.manualUrl;
+  }
+
+  if (!targetUrl) {
+    return res.status(404).send("URL not found");
+  }
+
+  // コンテンツを取得して iframe に詰めて返す（URLを隠す）
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <style>
+        body,html { margin:0; padding:0; height:100%; }
+        iframe { width:100%; height:100%; border:0; }
+      </style>
+    </head>
+    <body>
+      <iframe src="${targetUrl}"></iframe>
+    </body>
+    </html>
+  `;
+
+  res.send(html);
 });
 
 
