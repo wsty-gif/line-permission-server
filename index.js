@@ -590,38 +590,103 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
     return res.status(404).send("該当するマニュアルURLが設定されていません。");
 
   // 🔹 承認済み → Notion にリダイレクト
-  res.redirect(`/${store}/manual-redirect?url=${encodeURIComponent(redirectUrl)}&userId=${userId}`);
+  res.redirect(`/${store}/manual-render?type=${type}&userId=${userId}`);
 });
 
 // ============================================
 // 🔐 毎回権限をチェックしてマニュアルに飛ばす中継ページ
 // ============================================
-app.get("/:store/manual-redirect", ensureStore, async (req, res) => {
+// app.get("/:store/manual-redirect", ensureStore, async (req, res) => {
+//   const store = req.store;
+//   const url = req.query.url;
+//   const userId = req.query.userId;
+
+//   if (!url || !userId) {
+//     return res.status(400).send("必要なパラメータが不足しています。");
+//   }
+
+//   // Firestore権限チェック
+//   const doc = await db
+//     .collection("companies")
+//     .doc(store)
+//     .collection("permissions")
+//     .doc(userId)
+//     .get();
+
+//   if (!doc.exists || !doc.data().approved) {
+//     return res.status(403).send(`
+//       <h2>権限がありません</h2>
+//       <p>管理者が権限を外した可能性があります。</p>
+//     `);
+//   }
+
+//   // OK → 本物のNotionに飛ばす
+//   res.redirect(url);
+// });
+
+import fetch from "node-fetch";
+import * as cheerio from "cheerio";
+
+app.get("/:store/manual-render", ensureStore, async (req, res) => {
   const store = req.store;
-  const url = req.query.url;
+  const type = req.query.type;
   const userId = req.query.userId;
 
-  if (!url || !userId) {
-    return res.status(400).send("必要なパラメータが不足しています。");
+  // userId がない場合 → manual-check に戻す
+  if (!userId) {
+    return res.redirect(`/${store}/manual-check?type=${type}`);
   }
 
-  // Firestore権限チェック
-  const doc = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .doc(userId)
-    .get();
+  // Firestore 権限チェック
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
 
   if (!doc.exists || !doc.data().approved) {
-    return res.status(403).send(`
-      <h2>権限がありません</h2>
-      <p>管理者が権限を外した可能性があります。</p>
-    `);
+    return res.status(403).send("<h3>権限がありません。</h3>");
   }
 
-  // OK → 本物のNotionに飛ばす
-  res.redirect(url);
+  // Notion URL を取得
+  const urls = req.storeConf.manualUrls || {};
+  const notionUrl =
+    type === "line" ? urls.line :
+    type === "todo" ? urls.todo :
+    urls.default;
+
+  if (!notionUrl) {
+    return res.status(500).send("マニュアルURLが設定されていません。");
+  }
+
+  // Notion ページを取得
+  const response = await fetch(notionUrl);
+  let html = await response.text();
+
+  // Notion の JS / asset / frameは禁止されるため削除
+  const $ = cheerio.load(html);
+
+  $("script").remove();  // JS 削除
+  $('link[rel="stylesheet"]').remove(); // Notion CSS 削除
+
+  // body のみ抽出
+  const bodyHtml = $("body").html();
+
+  // 独自 HTML として書き換え
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width,initial-scale=1" />
+      <style>
+        body { font-family: sans-serif; padding: 16px; }
+        img { max-width: 100%; }
+        a { color: #2563eb; }
+      </style>
+    </head>
+    <body>
+      ${bodyHtml}
+    </body>
+    </html>
+  `);
 });
 
 // ==============================
