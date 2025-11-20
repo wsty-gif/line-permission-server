@@ -10,7 +10,16 @@ import session from "express-session";
 import { Parser } from "json2csv";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
+import { fileURLToPath } from "url";
+import path from "path";
 
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// ESM 用 __dirname 再定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const STORES = {
   storeA: {
@@ -2372,6 +2381,7 @@ app.post("/:store/admin/attendance/update", ensureStore, async (req,res)=>{
   res.send("勤怠を更新しました。");
 });
 
+
 // ===============================
 //   🔐 マニュアル保護付きビュー
 // ===============================
@@ -2379,31 +2389,46 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   const { store } = req;
   const { userId, type } = req.query;
 
-  if (!userId) return res.status(400).send("userId が必要です");
+  if (!userId) {
+    return res.status(400).send("userId が必要です");
+  }
 
-  // 権限チェック
-  const doc = await db.collection("companies").doc(store)
-    .collection("permissions").doc(userId).get();
+  // Firestore 権限チェック
+  const doc = await db.collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
 
   if (!doc.exists || !doc.data().approved) {
     return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
   }
 
-  // マニュアルフォルダ 判定
-  const manualFolder = {
+  // manual フォルダ判定
+  const folderMap = {
     line: "line",
     todo: "todo",
-    default: "todo"
-  }[type] || "todo";
+    default: "todo",
+  };
 
-  const filePath = path.join(__dirname, "manuals", store, manualFolder, "index.html");
+  const folder = folderMap[type] || "todo";
+
+  // HTMLファイルパス組み立て
+  const filePath = path.join(__dirname, "manuals", store, folder, "index.html");
+
+  // ファイル存在チェック
+  if (!fs.existsSync(filePath)) {
+    return res
+      .status(404)
+      .send(`<h3>マニュアルファイルが見つかりません：<br>${filePath}</h3>`);
+  }
 
   try {
-    const content = fs.readFileSync(filePath, "utf8");
-    res.send(content);   // ← サーバー経由なので URL 露出しない
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("マニュアルを読み込めませんでした。");
+    const html = fs.readFileSync(filePath, "utf8");
+    res.send(html);
+  } catch (err) {
+    console.error("manual-view 読込エラー:", err);
+    return res.status(500).send("マニュアルの読み込みに失敗しました。");
   }
 });
 
