@@ -840,57 +840,10 @@
 		.checkbox-off {
 			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
 		}
-		html {
-			scroll-behavior: smooth;
-		}
-		#sideMenu.open {
-			right: 0;
-		}
-		#menuList li {
-			padding: 8px 0;
-			border-bottom: 1px solid #eee;
-		}
-		#menuList li a {
-			text-decoration: none;
-			color: #2563eb;
-			font-size: 14px;
-		}
 	</style>
 </head>
 
 <body>
-	<!-- ハンバーガーアイコン -->
-	<div id="hamburger" style="
-	position: fixed; 
-	top: 16px; 
-	right: 16px; 
-	width: 32px; 
-	height: 32px; 
-	cursor: pointer;
-	z-index: 9999;">
-	<div style="width:100%;height:4px;background:#333;margin:6px 0;border-radius:2px;"></div>
-	<div style="width:100%;height:4px;background:#333;margin:6px 0;border-radius:2px;"></div>
-	<div style="width:100%;height:4px;background:#333;margin:6px 0;border-radius:2px;"></div>
-	</div>
-
-	<!-- スライドメニュー -->
-	<div id="sideMenu" style="
-	position: fixed;
-	top: 0;
-	right: -260px;
-	width: 240px;
-	height: 100%;
-	background: white;
-	box-shadow: -2px 0 10px rgba(0,0,0,0.15);
-	padding: 20px;
-	z-index: 9998;
-	transition: 0.3s;
-	overflow-y: auto;
-	">
-	<h3 style="margin-top:0;">メニュー</h3>
-	<ul id="menuList" style="list-style:none;padding:0;margin:0;"></ul>
-	</div>
-
 	<article id="2a35898c-3c37-8069-87ee-e876be68ae42" class="page sans">
 		<header>
 			<h1 class="page-title">storeA</h1>
@@ -1406,32 +1359,6 @@
 	<script>
 	document.addEventListener("DOMContentLoaded", () => {
 		document.querySelectorAll("details[open]").forEach(d => d.removeAttribute("open"));
-	});
-	</script>
-	<script>
-	document.addEventListener("DOMContentLoaded", () => {
-
-	// 1. ハンバーガー開閉
-	const btn = document.getElementById("hamburger");
-	const menu = document.getElementById("sideMenu");
-
-	btn.onclick = () => {
-		menu.classList.toggle("open");
-	};
-
-	// 2. マニュアル内の見出しを自動抽出してメニュー生成
-	const menuList = document.getElementById("menuList");
-	const headers = document.querySelectorAll("h1, h2");
-
-	headers.forEach(h => {
-		const id = h.id || h.innerText.replace(/\s+/g, "-");
-		h.id = id;
-
-		const li = document.createElement("li");
-		li.innerHTML = `<a href="#${id}">${h.innerText}</a>`;
-		menuList.appendChild(li);
-	});
-
 	});
 	</script>
 
