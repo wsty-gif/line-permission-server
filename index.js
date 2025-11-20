@@ -639,6 +639,21 @@ app.get("/:store/manual-render", ensureStore, async (req, res) => {
     // cheerio 初期化
     const $ = cheerio.load(html);
 
+    // Notion内の本文部分は .notion-page-content などにある
+    let content = $(".notion-page-content").html();
+
+    // fallback: body内のdivを収集
+    if (!content) {
+      content = $("body").find("div").first().html() || "内容を表示できませんでした";
+    }
+    const rewriteImg = cheerio.load(content);
+    rewriteImg("img").each((i, el) => {
+      const src = rewriteImg(el).attr("src");
+      if (src) rewriteImg(el).attr("src", "/manual-asset?url=" + encodeURIComponent(src));
+    });
+
+    content = rewriteImg.html();
+
     // script / css 削除（CSP回避）
     $("script").remove();
     $("link[rel='stylesheet']").remove();
@@ -658,17 +673,23 @@ app.get("/:store/manual-render", ensureStore, async (req, res) => {
 
     // 安全な偽URLのまま表示
     res.send(`
-      <!DOCTYPE html><html><head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>マニュアル</title>
-      <style>
-        body { font-family:sans-serif; padding:10px; }
-      </style>
-      </head><body>
-        ${$("body").html() || ""}
-      </body></html>
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>マニュアル</title>
+    <style>
+      body { font-family: sans-serif; padding:20px; }
+      img { max-width:100%; }
+    </style>
+    </head>
+    <body>
+    ${content}
+    </body>
+    </html>
     `);
+
 
   } catch (e) {
     console.error("manual-render error:", e);
