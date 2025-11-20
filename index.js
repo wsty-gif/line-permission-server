@@ -76,7 +76,16 @@ app.use(
     saveUninitialized: false,
   })
 );
-app.use("/manuals", express.static(path.join(__dirname, "manuals")));
+app.use("/manuals", express.static(path.join(process.cwd(), "manuals")));
+app.use("/:store", (req, res, next) => {
+  const store = req.params.store;
+
+  // manuals/{store} が存在するかチェック
+  const dirPath = path.join(process.cwd(), "manuals", store);
+
+  express.static(dirPath)(req, res, next);
+});
+
 
 // ==============================
 // 🚀 LINEクライアント初期化
