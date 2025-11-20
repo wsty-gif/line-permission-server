@@ -639,58 +639,45 @@ app.get("/:store/manual-render", ensureStore, async (req, res) => {
     // cheerio 初期化
     const $ = cheerio.load(html);
 
-    // ① Notion の実際の DOM パターンから本文を取り出す
+    // 🔥 Notion のスクリプトを完全削除
+    $("script").remove();
+
+    // 🔥 Notion の meta / link にある CSP も削除
+    $('meta[http-equiv="Content-Security-Policy"]').remove();
+    $('link[rel="preconnect"]').remove();
+
+    // 本文抽出（改良版）
     let content =
-      $(".notion-page-content").html() ||        // 古い Notion
-      $("main .notion-page-content").html() ||   // 一部ページ
-      $("article").html() ||                     // 新 UI
-      $(".notion-text").html() ||                // テキストブロック
-      $("main").html() ||                        // fallback 1
-      $("body").html();                          // fallback 2
+      $(".notion-page-content").html() ||
+      $("main .notion-page-content").html() ||
+      $("article").html() ||
+      $(".notion-text").html() ||
+      $("main").html() ||
+      $("body").html();
 
     if (!content || content.trim() === "") {
-      content = "<p>表示可能なコンテンツが見つかりませんでした。</p>";
+      content = "<p>本文の抽出に失敗しました。</p>";
     }
 
-    // ② 画像のパス変換（proxy化）
-    const rewriteImg = cheerio.load(content);
-    rewriteImg("img").each((i, el) => {
-      const src = rewriteImg(el).attr("src");
+    // 画像の proxy 化
+    const $$ = cheerio.load(content);
+    $$("img").each((i, el) => {
+      const src = $$(el).attr("src");
       if (src) {
-        rewriteImg(el).attr("src", "/manual-asset?url=" + encodeURIComponent(src));
+        $$(el).attr("src", "/manual-asset?url=" + encodeURIComponent(src));
       }
     });
-    content = rewriteImg.html();
+    content = $$.html();
 
-
-    // script / css 削除（CSP回避）
-    $("script").remove();
-    $("link[rel='stylesheet']").remove();
-
-    // 外部リンク全て無効化（URL漏れ防止）
-    $("a").each((i, el) => {
-      $(el).attr("href", "#");
-    });
-
-    // Notion画像やPDFなどを proxy 化
-    $("img").each((i, el) => {
-      const src = $(el).attr("src");
-      if (src) {
-        $(el).attr("src", `/manual-asset?url=${encodeURIComponent(src)}`);
-      }
-    });
-
-    // 安全な偽URLのまま表示
+    // ★ ここを返す
     res.send(`
     <!DOCTYPE html>
     <html>
     <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>マニュアル</title>
+    <meta charset="UTF-8">
     <style>
-      body { font-family: sans-serif; padding:20px; }
-      img { max-width:100%; }
+    body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
     </style>
     </head>
     <body>
