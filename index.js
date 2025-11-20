@@ -11,7 +11,6 @@ import { Parser } from "json2csv";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
 import { fileURLToPath } from "url";
-import path from "path";
 
 import fs from "fs";
 import path from "path";
@@ -535,38 +534,51 @@ app.post("/:store/revoke", ensureStore, async (req, res) => {
 });
 
 app.get("/:store/manual", ensureStore, (req, res) => {
-  const { liffId } = req.storeConf;
+  const { store, storeConf } = req;
+  const { type } = req.query; // ?type=todo など
 
   res.send(`
-  <!DOCTYPE html><html><head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <title>Loading...</title>
-  </head><body>ログイン中...</body>
-  <script>
-    async function main(){
-      try{
-        await liff.init({liffId: "${liffId}"});
-        if(!liff.isLoggedIn()) return liff.login();
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${store} マニュアル</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  </head>
+  <body>
+    <p>LINEログイン中です...</p>
+    <script>
+      const liffId = "${storeConf.liffId}";
+      const store  = "${store}";
+      const type   = "${type || ""}";
 
-        const profile = await liff.getProfile();
-        const userId  = profile.userId;
+      async function main() {
+        try {
+          await liff.init({ liffId });
+          if (!liff.isLoggedIn()) {
+            return liff.login({ redirectUri: location.href });
+          }
+          const p = await liff.getProfile();
 
-        const q = new URLSearchParams(location.search);
-        q.set("userId", userId);
+          const params = new URLSearchParams();
+          params.set("userId", p.userId);
+          if (type) params.set("type", type);
 
-        // manual-check に転送
-        location.href = "/${req.store}/manual-check?" + q.toString();
-      }catch(e){
-        document.body.innerHTML = "<h3>LIFFエラー：" + e.message + "</h3>";
+          // ✅ 権限チェック + HTML表示をするルートへ
+          location.href = "/" + store + "/manual-view?" + params.toString();
+        } catch (e) {
+          document.body.innerHTML =
+            "<h3>LIFF初期化に失敗しました：" + e.message + "</h3>";
+        }
       }
-    }
-    main();
-  </script>
+      main();
+    </script>
+  </body>
   </html>
   `);
 });
+
 
 
 
@@ -2382,55 +2394,66 @@ app.post("/:store/admin/attendance/update", ensureStore, async (req,res)=>{
 });
 
 
-// ===============================
-//   🔐 マニュアル保護付きビュー
-// ===============================
 app.get("/:store/manual-view", ensureStore, async (req, res) => {
   const { store } = req;
   const { userId, type } = req.query;
 
+  // 1️⃣ userId がない → エラー
   if (!userId) {
-    return res.status(400).send("userId が必要です");
+    return res
+      .status(400)
+      .send("userId がありません（LIFFを経由してください）");
   }
 
-  // Firestore 権限チェック
-  const doc = await db.collection("companies")
+  // 2️⃣ Firestore で権限チェック
+  const permDoc = await db
+    .collection("companies")
     .doc(store)
     .collection("permissions")
     .doc(userId)
     .get();
 
-  if (!doc.exists || !doc.data().approved) {
-    return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
-  }
-
-  // manual フォルダ判定
-  const folderMap = {
-    line: "line",
-    todo: "todo",
-    default: "todo",
-  };
-
-  const folder = folderMap[type] || "todo";
-
-  // HTMLファイルパス組み立て
-  const filePath = path.join(__dirname, "manuals", store, folder, "index.html");
-
-  // ファイル存在チェック
-  if (!fs.existsSync(filePath)) {
+  if (!permDoc.exists) {
     return res
       .status(404)
-      .send(`<h3>マニュアルファイルが見つかりません：<br>${filePath}</h3>`);
+      .send("権限申請が未登録です。");
   }
 
-  try {
-    const html = fs.readFileSync(filePath, "utf8");
-    res.send(html);
-  } catch (err) {
-    console.error("manual-view 読込エラー:", err);
-    return res.status(500).send("マニュアルの読み込みに失敗しました。");
+  if (!permDoc.data().approved) {
+    // ✅ 承認されていない → マニュアルは見せない
+    return res.status(403).send(`
+      <!DOCTYPE html>
+      <html lang="ja">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>マニュアル閲覧権限なし</title>
+      </head>
+      <body>
+        <h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>
+      </body>
+      </html>
+    `);
   }
+
+  // 3️⃣ 権限 OK → サーバー内の HTML を返す
+  const manualType = type || "default"; // todo / line / default
+  const htmlPath = path.join(
+    __dirname,
+    "manuals",
+    store,
+    manualType,
+    "index.html"
+  );
+
+  res.sendFile(htmlPath, (err) => {
+    if (err) {
+      console.error("manual-view sendFile error:", err);
+      res.status(500).send("マニュアルの読み込みに失敗しました。");
+    }
+  });
 });
+
 
 // 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
 // 🛠 打刻修正申請ページ
