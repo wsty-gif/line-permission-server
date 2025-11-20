@@ -18,11 +18,18 @@ const STORES = {
     channelAccessToken: process.env.STORE_B_CHANNEL_ACCESS_TOKEN,
     channelSecret: process.env.STORE_B_CHANNEL_SECRET,
     liffId: process.env.STORE_B_LIFF_ID,
-    manualUrl: process.env.STORE_B_MANUAL_URL,
     richmenuBefore: process.env.STORE_B_RICHMENU_BEFORE,
     richmenuAfter: process.env.STORE_B_RICHMENU_AFTER,
+
+    // ✅ ここを追加（複数URL対応）
+    manualUrls: {
+      line: process.env.STORE_B_MANUAL_URL_LINE,
+      todo: process.env.STORE_B_MANUAL_URL_TODO,
+      default: process.env.STORE_B_MANUAL_URL_DEFAULT,
+    },
   },
 };
+
 
 // ==============================
 // 🔥 Firebase 初期化
@@ -289,13 +296,78 @@ app.get("/:store/manual", ensureStore, (req, res) => {
   </script></body></html>`);
 });
 
+// 📘 マニュアル表示（カードタイプに対応、未承認はメッセージ表示）
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
-  const doc = await db.collection("companies").doc(req.store)
-    .collection("permissions").doc(req.query.userId).get();
+  const { type, userId } = req.query;
+  const { store, storeConf } = req;
+
+  // 1️⃣ userIdが無ければ LIFFでログイン → userIdを取得
+  if (!userId) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="ja">
+      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+      </head>
+      <body><p>LINEログイン中...</p>
+      <script>
+        async function main(){
+          try {
+            await liff.init({ liffId: "${storeConf.liffId}" });
+            if(!liff.isLoggedIn()) return liff.login();
+            const p = await liff.getProfile();
+            const q = new URLSearchParams(location.search);
+            q.set("userId", p.userId);
+            location.href = location.pathname + "?" + q.toString();
+          } catch(e){
+            document.body.innerHTML = "<h3>LIFF初期化に失敗しました：" + e.message + "</h3>";
+          }
+        }
+        main();
+      </script>
+      </body>
+      </html>
+    `);
+  }
+
+  // 2️⃣ Firestoreの承認確認
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+
   if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
-  if (!doc.data().approved) return res.status(403).send("承認待ちです。");
-  res.redirect(req.storeConf.manualUrl);
+  if (!doc.data().approved)
+    return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
+
+  // 3️⃣ typeパラメータ別にURLをenvから読み込み
+  const urls = storeConf.manualUrls || {};
+  // 3️⃣ typeパラメータ別にURLをenvから読み込み
+  let redirectUrl;
+
+  // ✅ 単一URL（storeAなど）対応を追加
+  if (storeConf.manualUrls) {
+    // 複数マニュアル対応（storeBなど）
+    const urls = storeConf.manualUrls;
+    redirectUrl =
+      (type === "line" && urls.line) ||
+      (type === "todo" && urls.todo) ||
+      urls.default;
+  } else if (storeConf.manualUrl) {
+    // ✅ 単一マニュアル対応（storeAなど）
+    redirectUrl = storeConf.manualUrl;
+  }
+
+  // URLが設定されていない場合のエラーハンドリング
+  if (!redirectUrl) {
+    return res
+      .status(404)
+      .send("<h3>マニュアルURLが設定されていません。</h3>");
+  }
+
+  // 4️⃣ 承認済みなら対象Notionマニュアルへリダイレクト
+  res.redirect(redirectUrl);
+
 });
+
 
 // ==============================
 // 🧾 権限申請フォーム（LIFF）
@@ -375,107 +447,119 @@ app.post("/:store/apply/submit", ensureStore, async (req, res) => {
     res.status(500).send("申請処理中にエラーが発生しました。");
   }
 });
-
 // ==============================
-// 🕒 勤怠打刻（従業員画面）
+// 🕒 従業員用：勤怠打刻 + 月別一覧
 // ==============================
 app.get("/:store/attendance", ensureStore, (req, res) => {
-  const { storeConf, store } = req;
+  const { store, storeConf } = req;
+
   res.send(`
   <!DOCTYPE html>
   <html lang="ja">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${store} 出退勤</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${store} 勤怠打刻</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-      body {
-        font-family: "Segoe UI", sans-serif;
-        background: #f9fafb;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-      }
-      .container {
-        background: white;
-        padding: 24px;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        text-align: center;
-        width: 90%;
-        max-width: 360px;
-      }
-      h1 {
-        color: #2563eb;
-        font-size: 1.3rem;
-        margin-bottom: 16px;
-      }
-      button {
-        width: 100%;
-        padding: 14px;
-        border: none;
-        border-radius: 6px;
-        font-size: 1rem;
-        margin-top: 10px;
-        cursor: pointer;
-      }
-      .in { background: #16a34a; color: white; }
-      .out { background: #dc2626; color: white; }
-      .in:disabled, .out:disabled {
-        background: #9ca3af;
-        cursor: not-allowed;
-      }
-      .msg {
-        margin-top: 14px;
-        font-weight: bold;
-      }
+      body { font-family: sans-serif; background: #f9fafb; padding: 16px; }
+      .card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:480px; margin:auto; }
+      h1 { color:#2563eb; text-align:center; }
+      button { width:100%; padding:10px; margin:6px 0; border:none; border-radius:6px; color:white; font-size:1rem; cursor:pointer; }
+      .in { background:#16a34a; }
+      .out { background:#dc2626; }
+      .break { background:#f59e0b; }
+      .endbreak { background:#2563eb; }
+      table { width:100%; border-collapse:collapse; margin-top:20px; }
+      th,td { border-bottom:1px solid #ddd; padding:6px; font-size:14px; text-align:center; }
+      select { padding:6px; border-radius:6px; border:1px solid #ccc; margin-top:10px; }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>${store} 勤怠打刻</h1>
-      <p id="userName">ログイン中...</p>
-      <button class="in" id="clockInBtn">出勤</button>
-      <button class="out" id="clockOutBtn">退勤</button>
-      <p class="msg" id="message"></p>
+    <div class="card">
+      <h1>${store} 勤怠管理</h1>
+      <div id="status">ログイン中...</div>
+      <button id="btnIn" class="in">出勤</button>
+      <button id="btnBreakStart" class="break">休憩開始</button>
+      <button id="btnBreakEnd" class="endbreak">休憩終了</button>
+      <button id="btnOut" class="out">退勤</button>
+
+      <div>
+        <label>対象月：</label>
+        <input type="month" id="monthSelect">
+      </div>
+      <table id="records">
+        <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
 
     <script>
+      let userId, name;
+
       async function main() {
         await liff.init({ liffId: "${storeConf.liffId}" });
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-        const profile = await liff.getProfile();
-        const userId = profile.userId;
-        const name = profile.displayName;
-        document.getElementById("userName").textContent = name + " さん";
+        if (!liff.isLoggedIn()) return liff.login();
+        const p = await liff.getProfile();
+        userId = p.userId; name = p.displayName;
 
-        const today = new Date().toISOString().slice(0, 10);
+        // main関数の中
+        document.getElementById("status").innerText = name + " さんログイン中";
+        initMonthSelector();
+        loadRecords();
 
-        async function send(type) {
-          const res = await fetch("/${store}/attendance/" + type, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, name, date: today })
-          });
-          const data = await res.text();
-          document.getElementById("message").textContent = data;
-        }
-
-        document.getElementById("clockInBtn").onclick = () => send("clockIn");
-        document.getElementById("clockOutBtn").onclick = () => send("clockOut");
       }
+
+      // ===== ボタンイベント =====
+      async function sendAction(action) {
+        const res = await fetch("/${store}/attendance/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, name, action })
+        });
+        const msg = await res.text();
+        alert(msg);
+        loadRecords();
+      }
+
+      document.getElementById("btnIn").onclick = () => sendAction("clockIn");
+      document.getElementById("btnBreakStart").onclick = () => sendAction("breakStart");
+      document.getElementById("btnBreakEnd").onclick = () => sendAction("breakEnd");
+      document.getElementById("btnOut").onclick = () => sendAction("clockOut");
+
+      // ▼ 削除：loadMonths関数全体
+      // ▼ 新しい初期化処理に置き換え
+      function initMonthSelector() {
+        const monthInput = document.getElementById("monthSelect");
+        const now = new Date();
+        const ym = now.toISOString().slice(0, 7); // 例: "2025-11"
+        monthInput.value = ym;
+        monthInput.addEventListener("change", loadRecords);
+      }
+
+
+      async function loadRecords() {
+        const month = document.getElementById("monthSelect").value;
+        const res = await fetch("/${store}/attendance/records?userId="+userId+"&month="+month);
+        const data = await res.json();
+        const tbody = document.querySelector("#records tbody");
+        tbody.innerHTML = data.map(r => 
+          \`<tr>
+            <td>\${r.date}</td>
+            <td>\${r.clockIn||"-"}</td>
+            <td>\${r.clockOut||"-"}</td>
+            <td>\${r.breakStart && r.breakEnd ? r.breakStart+"~"+r.breakEnd : "-"}</td>
+          </tr>\`
+        ).join("");
+      }
+
       main();
     </script>
   </body>
   </html>
   `);
 });
+
 
 // 出退勤ステータス取得
 app.get("/:store/attendance/status", ensureStore, async (req, res) => {
@@ -487,30 +571,36 @@ app.get("/:store/attendance/status", ensureStore, async (req, res) => {
   res.json(doc.exists ? doc.data() : {});
 });
 
-// 出退勤登録（二重押下防止付き）
+// 🧾 打刻処理
 app.post("/:store/attendance/submit", ensureStore, async (req, res) => {
   const { store } = req.params;
-  const { userId, name, type } = req.body;
-  const today = new Date().toISOString().split("T")[0];
-  const docRef = db.collection("companies").doc(store).collection("attendance").doc(`${userId}_${today}`);
-  const snap = await docRef.get();
-  const data = snap.data() || { userId, name, date: today };
+  const { userId, name, action } = req.body;
+  const dateStr = new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" }).replace(/\//g, "-");
+  const ref = db.collection("companies").doc(store).collection("attendance").doc(userId).collection("records").doc(dateStr);
 
-  if (type === "in") {
-    if (data.clockIn) return res.send("既に出勤済みです。");
-    data.clockIn = new Date();
-  } else if (type === "out") {
-    if (!data.clockIn) return res.send("出勤していません。");
-    if (data.clockOut) return res.send("既に退勤済みです。");
-    data.clockOut = new Date();
-  }
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : {};
+  const now = admin.firestore.Timestamp.now();
 
-  await docRef.set(data, { merge: true });
-  res.send(type === "in" ? "出勤を記録しました。" : "退勤を記録しました。");
+  // 二重打刻防止 + 順序制御
+  if (action === "clockIn" && data.clockIn) return res.send("すでに出勤済みです。");
+  if (action === "breakStart" && (!data.clockIn || data.breakStart)) return res.send("休憩開始は1回のみ、または出勤前です。");
+  if (action === "breakEnd" && (!data.breakStart || data.breakEnd)) return res.send("休憩終了は1回のみ、または開始前です。");
+  if (action === "clockOut" && data.clockOut) return res.send("すでに退勤済みです。");
+
+  const update = { name, userId, date: dateStr };
+  if (action === "clockIn") update.clockIn = now;
+  if (action === "breakStart") update.breakStart = now;
+  if (action === "breakEnd") update.breakEnd = now;
+  if (action === "clockOut") update.clockOut = now;
+
+  await ref.set(update, { merge: true });
+  res.send("打刻が記録されました。");
 });
 
+
 // ==============================
-// 👨‍💻 管理者勤怠一覧・修正画面
+// 👨‍💼 管理者勤怠管理画面
 // ==============================
 app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
   if (!req.session.loggedIn || req.session.store !== req.store)
@@ -518,104 +608,156 @@ app.get("/:store/admin/attendance", ensureStore, async (req, res) => {
 
   const store = req.store;
 
-  // 勤怠データ取得
-  const attendanceSnap = await db
-    .collection("companies").doc(store)
-    .collection("attendance").orderBy("date", "desc").limit(100).get();
-
-  // 権限申請データ（名前マスター）
-  const permissionSnap = await db
-    .collection("companies").doc(store)
-    .collection("permissions").get();
-  const nameMap = {};
-  permissionSnap.forEach(d => nameMap[d.id] = d.data().name || "");
-
-  // 日本時間変換関数
-  const toTokyo = (ts) => {
-    if (!ts) return { dateTime: "", time: "" };
-    const d = ts.toDate ? ts.toDate() : new Date(ts._seconds * 1000);
-    const dateTime = d.toLocaleString("ja-JP", {
-      timeZone: "Asia/Tokyo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).replace(/\//g, "-");
-    const time = d.toLocaleTimeString("ja-JP", {
-      timeZone: "Asia/Tokyo",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    return { dateTime, time };
-  };
-
-  // 勤怠データ整形
-  const records = attendanceSnap.docs.map(d => {
-    const data = d.data();
-    const inInfo = toTokyo(data.clockIn);
-    const outInfo = toTokyo(data.clockOut);
-    return {
-      userId: data.userId,
-      name: nameMap[data.userId] || data.name || "（未登録）",
-      date: data.date,
-      clockInStr: inInfo.dateTime,
-      clockOutStr: outInfo.dateTime,
-      clockInTime: inInfo.time,
-      clockOutTime: outInfo.time,
-    };
-  });
-
-  // HTML生成
   res.send(`
-  <!DOCTYPE html><html lang="ja"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${store} 勤怠管理</title>
-  <style>
-    body{font-family:'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:16px;}
-    h1{color:#2563eb;text-align:center;}
-    table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;margin-top:12px;}
-    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:14px;}
-    th{background:#2563eb;color:white;}
-    button{background:#2563eb;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;}
-    button:hover{background:#1d4ed8;}
-    input[type="time"]{padding:4px;font-size:13px;}
-    .error{color:#dc2626;text-align:center;margin:10px 0;}
-    @media(max-width:600px){
-      table,thead,tbody,tr,th,td{display:block;}
-      th{display:none;}
-      tr{margin-bottom:10px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
-      td{display:flex;justify-content:space-between;padding:6px 8px;}
-      td::before{content:attr(data-label);font-weight:bold;color:#555;}
-    }
-  </style>
-  </head><body>
-  <h1>${store} 勤怠管理</h1>
-  <table>
-    <thead><tr><th>名前</th><th>日付</th><th>出勤</th><th>退勤</th><th>操作</th></tr></thead>
-    <tbody>
-      ${records.map(r => `
-        <tr>
-          <td data-label="名前">${r.name}</td>
-          <td data-label="日付">${r.date}</td>
-          <td data-label="出勤">${r.clockInStr || "未"}</td>
-          <td data-label="退勤">${r.clockOutStr || "未"}</td>
-          <td data-label="操作">
-            <form method="POST" action="/${store}/admin/attendance/update" style="display:flex;gap:4px;flex-wrap:wrap;">
-              <input type="hidden" name="userId" value="${r.userId}">
-              <input type="hidden" name="date" value="${r.date}">
-              <input type="time" name="clockIn" value="${r.clockInTime}">
-              <input type="time" name="clockOut" value="${r.clockOutTime}">
-              <button type="submit">更新</button>
-            </form>
-          </td>
-        </tr>`).join("")}
-    </tbody>
-  </table>
-  </body></html>
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${store} 勤怠管理</title>
+    <style>
+      body { font-family:sans-serif; background:#f9fafb; margin:0; padding:16px; }
+      h1 { color:#2563eb; text-align:center; }
+      select, input { padding:6px; border:1px solid #ccc; border-radius:6px; margin:4px; }
+      button { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; color:white; }
+      .blue { background:#2563eb; }
+      .green { background:#16a34a; }
+      .red { background:#dc2626; }
+      table { width:100%; border-collapse:collapse; margin-top:12px; background:white; border-radius:8px; overflow:hidden; }
+      th,td { padding:8px; border-bottom:1px solid #eee; text-align:center; font-size:14px; }
+      th { background:#2563eb; color:white; }
+      .summary { text-align:right; margin-top:10px; }
+      .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+      .modal-content { background:white; padding:20px; border-radius:8px; max-width:300px; width:90%; }
+      @media(max-width:600px){
+        table,thead,tbody,tr,th,td{display:block;}
+        th{display:none;}
+        tr{margin-bottom:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+        td{display:flex; justify-content:space-between; padding:6px;}
+        td::before{content:attr(data-label); font-weight:bold; color:#555;}
+      }
+    </style>
+  </head>
+  <body>
+    <h1>${store} 勤怠管理</h1>
+    <!-- ▼ 修正箇所 -->
+    <div>
+      <label>対象月：</label>
+      <input type="month" id="monthSelect">
+      <label>スタッフ：</label>
+      <select id="staffSelect"></select>
+      <button class="blue" onclick="loadRecords()">表示</button>
+    </div>
+
+    <div class="summary" id="summary"></div>
+    <table id="records">
+      <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>操作</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- 修正モーダル -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <h3>時刻修正</h3>
+        <input type="hidden" id="editDate">
+        出勤:<input type="time" id="editIn"><br>
+        休憩開始:<input type="time" id="editBreakStart"><br>
+        休憩終了:<input type="time" id="editBreakEnd"><br>
+        退勤:<input type="time" id="editOut"><br>
+        <button class="green" onclick="saveEdit()">更新</button>
+        <button class="red" onclick="closeModal()">閉じる</button>
+      </div>
+    </div>
+
+    <script>
+      const store = "${store}";
+      let records = [];
+
+      // ▼ 修正：init関数
+      async function init() {
+        const now = new Date();
+        const monthInput = document.getElementById("monthSelect");
+        const ym = now.toISOString().slice(0, 7);
+        monthInput.value = ym;
+        monthInput.addEventListener("change", loadRecords);
+        await loadStaff();
+      }
+
+
+      async function loadStaff() {
+        const res = await fetch("/${store}/admin/staff");
+        const staff = await res.json();
+        const sel = document.getElementById("staffSelect");
+        staff.forEach(s=>{
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.text = s.name;
+          sel.appendChild(opt);
+        });
+      }
+
+      async function loadRecords(){
+        const userId = document.getElementById("staffSelect").value;
+        const month = document.getElementById("monthSelect").value;
+        const res = await fetch("/${store}/admin/attendance/records?userId="+userId+"&month="+month);
+        records = await res.json();
+        const tbody = document.querySelector("#records tbody");
+        tbody.innerHTML = records.map(r=>\`
+          <tr>
+            <td data-label="日付">\${r.date}</td>
+            <td data-label="出勤">\${r.clockIn||"-"}</td>
+            <td data-label="退勤">\${r.clockOut||"-"}</td>
+            <td data-label="休憩">\${r.breakStart&&r.breakEnd?r.breakStart+"~"+r.breakEnd:"-"}</td>
+            <td data-label="操作"><button class='blue' onclick='openModal("\${r.date}")'>修正</button></td>
+          </tr>\`).join("");
+        
+        const worked = records.filter(r=>r.clockIn && r.clockOut);
+        const totalH = worked.reduce((a,b)=>a+(toMinutes(b.clockOut)-toMinutes(b.clockIn)
+          - (b.breakStart&&b.breakEnd?toMinutes(b.breakEnd)-toMinutes(b.breakStart):0))/60,0);
+        document.getElementById("summary").innerText = 
+          "総勤務日数: "+worked.length+"日 / 総勤務時間: "+Math.floor(totalH)+"h";
+      }
+
+      function toMinutes(t){
+        if(!t)return 0;const [h,m]=t.split(":");return parseInt(h)*60+parseInt(m);
+      }
+
+      function openModal(date){
+        const r = records.find(x=>x.date===date);
+        document.getElementById("editDate").value = date;
+        document.getElementById("editIn").value = r.clockIn||"";
+        document.getElementById("editBreakStart").value = r.breakStart||"";
+        document.getElementById("editBreakEnd").value = r.breakEnd||"";
+        document.getElementById("editOut").value = r.clockOut||"";
+        document.getElementById("modal").style.display="flex";
+      }
+      function closeModal(){ document.getElementById("modal").style.display="none"; }
+
+      async function saveEdit(){
+        const userId = document.getElementById("staffSelect").value;
+        const date = document.getElementById("editDate").value;
+        const inT = document.getElementById("editIn").value;
+        const outT = document.getElementById("editOut").value;
+        if(inT && outT && inT>outT){ alert("出勤時間は退勤時間より前にしてください。"); return; }
+        const body = {
+          userId, date,
+          clockIn: inT, clockOut: outT,
+          breakStart: document.getElementById("editBreakStart").value,
+          breakEnd: document.getElementById("editBreakEnd").value
+        };
+        const res = await fetch("/${store}/admin/attendance/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        alert(await res.text());
+        closeModal();
+        loadRecords();
+      }
+
+      init();
+    </script>
+  </body>
+  </html>
   `);
 });
+
 
 // ==============================
 // ⏱ 管理者勤怠修正API（出勤＞退勤のバリデーション付き）
@@ -919,6 +1061,71 @@ app.post("/:store/attendance/clockOut", ensureStore, async (req, res) => {
     clockOut: admin.firestore.Timestamp.now(),
   });
   res.send("✅ 退勤を記録しました。");
+});
+
+// 📅 月別一覧取得
+app.get("/:store/attendance/records", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, month } = req.query;
+  if (!userId) return res.json([]);
+
+  const col = db.collection("companies").doc(store).collection("attendance").doc(userId).collection("records");
+  const snapshot = await col.get();
+
+  const records = snapshot.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(r => r.date.startsWith(month))
+    .map(r => ({
+      date: r.date,
+      clockIn: r.clockIn ? r.clockIn.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
+      breakStart: r.breakStart ? r.breakStart.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
+      breakEnd: r.breakEnd ? r.breakEnd.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
+      clockOut: r.clockOut ? r.clockOut.toDate().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : null,
+    }));
+
+  res.json(records);
+});
+
+// 承認済みスタッフ一覧
+app.get("/:store/admin/staff", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const docs = await db.collection("companies").doc(store).collection("permissions")
+    .where("approved","==",true).get();
+  res.json(docs.docs.map(d=>({ id:d.id, name:d.data().name })));
+});
+
+// 勤怠一覧取得
+app.get("/:store/admin/attendance/records", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, month } = req.query;
+  if(!userId)return res.json([]);
+  const col = db.collection("companies").doc(store).collection("attendance").doc(userId).collection("records");
+  const snap = await col.get();
+  const list = snap.docs.map(d=>d.data())
+    .filter(r=>r.date.startsWith(month))
+    .map(r=>({
+      date:r.date,
+      clockIn:r.clockIn?r.clockIn.toDate().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}):null,
+      breakStart:r.breakStart?r.breakStart.toDate().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}):null,
+      breakEnd:r.breakEnd?r.breakEnd.toDate().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}):null,
+      clockOut:r.clockOut?r.clockOut.toDate().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}):null,
+    }));
+  res.json(list);
+});
+
+// 勤怠修正
+app.post("/:store/admin/attendance/update", ensureStore, async (req,res)=>{
+  const { store } = req.params;
+  const { userId, date, clockIn, clockOut, breakStart, breakEnd } = req.body;
+  const ref = db.collection("companies").doc(store).collection("attendance").doc(userId).collection("records").doc(date);
+
+  const times = {clockIn,clockOut,breakStart,breakEnd};
+  for(const k in times){
+    if(times[k]) times[k] = admin.firestore.Timestamp.fromDate(new Date(date+"T"+times[k]+":00+09:00"));
+  }
+
+  await ref.set(times,{merge:true});
+  res.send("勤怠を更新しました。");
 });
 
 // ==============================
