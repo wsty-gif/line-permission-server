@@ -554,45 +554,76 @@ app.get("/:store/manual", ensureStore, (req, res) => {
   `);
 });
 
+const axios = require("axios"); // ← 必要
 
-app.get("/:store/manual-check", ensureStore, async (req, res) => {
+// ==============================
+// 🔒 manual-proxy  (実データ取得)
+// ==============================
+app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
   const { store, storeConf } = req;
+  const { type, userId } = req.query;
 
-  const userId = req.query.userId;
-  const type = req.query.type; // line / todo / other
-
-  if (!userId) {
-    return res.status(400).send("userId がありません（LIFFを経由してください）");
+  // --- 1️⃣ Firestore の権限確認 ---
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+  if (!doc.exists || !doc.data().approved) {
+    return res.status(403).send("権限がありません");
   }
 
-  // 🔹 Firestore 権限チェック
-  const doc = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .doc(userId)
-    .get();
-
-  if (!doc.exists)
-    return res.status(404).send("権限申請が未登録です。");
-
-  if (!doc.data().approved)
-    return res.status(403).send("承認待ちです。<br>管理者の承認をお待ちください。");
-
-  // 🔹 マニュアルURLの取得（複数マニュアル）
-  let redirectUrl = null;
+  // --- 2️⃣ URLマッピング ---
   const urls = storeConf.manualUrls || {};
+  const realUrl =
+    (type === "line" && urls.line) ||
+    (type === "todo" && urls.todo) ||
+    urls.default;
 
-  if (type === "line") redirectUrl = urls.line;
-  else if (type === "todo") redirectUrl = urls.todo;
-  else redirectUrl = urls.default;
+  if (!realUrl) return res.status(404).send("URLが設定されていません");
 
-  if (!redirectUrl)
-    return res.status(404).send("該当するマニュアルURLが設定されていません。");
+  try {
+    // --- 3️⃣ Notion(または任意のURL)を取得 ---
+    const resp = await axios.get(realUrl, {
+      headers: { "User-Agent": req.headers['user-agent'] || "" }
+    });
 
-  // 🔹 承認済み → Notion にリダイレクト
-  res.redirect(redirectUrl);
+    // --- ★URLは偽のまま res.send() ---
+    res.send(resp.data);
+  } catch(e) {
+    res.status(500).send("データ取得に失敗しました: " + e.message);
+  }
 });
+
+// ==============================
+// 🔐 manual-check  (表示用HTMLを返す)
+// ==============================
+app.get("/:store/manual-check", ensureStore, async (req, res) => {
+  const { type, userId } = req.query;
+  const { store, storeConf } = req;
+
+  // --- Firestore 権限チェック ---
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+  if (!doc.exists) return res.status(404).send("権限申請が未登録です");
+  if (!doc.data().approved) return res.status(403).send("承認待ちです");
+
+  // --- 表示用ページ（URLは "偽のまま"）---
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <style>
+        body { margin:0; display:flex; flex-direction:column; height:100vh;}
+        iframe { flex:1; border:none; }
+      </style>
+    </head>
+    <body>
+      <iframe src="/${store}/manual-proxy?type=${type}&userId=${userId}"></iframe>
+    </body>
+    </html>
+  `);
+});
+
 
 
 // ==============================
