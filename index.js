@@ -76,6 +76,7 @@ app.use(
     saveUninitialized: false,
   })
 );
+app.use("/manuals", express.static(path.join(__dirname, "manuals")));
 
 // ==============================
 // 🚀 LINEクライアント初期化
