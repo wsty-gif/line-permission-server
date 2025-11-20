@@ -10,8 +10,11 @@ const STORES = {
     channelAccessToken: process.env.STORE_A_CHANNEL_ACCESS_TOKEN,
     channelSecret: process.env.STORE_A_CHANNEL_SECRET,
     liffId: process.env.STORE_A_LIFF_ID,
-    manualUrl: process.env.STORE_A_MANUAL_URL,
-    richmenuBefore: process.env.STORE_A_RICHMENU_BEFORE,
+    manualUrls: {
+      line: process.env.STORE_A_MANUAL_URL_LINE,
+      todo: process.env.STORE_A_MANUAL_URL_TODO,
+      default: process.env.STORE_A_MANUAL_URL_DEFAULT,
+    },    richmenuBefore: process.env.STORE_A_RICHMENU_BEFORE,
     richmenuAfter: process.env.STORE_A_RICHMENU_AFTER,
   },
   nice_sweets: {
