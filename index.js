@@ -556,39 +556,96 @@ app.get("/:store/manual", ensureStore, (req, res) => {
 
 const axios = require("axios"); // ← 必要
 
-// ==============================
-// 🔒 manual-proxy  (実データ取得)
-// ==============================
 app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
   const { store, storeConf } = req;
   const { type, userId } = req.query;
 
-  // --- 1️⃣ Firestore の権限確認 ---
-  const doc = await db.collection("companies").doc(store)
+  if (!userId) {
+    return res.status(400).send("userId がありません（LIFF 経由でアクセスしてください）");
+  }
+
+  // 権限チェック（二重チェック）
+  const permSnap = await db.collection("companies").doc(store)
     .collection("permissions").doc(userId).get();
-  if (!doc.exists || !doc.data().approved) {
+  if (!permSnap.exists || !permSnap.data().approved) {
+    return res.status(403).send("<h3>権限がありません</h3>");
+  }
+
+  // 目的の外部 URL を決める
+  let targetUrl;
+  if (storeConf.manualUrls) {
+    const urls = storeConf.manualUrls;
+    targetUrl =
+      (type === "line" && urls.line) ||
+      (type === "todo" && urls.todo) ||
+      urls.default;
+  } else if (storeConf.manualUrl) {
+    targetUrl = storeConf.manualUrl;
+  }
+  if (!targetUrl) return res.status(404).send("マニュアルが設定されていません");
+
+  try {
+    // Notion等の HTML を取得
+    const resp = await axios.get(targetUrl, { headers: { "User-Agent": req.headers['user-agent'] || "" }});
+    let html = resp.data;
+
+    // 1) 不要な CSP メタを削除（ブラウザ側のブロックを回避）
+    html = html.replace(/<meta[^>]*http-equiv=["']?Content-Security-Policy["']?[^>]*>/ig, "");
+
+    // 2) 相対パス（"/...") を当サーバーの manual-proxy-asset に差し替える
+    //    例: src="/_assets/x.js" -> src="/{store}/manual-proxy-asset?u=<origin>/_assets/x.js&userId=<userId>"
+    const targetOrigin = (new URL(targetUrl)).origin;
+
+    // href/src が "/" で始まるものを置換
+    html = html.replace(/(?:src|href)\s*=\s*["']\/([^"'>\s]+)["']/ig, (m, path) => {
+      const abs = targetOrigin + "/" + path;
+      const prox = `/${store}/manual-proxy-asset?u=${encodeURIComponent(abs)}&userId=${encodeURIComponent(userId)}`;
+      return m.replace(`"/${path}"`, `"${prox}"`).replace(`'/${path}'`, `'${prox}'`);
+    });
+
+    // 3) また、data-src 等で使われるケースもあるので一通りのパターンを置換（任意）
+    html = html.replace(/data-src\s*=\s*["']\/([^"'>\s]+)["']/ig, (m, path) => {
+      const abs = targetOrigin + "/" + path;
+      const prox = `/${store}/manual-proxy-asset?u=${encodeURIComponent(abs)}&userId=${encodeURIComponent(userId)}`;
+      return `data-src="${prox}"`;
+    });
+
+    // 4) 最後に返す
+    res.set("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch (e) {
+    console.error("manual-proxy fetch error:", e.message);
+    res.status(502).send("マニュアル取得に失敗しました");
+  }
+});
+
+// --- manual-proxy-asset: 外部資産をサーバー経由で中継して返す ---
+// クエリ: ?u=<絶対URL>&userId=<userId>
+app.get("/:store/manual-proxy-asset", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { u: targetUrl, userId } = req.query;
+
+  if (!targetUrl) return res.status(400).send("asset url required");
+  if (!userId) return res.status(400).send("userId required");
+
+  // 再度権限チェック（直叩き対策）
+  const permSnap = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
+  if (!permSnap.exists || !permSnap.data().approved) {
     return res.status(403).send("権限がありません");
   }
 
-  // --- 2️⃣ URLマッピング ---
-  const urls = storeConf.manualUrls || {};
-  const realUrl =
-    (type === "line" && urls.line) ||
-    (type === "todo" && urls.todo) ||
-    urls.default;
-
-  if (!realUrl) return res.status(404).send("URLが設定されていません");
-
   try {
-    // --- 3️⃣ Notion(または任意のURL)を取得 ---
-    const resp = await axios.get(realUrl, {
-      headers: { "User-Agent": req.headers['user-agent'] || "" }
-    });
-
-    // --- ★URLは偽のまま res.send() ---
+    // axiosで取得（stream で返す）
+    const resp = await axios.get(targetUrl, { responseType: "arraybuffer", headers: { "User-Agent": req.headers['user-agent'] || "" }});
+    const ctype = resp.headers['content-type'] || "application/octet-stream";
+    res.set("Content-Type", ctype);
+    // キャッシュ可能ならキャッシュヘッダを付けても良い（任意）
+    if (resp.headers['cache-control']) res.set('Cache-Control', resp.headers['cache-control']);
     res.send(resp.data);
-  } catch(e) {
-    res.status(500).send("データ取得に失敗しました: " + e.message);
+  } catch (e) {
+    console.error("manual-proxy-asset fetch error:", e.message);
+    res.status(502).send("asset fetch failed");
   }
 });
 
