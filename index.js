@@ -523,6 +523,7 @@ app.post("/:store/revoke", ensureStore, async (req, res) => {
 app.get("/:store/manual", ensureStore, (req, res) => {
   const { store, storeConf } = req;
   const liffId = storeConf.liffId;
+  const { type } = req.query;
 
   res.send(`
   <!DOCTYPE html><html><head>
@@ -544,7 +545,7 @@ app.get("/:store/manual", ensureStore, (req, res) => {
       const params = new URLSearchParams(location.search);
       params.set("userId", uid);
 
-      location.href = "/${store}/manual-check?" + params.toString();
+      location.href="/${store}/manual-check?userId=" + p.userId + "&type=${type}";
     }
     main();
   </script>
