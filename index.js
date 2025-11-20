@@ -1,13 +1,11 @@
-import dotenv from "dotenv";
-dotenv.config();
-
-import express from "express";
-import { Client } from "@line/bot-sdk";
-import admin from "firebase-admin";
-import cors from "cors";
-import session from "express-session";
-import { Parser } from "json2csv";
-
+require("dotenv").config();
+const express = require("express");
+const { Client } = require("@line/bot-sdk");
+const admin = require("firebase-admin");
+const cors = require("cors");
+const session = require("express-session");
+// ファイル先頭付近に追記
+const { Parser } = require('json2csv');
 
 const STORES = {
   storeA: {
@@ -592,87 +590,38 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
     return res.status(404).send("該当するマニュアルURLが設定されていません。");
 
   // 🔹 承認済み → Notion にリダイレクト
-  return res.redirect(`/${store}/manual-proxy?type=${type}&userId=${userId}`);
+  res.redirect(`/${store}/manual-redirect?url=${encodeURIComponent(redirectUrl)}&userId=${userId}`);
 });
 
-import fetch from "node-fetch";  // ← 上部で必ず読み込み
+// ============================================
+// 🔐 毎回権限をチェックしてマニュアルに飛ばす中継ページ
+// ============================================
+app.get("/:store/manual-redirect", ensureStore, async (req, res) => {
+  const store = req.store;
+  const url = req.query.url;
+  const userId = req.query.userId;
 
-app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
-  const { type, userId } = req.query;
-  const { store, storeConf } = req;
+  if (!url || !userId) {
+    return res.status(400).send("必要なパラメータが不足しています。");
+  }
 
-  // 権限チェック
-  const doc = await db.collection("companies").doc(store)
-    .collection("permissions").doc(userId).get();
+  // Firestore権限チェック
+  const doc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
 
   if (!doc.exists || !doc.data().approved) {
-    return res.status(403).send("<h2>閲覧権限がありません</h2>");
+    return res.status(403).send(`
+      <h2>権限がありません</h2>
+      <p>管理者が権限を外した可能性があります。</p>
+    `);
   }
 
-  // マニュアルURL取得
-  let targetUrl = null;
-  if (storeConf.manualUrls) {
-    targetUrl =
-      (type === "todo" && storeConf.manualUrls.todo) ||
-      (type === "line" && storeConf.manualUrls.line) ||
-      storeConf.manualUrls.default;
-  } else {
-    targetUrl = storeConf.manualUrl;
-  }
-
-  if (!targetUrl) return res.status(404).send("URL 不明です");
-
-  try {
-    const fetchRes = await fetch(targetUrl);
-    let html = await fetchRes.text();
-
-    // 🎯 ここが重要：外部JS/CSSは削除して純テキストだけ抽出
-    html = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<link[^>]*>/gi, "");
-
-    // 🎨 あなた側のデザインで囲う
-    const wrapped = `
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-          body { font-family: sans-serif; padding:16px; line-height:1.6; }
-          h1,h2,h3 { color:#2563eb; }
-        </style>
-      </head>
-      <body>
-        ${html}
-      </body>
-      </html>
-    `;
-
-    res.send(wrapped);
-
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("マニュアル読み込みに失敗しました");
-  }
-});
-
-
-app.get("/:store/manual-asset/*", ensureStore, async (req, res) => {
-  const assetPath = req.params[0];
-  const targetUrl = "https://www.notion.so/" + assetPath;
-
-  try {
-    const r = await fetch(targetUrl);
-
-    // content-type をそのまま維持
-    res.set("Content-Type", r.headers.get("content-type"));
-
-    r.body.pipe(res);
-  } catch (e) {
-    console.error("asset error:", e);
-    res.status(404).end();
-  }
+  // OK → 本物のNotionに飛ばす
+  res.redirect(url);
 });
 
 // ==============================
