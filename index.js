@@ -1,11 +1,13 @@
-require("dotenv").config();
-const express = require("express");
-const { Client } = require("@line/bot-sdk");
-const admin = require("firebase-admin");
-const cors = require("cors");
-const session = require("express-session");
-// ファイル先頭付近に追記
-const { Parser } = require('json2csv');
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+import { Client } from "@line/bot-sdk";
+import admin from "firebase-admin";
+import cors from "cors";
+import session from "express-session";
+import { Parser } from "json2csv";
+
 
 const STORES = {
   storeA: {
