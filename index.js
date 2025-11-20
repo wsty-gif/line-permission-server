@@ -590,23 +590,24 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
     return res.status(404).send("該当するマニュアルURLが設定されていません。");
 
   // 🔹 承認済み → Notion にリダイレクト
-  res.redirect(`/${store}/manual-proxy?type=${type}&userId=${userId}`);
+  return res.redirect(`/${store}/manual-proxy?type=${type}&userId=${userId}`);
 });
+
+import fetch from "node-fetch";  // ← 上部で必ず読み込み
 
 app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
   const { type, userId } = req.query;
   const { store, storeConf } = req;
 
-  // 権限確認
-  const doc = await db
-    .collection("companies").doc(store)
+  // 1. 権限チェック
+  const doc = await db.collection("companies").doc(store)
     .collection("permissions").doc(userId).get();
 
   if (!doc.exists || !doc.data().approved) {
-    return res.status(403).send("<h3>権限がありません</h3>");
+    return res.status(403).send("<h2>閲覧権限がありません</h2>");
   }
 
-  // URL取得（本物の Notion URL）
+  // 2. マニュアルURL取得
   let targetUrl = null;
 
   if (storeConf.manualUrls) {
@@ -619,30 +620,44 @@ app.get("/:store/manual-proxy", ensureStore, async (req, res) => {
   }
 
   if (!targetUrl) {
-    return res.status(404).send("URL not found");
+    return res.status(404).send("URL 不明です");
   }
 
-  // コンテンツを取得して iframe に詰めて返す（URLを隠す）
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <style>
-        body,html { margin:0; padding:0; height:100%; }
-        iframe { width:100%; height:100%; border:0; }
-      </style>
-    </head>
-    <body>
-      <iframe src="${targetUrl}"></iframe>
-    </body>
-    </html>
-  `;
+  try {
+    // 3. Notion HTML をサーバー側で取得（ブラウザには見せない）
+    const notionRes = await fetch(targetUrl);
+    let html = await notionRes.text();
 
-  res.send(html);
+    // 4. HTML の中の全URLを proxy 経由に書き換える
+    //    Notion内の JS/CSS/画像もURLが絶対パスなので同じく取得可能
+    html = html.replace(/https:\/\/www\.notion\.so/g, `/${store}/manual-asset`);
+    html = html.replace(/https:\/\/file\.notion\.so/g, `/${store}/manual-asset`);
+
+    // 5. クライアントに返す（本物URLは絶対に見えない）
+    res.send(html);
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("プロキシエラー");
+  }
 });
 
+app.get("/:store/manual-asset/*", ensureStore, async (req, res) => {
+  const assetPath = req.params[0];
+  const targetUrl = "https://www.notion.so/" + assetPath;
+
+  try {
+    const r = await fetch(targetUrl);
+
+    // content-type をそのまま維持
+    res.set("Content-Type", r.headers.get("content-type"));
+
+    r.body.pipe(res);
+  } catch (e) {
+    console.error("asset error:", e);
+    res.status(404).end();
+  }
+});
 
 // ==============================
 // 🧾 権限申請フォーム（完全版 LIFF）
