@@ -625,7 +625,7 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 // });
 
 import fetch from "node-fetch";
-import * as cheerio from "cheerio";
+const cheerio = require("cheerio");
 
 app.get("/:store/manual-render", ensureStore, async (req, res) => {
   const store = req.store;
