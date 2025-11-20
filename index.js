@@ -93,7 +93,7 @@ function ensureStore(req, res, next) {
   req.lineClient = lineClients[store];
   next();
 }
-app.use("/manuals", express.static("manuals"));
+// app.use("/manuals", express.static("manuals"));
 // ==============================
 // 🔐 管理者ログイン
 // ==============================
@@ -562,30 +562,22 @@ app.get("/:store/manual", ensureStore, (req, res) => {
 
 
 app.get("/:store/manual-check", ensureStore, async (req, res) => {
-  const { store, storeConf } = req;
+  const { store } = req;
   const { type, userId } = req.query;
 
-  // 1. 権限チェック
+  if (!userId) return res.status(400).send("userId がありません（LIFFを経由してください）");
+
   const doc = await db.collection("companies").doc(store)
     .collection("permissions").doc(userId).get();
 
-  if (!doc.exists) return res.status(404).send("権限申請が未登録です");
-  if (!doc.data().approved) return res.status(403).send("承認待ちです");
+  if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!doc.data().approved)
+    return res.status(403).send("承認待ちです。");
 
-  // 2. type → マニュアルパス
-  const manualMap = {
-    line: "line",
-    todo: "todo",
-    default: "todo"
-  };
-  const m = manualMap[type] || manualMap.default;
-
-  // 3. 生 Notion URL へリダイレクトしない！
-  //    → 代わりにサーバー内の静的 HTML 倉庫へ
-  const target = `/manuals/${store}/${m}/index.html`;
-
-  return res.redirect(target);
+  // ★ manual-view を必ず経由させる（静的URLは公開しない）
+  return res.redirect(`/${store}/manual-view?userId=${userId}&type=${type}`);
 });
+
 
 
 
@@ -2380,98 +2372,41 @@ app.post("/:store/admin/attendance/update", ensureStore, async (req,res)=>{
   res.send("勤怠を更新しました。");
 });
 
+// ===============================
+//   🔐 マニュアル保護付きビュー
+// ===============================
 app.get("/:store/manual-view", ensureStore, async (req, res) => {
-  const { store, storeConf } = req;
+  const { store } = req;
+  const { userId, type } = req.query;
 
-  res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>${store} マニュアル閲覧</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-      body {
-        margin: 0;
-        font-family: sans-serif;
-        background: #f9fafb;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
-      header {
-        background: #2563eb;
-        color: white;
-        text-align: center;
-        padding: 10px;
-        font-size: 18px;
-        font-weight: bold;
-      }
-      iframe {
-        flex: 1;
-        width: 100%;
-        border: none;
-      }
-      /* 黒画面オーバーレイ */
-      #blackout {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 1);
-        z-index: 9999;
-        display: none;
-      }
-      #blackout p {
-        color: white;
-        text-align: center;
-        margin-top: 40vh;
-        font-size: 20px;
-      }
-    </style>
-  </head>
-  <body>
-    <header>${store} マニュアル</header>
+  if (!userId) return res.status(400).send("userId が必要です");
 
-    <!-- Notion 埋め込み -->
-    <iframe src="${storeConf.manualUrl}" id="notionFrame" allowfullscreen></iframe>
+  // 権限チェック
+  const doc = await db.collection("companies").doc(store)
+    .collection("permissions").doc(userId).get();
 
-    <!-- オーバーレイ -->
-    <div id="blackout">
-      <p>マニュアルを保護中...</p>
-    </div>
+  if (!doc.exists || !doc.data().approved) {
+    return res.status(403).send("<h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>");
+  }
 
-    <script>
-      async function main() {
-        await liff.init({ liffId: "${storeConf.liffId}" });
-        if (!liff.isLoggedIn()) liff.login();
+  // マニュアルフォルダ 判定
+  const manualFolder = {
+    line: "line",
+    todo: "todo",
+    default: "todo"
+  }[type] || "todo";
 
-        // visibilitychange イベントで黒画面を切り替え
-        document.addEventListener("visibilitychange", () => {
-          const overlay = document.getElementById("blackout");
-          if (document.hidden) {
-            // アプリを離れた瞬間に黒画面ON
-            overlay.style.display = "block";
-          } else {
-            // アプリに戻ったら解除
-            overlay.style.display = "none";
-          }
-        });
+  const filePath = path.join(__dirname, "manuals", store, manualFolder, "index.html");
 
-        // スマホ画面を閉じたりスリープした場合にも対応
-        window.addEventListener("pagehide", () => {
-          document.getElementById("blackout").style.display = "block";
-        });
-        window.addEventListener("pageshow", () => {
-          document.getElementById("blackout").style.display = "none";
-        });
-      }
-
-      main();
-    </script>
-  </body>
-  </html>
-  `);
+  try {
+    const content = fs.readFileSync(filePath, "utf8");
+    res.send(content);   // ← サーバー経由なので URL 露出しない
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("マニュアルを読み込めませんでした。");
+  }
 });
+
 // 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
 // 🛠 打刻修正申請ページ
 app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
