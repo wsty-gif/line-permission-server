@@ -695,11 +695,17 @@ app.get("/:store/manual-render", ensureStore, async (req, res) => {
     // 画像の proxy 化
     const $$ = cheerio.load(content);
     $$("img").each((i, el) => {
-      const src = $$(el).attr("src");
-      if (src) {
-        $$(el).attr("src", "/manual-asset?url=" + encodeURIComponent(src));
+      let src = $$(el).attr("src");
+      if (!src) return;
+
+      // ① "storeA/1.png" など相対パス → /{store}/manuals/{元のパス}
+      if (!src.startsWith("http")) {
+        src = "/" + store + "/manuals/" + src.replace(/^\//, "");
       }
+
+      $$(el).attr("src", src);
     });
+
     content = $$.html();
 
     // ★ ここを返す
