@@ -86,7 +86,6 @@ app.use("/:store/manuals", (req, res, next) => {
 
 
 // apply は権限チェックを通さずアクセス許可
-app.get("/:store/apply", (req, res, next) => next());
 app.post("/:store/apply/submit", (req, res, next) => next());
 
 // ==============================
@@ -811,10 +810,10 @@ app.get("/:store/apply", ensureStore, (req, res) => {
           withLoginOnExternalBrowser: false
         });
 
-        // LINEアプリ内 or ブラウザでログイン状態が自動判定される
         if (!liff.isLoggedIn()) {
-          // redirectUri を指定しない → 400 回避
-          liff.login();
+          liff.login({
+            redirectUri: location.origin + "/"+ "${store}" + "/apply"
+          });
           return;
         }
 
