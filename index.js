@@ -86,6 +86,7 @@ app.use("/:store/manuals", (req, res, next) => {
 
 
 // apply は権限チェックを通さずアクセス許可
+app.get("/:store/apply", (req, res, next) => next());
 app.post("/:store/apply/submit", (req, res, next) => next());
 
 // ==============================
@@ -805,14 +806,12 @@ app.get("/:store/apply", ensureStore, (req, res) => {
     <script>
     document.addEventListener("DOMContentLoaded", async () => {
       try {
-        await liff.init({
-          liffId: "${storeConf.liffId}",
-          withLoginOnExternalBrowser: false
-        });
+        await liff.init({ liffId: "${storeConf.liffId}" });
 
+        // LINEアプリ外でのログインは redirectUri を付けない
         if (!liff.isLoggedIn()) {
           liff.login({
-            redirectUri: location.origin + "/"+ "${store}" + "/apply"
+            redirectUri: window.location.href   // ← apply に戻るようにする
           });
           return;
         }
