@@ -77,15 +77,17 @@ app.use(
   })
 );
 app.use("/manuals", express.static(path.join(process.cwd(), "manuals")));
-app.use("/:store", (req, res, next) => {
+// manuals の静的ファイル提供を store ごとに設定
+app.use("/:store/manuals", (req, res, next) => {
   const store = req.params.store;
-
-  // manuals/{store} が存在するかチェック
   const dirPath = path.join(process.cwd(), "manuals", store);
-
   express.static(dirPath)(req, res, next);
 });
 
+
+// apply は権限チェックを通さずアクセス許可
+app.get("/:store/apply", (req, res, next) => next());
+app.post("/:store/apply/submit", (req, res, next) => next());
 
 // ==============================
 // 🚀 LINEクライアント初期化
