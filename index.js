@@ -582,7 +582,7 @@ app.get("/:store/manual", ensureStore, (req, res) => {
           if (type) params.set("type", type);
 
           // ✅ 権限チェック + HTML表示をするルートへ
-          location.href = "/" + store + "/manual-view?" + params.toString();
+          location.href = "/" + store + "/manual-check?" + params.toString();
         } catch (e) {
           document.body.innerHTML =
             "<h3>LIFF初期化に失敗しました：" + e.message + "</h3>";
