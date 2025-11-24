@@ -310,6 +310,12 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       <a href="/${store}/admin/attendance">勤怠管理</a>
       <a href="/${store}/admin/fix">打刻修正依頼</a>
       <a href="/${store}/admin/settings">店舗設定</a>
+      <a href="/admin/manual-logs" 
+        style="display:block;margin-top:20px;padding:12px;
+                background:#2563eb;color:white;border-radius:8px;
+                text-align:center;text-decoration:none;">
+        📚 マニュアル閲覧ログを見る
+      </a>
     </div>
 
     <!-- ✅ 検索・フィルタ -->
@@ -604,6 +610,13 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
   if (!doc.exists) return res.status(404).send("権限申請が未登録です。");
   if (!doc.data().approved)
     return res.status(403).send("承認待ちです。");
+
+  await db.collection("manualViews").add({
+    store,
+    userId,
+    manualType: type,
+    viewedAt: admin.firestore.Timestamp.now()
+  });
 
   // ★ manual-view を必ず経由させる（静的URLは公開しない）
   return res.redirect(`/${store}/manual-view?userId=${userId}&type=${type}`);
@@ -4813,6 +4826,61 @@ app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
   });
 
   res.send("勤怠データを更新し、申請を承認しました");
+});
+
+// ================================
+// 管理者用：マニュアル閲覧ログ確認
+// ================================
+app.get("/admin/manual-logs", async (req, res) => {
+  try {
+    const snapshot = await db.collection("manualViews")
+      .orderBy("viewedAt", "desc")
+      .limit(200)
+      .get();
+
+    let rows = "";
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      rows += `
+        <tr>
+          <td>${d.store}</td>
+          <td>${d.manualType}</td>
+          <td>${d.userId}</td>
+          <td>${d.viewedAt.toDate().toLocaleString("ja-JP")}</td>
+        </tr>
+      `;
+    });
+
+    res.send(`
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>マニュアル閲覧ログ</title>
+        <style>
+          body { font-family: sans-serif; padding:20px; }
+          table { width:100%; border-collapse: collapse; }
+          th, td { padding:8px; border-bottom:1px solid #ddd; }
+          th { background:#f3f4f6; }
+        </style>
+      </head>
+      <body>
+        <h1>📚 マニュアル閲覧ログ</h1>
+        <table>
+          <tr>
+            <th>店舗</th>
+            <th>マニュアル</th>
+            <th>ユーザーID</th>
+            <th>閲覧日時</th>
+          </tr>
+          ${rows}
+        </table>
+      </body>
+      </html>
+    `);
+
+  } catch (error) {
+    res.status(500).send("ログ取得エラー: " + error.message);
+  }
 });
 
 // ==============================
