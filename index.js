@@ -310,7 +310,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       <a href="/${store}/admin/attendance">勤怠管理</a>
       <a href="/${store}/admin/fix">打刻修正依頼</a>
       <a href="/${store}/admin/settings">店舗設定</a>
-      <a href="/admin/manual-logs" 
+      <a href="/${store}/admin/manual-logs"
         style="display:block;margin-top:20px;padding:12px;
                 background:#2563eb;color:white;border-radius:8px;
                 text-align:center;text-decoration:none;">
@@ -4836,60 +4836,63 @@ app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
   res.send("勤怠データを更新し、申請を承認しました");
 });
 
-// ================================
-// 管理者用：マニュアル閲覧ログ確認
-// ================================
-app.get("/admin/manual-logs", async (req, res) => {
-  try {
-    const snapshot = await db.collection("manualViews")
-      .orderBy("viewedAt", "desc")
-      .limit(200)
-      .get();
+// 🔥 店舗ごとのマニュアル閲覧ログ表示
+app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
+  const { store } = req;
 
-    let rows = "";
-    snapshot.forEach(doc => {
-      const d = doc.data();
-      rows += `
-        <tr>
-          <td>${d.store}</td>
-          <td>${d.manualType}</td>
-          <td>${d.userId}</td>
-          <td>${d.viewedAt.toDate().toLocaleString("ja-JP")}</td>
-        </tr>
-      `;
-    });
+  // Firestore: companies/{store}/permissions のログではなく
+  // manualViews から取得（店別に格納するなら collection("companies").doc(store).collection("manualViews") に変更可）
+  const snapshot = await db
+    .collection("manualViews")
+    .orderBy("viewedAt", "desc")
+    .get();
 
-    res.send(`
-      <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>マニュアル閲覧ログ</title>
-        <style>
-          body { font-family: sans-serif; padding:20px; }
-          table { width:100%; border-collapse: collapse; }
-          th, td { padding:8px; border-bottom:1px solid #ddd; }
-          th { background:#f3f4f6; }
-        </style>
-      </head>
-      <body>
-        <h1>📚 マニュアル閲覧ログ</h1>
-        <table>
+  const logs = snapshot.docs.map(doc => doc.data());
+
+  let rows = logs.map(l => `
+    <tr>
+      <td>${l.name || "名前未登録"}</td>
+      <td>${l.viewedAt.toDate().toLocaleString("ja-JP")}</td>
+    </tr>
+  `).join("");
+
+  if (!rows) {
+    rows = "<tr><td colspan='2'>まだ閲覧ログがありません</td></tr>";
+  }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>${store} マニュアル閲覧ログ</title>
+      <style>
+        body { font-family:sans-serif; padding:20px; background:#f9fafb; }
+        table { width:100%; border-collapse:collapse; background:white; }
+        th, td { padding:10px; border-bottom:1px solid #eee; text-align:center; }
+        th { background:#2563eb; color:white; }
+      </style>
+    </head>
+    <body>
+      <h1>${store} マニュアル閲覧ログ</h1>
+      <a href="/${store}/admin">← 管理TOPへ戻る</a>
+      <table>
+        <thead>
           <tr>
-            <th>店舗</th>
-            <th>マニュアル</th>
-            <th>ユーザーID</th>
+            <th>名前</th>
             <th>閲覧日時</th>
           </tr>
+        </thead>
+        <tbody>
           ${rows}
-        </table>
-      </body>
-      </html>
-    `);
-
-  } catch (error) {
-    res.status(500).send("ログ取得エラー: " + error.message);
-  }
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `);
 });
+
 
 // ==============================
 const PORT = process.env.PORT || 3000;
