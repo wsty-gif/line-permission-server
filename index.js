@@ -611,10 +611,18 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
   if (!doc.data().approved)
     return res.status(403).send("承認待ちです。");
 
+  // --- ログ保存（権限申請時の名前を取得して保存） ---
+  const userDoc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
+
+  const userName = userDoc.exists ? (userDoc.data().name || "名前未登録") : "名前未登録";
+
   await db.collection("manualViews").add({
-    store,
-    userId,
-    manualType: type,
+    name: userName,
     viewedAt: admin.firestore.Timestamp.now()
   });
 
