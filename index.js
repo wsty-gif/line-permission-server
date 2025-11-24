@@ -4852,7 +4852,10 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   let rows = logs.map(l => `
     <tr>
       <td>${l.name || "名前未登録"}</td>
-      <td>${l.viewedAt.toDate().toLocaleString("ja-JP")}</td>
+      <td>${
+        new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000)
+          .toLocaleString("ja-JP")
+      }</td>
     </tr>
   `).join("");
 
