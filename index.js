@@ -4906,88 +4906,112 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>マニュアル閲覧ログ</title>
-
     <style>
-      body { font-family: sans-serif; padding:20px; background:#f9fafb; }
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        background: #f9fafb;
+      }
 
-      h2 { font-size:1.2rem; margin-bottom:10px; }
-
-      /* 🔵 管理TOPボタン */
+      /* ---- タイトルと戻るボタン ---- */
+      .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0;
+        font-weight: 700;
+      }
       .back-btn {
-        display:inline-block;
-        margin-bottom:20px;
-        padding:8px 16px;
-        background:#2563eb;
-        color:#fff;
-        border-radius:6px;
-        text-decoration:none;
-        font-size:0.9rem;
+        background: #2563eb;
+        color: #fff;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.9rem;
       }
 
-      /* 🔍 フィルターエリア */
-      .filter-box {
-        padding:10px;
-        background:white;
-        border-radius:6px;
-        box-shadow:0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom:20px;
-      }
-      .filter-box label { font-size:0.9rem; }
-      .filter-box input[type="date"] {
-        padding:6px;
-        font-size:0.9rem;
-        margin-right:8px;
-      }
-      .filter-box button {
-        padding:6px 12px;
-        font-size:0.9rem;
-        background:#2563eb;
-        color:white;
-        border:none;
-        border-radius:4px;
-        cursor:pointer;
+      /* ---- 日付検索フォーム ---- */
+      .search-box {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        margin-bottom: 18px;
+
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
       }
 
-      /* 🟦 テーブル表示 */
+      .search-box label {
+        font-size: 0.9rem;
+        color: #555;
+        font-weight: 600;
+      }
+
+      .search-box input[type="date"] {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 0.9rem;
+      }
+
+      .search-btn {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 8px 18px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+      }
+
+      /* ---- 表をスクロール可能に ---- */
       .table-wrap {
-        overflow-x:auto;
-        width:100%;
-        -webkit-overflow-scrolling:touch;
+        overflow-x: auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
       }
+
       table {
-        width:100%;
-        border-collapse:collapse;
-        background:white;
-        min-width:520px;
-        font-size:0.85rem;
+        width: 100%;
+        border-collapse: collapse;
+        white-space: nowrap;
       }
+
       th, td {
-        padding:6px 8px;
-        border-bottom:1px solid #eee;
-        white-space:nowrap;
-        text-align:center;
+        padding: 8px 12px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+        font-size: 0.9rem;
       }
-      th { background:#2563eb; color:white; }
+
+      th {
+        background: #2563eb;
+        color: white;
+      }
     </style>
   </head>
-
   <body>
 
-    <h2>マニュアル閲覧ログ</h2>
-
-    <a class="back-btn" href="/${store}/admin">← 管理TOPへ戻る</a>
-
-    <div class="filter-box">
-      <form method="GET" action="/${store}/admin/manual-logs">
-        <label>開始日：</label>
-        <input type="date" name="start" value="${start || ""}">
-
-        <label>終了日：</label>
-        <input type="date" name="end" value="${end || ""}">
-
-        <button type="submit">検索</button>
-      </form>
+    <div class="header-row">
+      <h1>マニュアル閲覧ログ</h1>
+      <a class="back-btn" href="/${store}/admin">← 管理TOPへ戻る</a>
     </div>
+
+    <form method="GET" class="search-box">
+      <label>開始日：</label>
+      <input type="date" name="start" value="${req.query.start || ""}">
+      <label>終了日：</label>
+      <input type="date" name="end" value="${req.query.end || ""}">
+      <button class="search-btn">検索</button>
+    </form>
 
     <div class="table-wrap">
       <table>
