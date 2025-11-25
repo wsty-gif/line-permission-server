@@ -324,7 +324,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         style="display:block;margin-top:20px;padding:12px;
                 background:#2563eb;color:white;border-radius:8px;
                 text-align:center;text-decoration:none;">
-                マニュアル閲覧ログ
+        📚 マニュアル閲覧ログを見る
       </a>
     </div>
 
@@ -4862,40 +4862,34 @@ app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
   res.send("勤怠データを更新し、申請を承認しました");
 });
 
+// 🔥 店舗ごとのマニュアル閲覧ログ表示
 app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // store 別フィルター
   const snapshot = await db
+    .collection("companies")
+    .doc(store)
     .collection("manualViews")
-    .where("store", "==", store)
     .orderBy("viewedAt", "desc")
     .get();
 
+
   const logs = snapshot.docs.map(doc => doc.data());
 
-  let rows = logs.map(l => {
-
-    const viewedTime = l.viewedAt?.toDate
-      ? new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000)
+  let rows = logs.map(l => `
+    <tr>
+      <td>${l.name || "名前未登録"}</td>
+      <td>${l.title || "マニュアル名不明"}</td>
+      <td>${
+        new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000)
           .toLocaleString("ja-JP")
-      : "日時不明";
-
-    return `
-      <tr>
-        <td>${l.name || "名前未登録"}</td>
-        <td>${l.manualTitle || "未設定"}</td>
-        <td>${viewedTime}</td>
-      </tr>
-    `
-  }).join("");
+      }</td>
+    </tr>
+  `).join("");
 
   if (!rows) {
-    rows = "<tr><td colspan='3'>まだ閲覧ログがありません</td></tr>";
+    rows = "<tr><td colspan='2'>まだ閲覧ログがありません</td></tr>";
   }
-
-  // ★ 作り直し：CSP を解除して外部 CSS を許可
-  res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
 
   res.send(`
     <!DOCTYPE html>
@@ -4903,24 +4897,17 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-
-      <title>マニュアル閲覧ログ</title>
-
+      <title>${store} マニュアル閲覧ログ</title>
       <style>
-        body { font-family: sans-serif; padding: 16px; background:#f9fafb; }
-        h1 { font-size:1.2rem; margin-bottom: 10px; }
-        table { width:100%; border-collapse:collapse; font-size:0.85rem; background:white; }
-        th, td { padding:6px 8px; border-bottom:1px solid #eee; text-align:center; white-space:nowrap; }
+        body { font-family:sans-serif; padding:20px; background:#f9fafb; }
+        table { width:100%; border-collapse:collapse; background:white; }
+        th, td { padding:10px; border-bottom:1px solid #eee; text-align:center; }
         th { background:#2563eb; color:white; }
-        a { margin-bottom:12px; display:inline-block; font-size:0.9rem; color:#2563eb; }
       </style>
     </head>
-
     <body>
-      <h1>マニュアル閲覧ログ</h1>
-
+      <h1>${store} マニュアル閲覧ログ</h1>
       <a href="/${store}/admin">← 管理TOPへ戻る</a>
-
       <table>
         <thead>
           <tr>
@@ -4933,12 +4920,10 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
           ${rows}
         </tbody>
       </table>
-
     </body>
     </html>
   `);
 });
-
 
 
 // ==============================
