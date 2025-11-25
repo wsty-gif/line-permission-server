@@ -2385,45 +2385,53 @@ app.post("/:store/attendance/clockOut", ensureStore, async (req, res) => {
   res.send("✅ 退勤を記録しました。");
 });
 
-// 📅 月別一覧取得
-// 勤怠一覧取得API
+// 複数勤務対応版（最新の works を代表値として返す）
 app.get("/:store/attendance/records", ensureStore, async (req, res) => {
+  const { store } = req.params;
   const { userId, month } = req.query;
-  const store = req.store;
 
-  if (!userId || !month) {
-    return res.status(400).send("userId と month は必須です");
-  }
+  if (!userId || !month) return res.status(400).json([]);
 
-  try {
-    const snap = await db
-      .collection("companies")
-      .doc(store)
-      .collection("attendance")
-      .doc(userId)
-      .collection("records")
-      .orderBy("date", "asc")
-      .get();
+  const [y, m] = month.split("-");
+  const prefix = `${y}-${m.padStart(2, "0")}-`;
 
-    const records = snap.docs
-      .map(doc => {
-        const d = doc.data();
-        return {
-          date: d.date,
-          clockIn: d.clockIn ? formatDate(d.clockIn) : null,
-          clockOut: d.clockOut ? formatDate(d.clockOut) : null,
-          breakStart: d.breakStart ? formatDate(d.breakStart) : null,
-          breakEnd: d.breakEnd ? formatDate(d.breakEnd) : null,
-        };
-      })
-      .filter(r => r.date && r.date.startsWith(month)); // 対象月のみ表示
+  const snapshot = await db
+    .collection("companies")
+    .doc(store)
+    .collection("attendance")
+    .doc(userId)
+    .collection("records")
+    .get();
 
-    res.json(records);
-  } catch (e) {
-    console.error("❌ 勤怠データ取得エラー:", e);
-    res.status(500).send("データ取得に失敗しました");
-  }
+  let list = [];
+
+  snapshot.forEach(doc => {
+    const d = doc.id; // "2025-11-25"
+    if (!d.startsWith(prefix)) return;
+
+    const data = doc.data();
+    const works = data.works || [];
+
+    // 代表値は「その日の最後の勤務」
+    const last = works[works.length - 1] || {};
+
+    list.push({
+      date: d,
+      works,
+      // 表示用代表値
+      clockIn: works[0]?.clockIn || "",
+      clockOut: last.clockOut || "",
+      breakStart: works.map(w => w.breakStart).filter(x => x).join(", "),
+      breakEnd: works.map(w => w.breakEnd).filter(x => x).join(", ")
+    });
+  });
+
+  // 日付昇順
+  list.sort((a, b) => a.date.localeCompare(b.date));
+
+  res.json(list);
 });
+
 
 function formatDate(ts) {
   // もし Timestamp 型なら toDate() を使う
