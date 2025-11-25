@@ -324,7 +324,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         style="display:block;margin-top:20px;padding:12px;
                 background:#2563eb;color:white;border-radius:8px;
                 text-align:center;text-decoration:none;">
-        📚 マニュアル閲覧ログを見る
+        マニュアル閲覧ログ
       </a>
     </div>
 
