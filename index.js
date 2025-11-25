@@ -4918,12 +4918,17 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
           color:#2563eb;
           text-decoration:none;
         }
-
+        .table-wrap {
+          overflow-x: auto;      /* ← 横スクロールはここだけ */
+          width: 100%;
+          -webkit-overflow-scrolling: touch;  /* スマホで滑らか */
+        }
         table { 
           width:100%; 
           border-collapse:collapse; 
           background:white; 
           font-size:0.85rem;
+          min-width: 480px;
         }
 
         th, td { 
@@ -4943,18 +4948,20 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
     <body>
       <h1>${store} マニュアル閲覧ログ</h1>
       <a href="/${store}/admin">← 管理TOPへ戻る</a>
-      <table>
-        <thead>
-          <tr>
-            <th>名前</th>
-            <th>マニュアル名</th>
-            <th>閲覧日時</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>名前</th>
+              <th>マニュアル名</th>
+              <th>閲覧日時</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
     </body>
     </html>
   `);
