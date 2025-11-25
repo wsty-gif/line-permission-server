@@ -1374,23 +1374,25 @@ async function loadRecords() {
       let first = works[0] || {};
       let last = works[works.length - 1] || {};
 
-      let breakStarts = works
-        .map(function (w) {
-          return w.breakStart || "--:--";
-        })
-        .join("<br>");
+      let breakStarts = works.map(w => timeOnly(w.breakStart)).join("<br>");
+      let breakEnds   = works.map(w => timeOnly(w.breakEnd)).join("<br>");
 
-      let breakEnds = works
-        .map(function (w) {
-          return w.breakEnd || "--:--";
-        })
-        .join("<br>");
+      // 今日の日付キーを取得
+      const today = getTodayKey();
+      const todayRecord = data.find(r => r.date === today);
+
+      // 今日の中で最新の勤務（未退勤 or 一番最後の works）
+      let latestWork = null;
+
+      if (todayRecord && todayRecord.works && todayRecord.works.length > 0) {
+        latestWork = todayRecord.works[todayRecord.works.length - 1];
+      }
 
       return (
         "<tr>" +
         "<td>" + (r.date || "--") + "</td>" +
-        "<td>" + (first.clockIn || "--:--") + "</td>" +
-        "<td>" + (last.clockOut || "--:--") + "</td>" +
+        "<td>" + timeOnly(first.clockIn) + "</td>" +
+        "<td>" + timeOnly(last.clockOut) + "</td>" +
         "<td>" + breakStarts + "</td>" +
         "<td>" + breakEnds + "</td>" +
         "</tr>"
@@ -1406,33 +1408,27 @@ async function loadRecords() {
 
   const latestRecord = data[data.length - 1]; // 最後の勤務
 
-  // 🔹 未退勤の勤務が残っている場合
-  if (latestRecord && !latestRecord.clockOut) {
+  if (latestWork && !latestWork.clockOut) {
+    // 出勤済み・未退勤
     document.getElementById("btnIn").disabled = true;
     document.getElementById("btnOut").disabled = false;
 
-    document.getElementById("timeIn").innerText = timeOnly(latestRecord.clockIn);
-    document.getElementById("timeBreakStart").innerText = timeOnly(latestRecord.breakStart);
-    document.getElementById("timeBreakEnd").innerText = timeOnly(latestRecord.breakEnd);
-    document.getElementById("timeOut").innerText = "--:--";
+    document.getElementById("timeIn").innerText         = timeOnly(latestWork.clockIn);
+    document.getElementById("timeBreakStart").innerText = timeOnly(latestWork.breakStart);
+    document.getElementById("timeBreakEnd").innerText   = timeOnly(latestWork.breakEnd);
+    document.getElementById("timeOut").innerText        = "--:--";
 
   } else {
-    // 🔹 全て退勤済み or 出勤なし → 通常状態
+    // 退勤済み or 勤務なし
     document.getElementById("btnIn").disabled = false;
     document.getElementById("btnOut").disabled = true;
 
-    document.getElementById("timeIn").innerText =
-      timeOnly(todayData ? todayData.clockIn : null);
-
-    document.getElementById("timeOut").innerText =
-      timeOnly(todayData ? todayData.clockOut : null);
-
-    document.getElementById("timeBreakStart").innerText =
-      timeOnly(todayData ? todayData.breakStart : null);
-
-    document.getElementById("timeBreakEnd").innerText =
-      timeOnly(todayData ? todayData.breakEnd : null);
+    document.getElementById("timeIn").innerText         = timeOnly(latestWork ? latestWork.clockIn : null);
+    document.getElementById("timeOut").innerText        = timeOnly(latestWork ? latestWork.clockOut : null);
+    document.getElementById("timeBreakStart").innerText = timeOnly(latestWork ? latestWork.breakStart : null);
+    document.getElementById("timeBreakEnd").innerText   = timeOnly(latestWork ? latestWork.breakEnd : null);
   }
+
 }
       function showToast(message) {
         const toast = document.getElementById("toast");
