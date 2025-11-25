@@ -865,50 +865,6 @@
 		summary::marker {
 			font-size: 1.4rem !important;
 		}
-		/* ▼ 赤背景の材料ボックス（block-color-red_background など）を2カラムに整える */
-		.block-color-red_background ul,
-		.block-color-red_background ol {
-			display: grid !important;
-			grid-template-columns: 1fr 1fr; /* 左右2列 */
-			column-gap: 20px;
-			row-gap: 6px;
-		}
-
-		.block-color-red_background li {
-			white-space: nowrap;  /* 改行しない */
-			padding: 4px 0;
-			font-size: 1.2rem !important;
-		}
-
-		/* block-color-pink_background など別の色でも材料リストがあるため同じ処理を適用 */
-		.block-color-pink_background ul,
-		.block-color-pink_background ol {
-			display: grid !important;
-			grid-template-columns: 1fr 1fr;
-			column-gap: 20px;
-			row-gap: 6px;
-		}
-
-		.block-color-pink_background li {
-			white-space: nowrap;
-			padding: 4px 0;
-			font-size: 1.2rem !important;
-		}
-		/* ピンクボックス内のULを2カラムのグリッドにする */
-		.page-body .indented ul {
-			display: grid;
-			grid-template-columns: 1fr 1fr;
-			column-gap: 20px;
-			margin: 0;
-			padding: 4px 0;
-			list-style: none;
-		}
-
-		/* li を1行で表示 */
-		.page-body .indented ul li {
-			padding: 4px 0;
-			white-space: nowrap;
-		}
 	</style>
 </head>
 
@@ -1489,7 +1445,7 @@
 						<ol type="1" id="2b25898c-3c37-80c3-9b6d-f0dc89c2005e" class="numbered-list" start="4">
 							<li><strong>蓋を閉めて蓋の上にシールを貼って完成</strong>
 								<figure class="block-color-red_background callout"
-									style="white-space:pre-wrap;display:flex" id="2b25898c-3c37-808c-bbef-dc8992271ad8">
+									style="display:flex" id="2b25898c-3c37-808c-bbef-dc8992271ad8">
 									<div style="width:100%">
 										<p id="2b25898c-3c37-8049-91df-c8202916c2af" class="">
 											<strong>いちご２個（８きれ）・カットイチゴ（スプーン２杯）</strong></p>
