@@ -324,7 +324,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         style="display:block;margin-top:20px;padding:12px;
                 background:#2563eb;color:white;border-radius:8px;
                 text-align:center;text-decoration:none;">
-        📚 マニュアル閲覧ログを見る
+                マニュアル閲覧ログ
       </a>
     </div>
 
@@ -4862,24 +4862,22 @@ app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
   res.send("勤怠データを更新し、申請を承認しました");
 });
 
-// 🔥 店舗ごとのマニュアル閲覧ログ表示
 app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   const { store } = req;
 
+  // store 別にフィルター
   const snapshot = await db
-    .collection("companies")
-    .doc(store)
     .collection("manualViews")
+    .where("store", "==", store)
     .orderBy("viewedAt", "desc")
     .get();
-
 
   const logs = snapshot.docs.map(doc => doc.data());
 
   let rows = logs.map(l => `
     <tr>
       <td>${l.name || "名前未登録"}</td>
-      <td>${l.title || "マニュアル名不明"}</td>
+      <td>${l.manualTitle || "未設定"}</td>
       <td>${
         new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000)
           .toLocaleString("ja-JP")
@@ -4888,7 +4886,7 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   `).join("");
 
   if (!rows) {
-    rows = "<tr><td colspan='2'>まだ閲覧ログがありません</td></tr>";
+    rows = "<tr><td colspan='3'>まだ閲覧ログがありません</td></tr>";
   }
 
   res.send(`
@@ -4897,17 +4895,56 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>${store} マニュアル閲覧ログ</title>
+
+      <title>マニュアル閲覧ログ</title>
+
       <style>
-        body { font-family:sans-serif; padding:20px; background:#f9fafb; }
-        table { width:100%; border-collapse:collapse; background:white; }
-        th, td { padding:10px; border-bottom:1px solid #eee; text-align:center; }
-        th { background:#2563eb; color:white; }
+        body { 
+          font-family: sans-serif; 
+          padding: 16px; 
+          background:#f9fafb; 
+        }
+
+        h1 { 
+          font-size: 1.2rem;   /* ← タイトル小さめ */
+          margin-bottom: 10px;
+          color:#111;
+        }
+
+        table { 
+          width:100%; 
+          border-collapse: collapse; 
+          background:white; 
+          font-size: 0.85rem; /* ← 全体の文字小さめ */
+        }
+
+        th, td { 
+          padding: 6px 8px;       /* ← 行の高さを小さく */
+          border-bottom: 1px solid #eee; 
+          text-align: center; 
+          white-space: nowrap;    /* ← 改行しない */
+        }
+
+        th { 
+          background:#2563eb; 
+          color:white; 
+          font-weight:600;
+        }
+
+        a { 
+          display:inline-block;
+          margin-bottom:12px;
+          color:#2563eb; 
+          font-size:0.9rem;
+        }
       </style>
     </head>
+
     <body>
-      <h1>${store} マニュアル閲覧ログ</h1>
+      <h1>マニュアル閲覧ログ</h1>
+
       <a href="/${store}/admin">← 管理TOPへ戻る</a>
+
       <table>
         <thead>
           <tr>
@@ -4920,10 +4957,12 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
           ${rows}
         </tbody>
       </table>
+
     </body>
     </html>
   `);
 });
+
 
 
 // ==============================
