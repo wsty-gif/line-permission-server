@@ -640,11 +640,16 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
     req.storeConf.manualTitles.default ||
     "マニュアル";
 
-  await db.collection("manualViews").add({
-    name: userName,              // ← 申請名（既に実装済み）
-    title: manualTitle,          // ← .env から取得したマニュアル名
+await db
+  .collection("companies")
+  .doc(store)
+  .collection("manualViews")
+  .add({
+    name: userName,
+    title: manualTitle,
     viewedAt: admin.firestore.Timestamp.now()
   });
+
 
 
   // ★ manual-view を必ず経由させる（静的URLは公開しない）
@@ -4861,12 +4866,13 @@ app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
 app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // Firestore: companies/{store}/permissions のログではなく
-  // manualViews から取得（店別に格納するなら collection("companies").doc(store).collection("manualViews") に変更可）
   const snapshot = await db
+    .collection("companies")
+    .doc(store)
     .collection("manualViews")
     .orderBy("viewedAt", "desc")
     .get();
+
 
   const logs = snapshot.docs.map(doc => doc.data());
 
