@@ -4865,183 +4865,175 @@ app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
 app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // 🔍 日付フィルタ（YYYY-MM-DD）
-  const { start, end } = req.query;
+  // ページネーション設定
+  const page = parseInt(req.query.page) || 1;
+  const limit = 20;
+  const offset = (page - 1) * limit;
 
-  let collectionRef = db
+  // Firestore: companies/{store}/manualViews
+  const snapshot = await db
     .collection("companies")
     .doc(store)
     .collection("manualViews")
-    .orderBy("viewedAt", "desc");
+    .orderBy("viewedAt", "desc")
+    .get();
 
-  // 📌 開始日が指定されている場合
-  if (start) {
-    const startDate = new Date(`${start}T00:00:00+09:00`);
-    collectionRef = collectionRef.where("viewedAt", ">=", startDate);
+  const allLogs = snapshot.docs.map((doc) => doc.data());
+  const total = allLogs.length;
+
+  // 対象ページのデータを抽出
+  const logs = allLogs.slice(offset, offset + limit);
+
+  // テーブル行生成
+  let rows = logs
+    .map(
+      (l) => `
+      <tr>
+        <td>${l.name || "名前未登録"}</td>
+        <td>${l.title || "マニュアル名不明"}</td>
+        <td>${new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000).toLocaleString("ja-JP")}</td>
+      </tr>
+    `
+    )
+    .join("");
+
+  if (!rows) {
+    rows = "<tr><td colspan='3'>まだ閲覧ログがありません</td></tr>";
   }
 
-  // 📌 終了日が指定されている場合
-  if (end) {
-    const endDate = new Date(`${end}T23:59:59+09:00`);
-    collectionRef = collectionRef.where("viewedAt", "<=", endDate);
-  }
+  // ページ数
+  const totalPages = Math.ceil(total / limit);
 
-  const snapshot = await collectionRef.get();
-  const logs = snapshot.docs.map(doc => doc.data());
-
-  let rows = logs.map(l => `
-    <tr>
-      <td>${l.name || "名前未登録"}</td>
-      <td>${l.title || "マニュアル名不明"}</td>
-      <td>${new Date(l.viewedAt.toDate()).toLocaleString("ja-JP")}</td>
-    </tr>
-  `).join("");
-
-  if (!rows) rows = `<tr><td colspan="3">指定期間の閲覧ログはありません</td></tr>`;
-
-  res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>マニュアル閲覧ログ</title>
-    <style>
-      body { 
-        font-family:sans-serif; 
-        padding:20px; 
-        background:#f9fafb; 
-      }
-
-      /* タイトル行の横並び */
-      .header-row {
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        margin-bottom:20px;
-        flex-wrap:nowrap; /* ← 折り返し禁止 */
-      }
-
-      .header-title {
-        font-size:20px;
-        font-weight:700;
-        white-space:nowrap; /* ← タイトル折返し防止 */
-      }
-
-      .top-btn {
-        background:#2563eb;
-        color:white;
-        padding:8px 14px;
-        border-radius:6px;
-        text-decoration:none;
-        font-size:14px;
-        white-space:nowrap; /* ← ボタン折返し防止 */
-      }
-
-      /* 日付検索ボックス */
-      .search-box {
-        background:white;
-        padding:15px;
-        border-radius:10px;
-        margin-bottom:20px;
-        border:1px solid #e5e7eb;
-      }
-
-      .search-row {
-        display:flex;
-        gap:10px;
-        align-items:center;
-        flex-wrap:wrap;
-      }
-
-      .date-input {
-        padding:6px 10px;
-        border:1px solid #ccc;
-        border-radius:6px;
-        font-size:14px;
-      }
-
-      .search-btn {
-        background:#2563eb;
-        color:white;
-        padding:6px 12px;
-        border:none;
-        border-radius:6px;
-        cursor:pointer;
-        font-size:14px;
-        white-space:nowrap;
-      }
-
-      table {
-        width:100%;
-        border-collapse:collapse;
-        background:white;
-        min-width:600px;
-      }
-
-      th, td { 
-        padding:8px;
-        border-bottom:1px solid #eee; 
-        text-align:center; 
-        white-space:nowrap; /* ← 改行しない */
-        font-size:14px;
-      }
-
-      th { background:#2563eb; color:white; }
-
-      /* テーブルを横スクロール可能に */
-      .table-wrapper {
-        overflow-x:auto;
-        border-radius:8px;
-        border:1px solid #e5e7eb;
-        background:white;
-      }
-    </style>
-
-  </head>
-  <body>
-
-    <div class="header-row">
-      <div class="header-title">マニュアル閲覧ログ</div>
-      <a href="/${store}/admin" class="top-btn">← 管理TOPへ戻る</a>
-    </div>
-
-    <!-- 日付検索 -->
-    <form method="GET" action="/${store}/admin/manual-logs">
-      <div class="search-box">
-        <div class="search-row">
-          <label>開始日：</label>
-          <input type="date" name="start" class="date-input" value="${req.query.start || ""}">
-          
-          <label>終了日：</label>
-          <input type="date" name="end" class="date-input" value="${req.query.end || ""}">
-
-          <button class="search-btn">検索</button>
-        </div>
+  // ページネーション（必要な場合のみ表示）
+  let pagination = "";
+  if (totalPages > 1) {
+    pagination = `
+      <div class="pagination">
+        ${
+          page > 1
+            ? `<a href="/${store}/admin/manual-logs?page=${page - 1}" class="page-btn">前へ</a>`
+            : ""
+        }
+        <span class="page-info">Page ${page} / ${totalPages}</span>
+        ${
+          page < totalPages
+            ? `<a href="/${store}/admin/manual-logs?page=${page + 1}" class="page-btn">次へ</a>`
+            : ""
+        }
       </div>
-    </form>
+    `;
+  }
 
-    <!-- テーブル -->
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>名前</th>
-            <th>マニュアル名</th>
-            <th>閲覧日時</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-    </div>
+  // HTML
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>マニュアル閲覧ログ</title>
+      <style>
+        body { font-family:sans-serif; padding:20px; background:#f9fafb; }
 
-  </body>
+        .header-row {
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          margin-bottom:20px;
+          flex-wrap:nowrap;
+        }
 
-  </html>
+        .header-title {
+          font-size:20px;
+          font-weight:700;
+          white-space:nowrap;
+        }
+
+        .top-btn {
+          background:#2563eb;
+          color:white;
+          padding:8px 14px;
+          border-radius:6px;
+          text-decoration:none;
+          font-size:14px;
+          white-space:nowrap;
+        }
+
+        /* テーブル */
+        .table-wrapper {
+          overflow-x:auto;
+          border-radius:8px;
+          border:1px solid #e5e7eb;
+          background:white;
+        }
+
+        table {
+          width:100%;
+          border-collapse:collapse;
+          min-width:600px;
+        }
+
+        th, td {
+          padding:8px;
+          border-bottom:1px solid #eee;
+          text-align:center;
+          white-space:nowrap;
+          font-size:14px;
+        }
+
+        th { background:#2563eb; color:white; }
+
+        /* ページネーション */
+        .pagination {
+          display:flex;
+          justify-content:center;
+          align-items:center;
+          gap:10px;
+          margin-top:20px;
+        }
+
+        .page-btn {
+          background:#2563eb;
+          color:white;
+          padding:6px 12px;
+          border-radius:6px;
+          text-decoration:none;
+          font-size:14px;
+        }
+
+        .page-info {
+          font-size:14px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header-row">
+        <div class="header-title">マニュアル閲覧ログ</div>
+        <a href="/${store}/admin" class="top-btn">← 管理TOPへ戻る</a>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>名前</th>
+              <th>マニュアル名</th>
+              <th>閲覧日時</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+
+      ${pagination}
+
+    </body>
+    </html>
   `);
 });
+
 
 
 
