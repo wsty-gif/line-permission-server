@@ -1357,50 +1357,83 @@ async function submitRequest() {
 }
 
 
-      async function loadRecords() {
-        const month = document.getElementById("monthSelect").value;
-        const res = await fetch("/${store}/attendance/records?userId=" + userId + "&month=" + month);
-        const data = await res.json();
-        allRecords = data;
+async function loadRecords() {
+  const month = document.getElementById("monthSelect").value;
 
-        // テーブル描画
-        const tbody = document.getElementById("recordsBody");
-        tbody.innerHTML = data.map(r =>
-          "<tr><td>" + (r.date || "--") + "</td><td>" +
-          (r.clockIn || "--:--") + "</td><td>" +
-          (r.clockOut || "--:--") + "</td><td>" +
-          (r.breakStart || "--:--") + "</td><td>" +
-          (r.breakEnd || "--:--") + "</td></tr>"
-        ).join("");
+  const res = await fetch(
+    "/${store}/attendance/records?userId=" + userId + "&month=" + month
+  );
+  const data = await res.json();
+  allRecords = data;
 
-        const today = getTodayKey();
-        const todayData = data.find(r => r.date === today);
-        const latestRecord = data[data.length - 1]; // 一番新しい勤務
+  // テーブル描画
+  const tbody = document.getElementById("recordsBody");
+  tbody.innerHTML = data
+    .map(function (r) {
+      let works = r.works || [];
+      let first = works[0] || {};
+      let last = works[works.length - 1] || {};
 
-        // 🔹 まだ退勤していない勤務がある場合
-        if (latestRecord && !latestRecord.clockOut) {
-          // 出勤ボタンは押せない・退勤ボタンだけ押せる
-          document.getElementById("btnIn").disabled = true;
-          document.getElementById("btnOut").disabled = false;
+      let breakStarts = works
+        .map(function (w) {
+          return w.breakStart || "--:--";
+        })
+        .join("<br>");
 
-          // ボタン内の時刻は「未退勤のその勤務」の内容を表示
-          document.getElementById("timeIn").innerText         = timeOnly(latestRecord.clockIn);
-          document.getElementById("timeBreakStart").innerText = timeOnly(latestRecord.breakStart);
-          document.getElementById("timeBreakEnd").innerText   = timeOnly(latestRecord.breakEnd);
-          document.getElementById("timeOut").innerText        = "--:--";
-        } else {
-          // 🔹 すべて退勤済み or まだ一度も出勤していない → 通常状態
-          document.getElementById("btnIn").disabled = false;
-          document.getElementById("btnOut").disabled = true;
+      let breakEnds = works
+        .map(function (w) {
+          return w.breakEnd || "--:--";
+        })
+        .join("<br>");
 
-          // 今日分のデータだけ反映（なければ "--:--"）
-          document.getElementById("timeIn").innerText         = timeOnly(todayData?.clockIn);
-          document.getElementById("timeOut").innerText        = timeOnly(todayData?.clockOut);
-          document.getElementById("timeBreakStart").innerText = timeOnly(todayData?.breakStart);
-          document.getElementById("timeBreakEnd").innerText   = timeOnly(todayData?.breakEnd);
-        }
-      }
+      return (
+        "<tr>" +
+        "<td>" + (r.date || "--") + "</td>" +
+        "<td>" + (first.clockIn || "--:--") + "</td>" +
+        "<td>" + (last.clockOut || "--:--") + "</td>" +
+        "<td>" + breakStarts + "</td>" +
+        "<td>" + breakEnds + "</td>" +
+        "</tr>"
+      );
+    })
+    .join("");
 
+  // ボタン制御
+  const today = getTodayKey();
+  const todayData = data.find(function (r) {
+    return r.date === today;
+  });
+
+  const latestRecord = data[data.length - 1]; // 最後の勤務
+
+  // 🔹 未退勤の勤務が残っている場合
+  if (latestRecord && !latestRecord.clockOut) {
+    document.getElementById("btnIn").disabled = true;
+    document.getElementById("btnOut").disabled = false;
+
+    document.getElementById("timeIn").innerText = timeOnly(latestRecord.clockIn);
+    document.getElementById("timeBreakStart").innerText = timeOnly(latestRecord.breakStart);
+    document.getElementById("timeBreakEnd").innerText = timeOnly(latestRecord.breakEnd);
+    document.getElementById("timeOut").innerText = "--:--";
+
+  } else {
+    // 🔹 全て退勤済み or 出勤なし → 通常状態
+    document.getElementById("btnIn").disabled = false;
+    document.getElementById("btnOut").disabled = true;
+
+    document.getElementById("timeIn").innerText =
+      timeOnly(todayData ? todayData.clockIn : null);
+
+    document.getElementById("timeOut").innerText =
+      timeOnly(todayData ? todayData.clockOut : null);
+
+    document.getElementById("timeBreakStart").innerText =
+      timeOnly(todayData ? todayData.breakStart : null);
+
+    document.getElementById("timeBreakEnd").innerText =
+      timeOnly(todayData ? todayData.breakEnd : null);
+  }
+}
       function showToast(message) {
         const toast = document.getElementById("toast");
         toast.textContent = message;
