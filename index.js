@@ -4899,11 +4899,46 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>${store} マニュアル閲覧ログ</title>
       <style>
-        body { font-family:sans-serif; padding:20px; background:#f9fafb; }
-        table { width:100%; border-collapse:collapse; background:white; }
-        th, td { padding:10px; border-bottom:1px solid #eee; text-align:center; }
-        th { background:#2563eb; color:white; }
+        body { 
+          font-family:sans-serif; 
+          padding:16px; 
+          background:#f9fafb; 
+        }
+
+        h1 { 
+          font-size:1.2rem; 
+          margin-bottom:12px; 
+          font-weight:600;
+        }
+
+        a { 
+          margin-bottom:12px; 
+          display:inline-block; 
+          font-size:0.9rem;
+          color:#2563eb;
+          text-decoration:none;
+        }
+
+        table { 
+          width:100%; 
+          border-collapse:collapse; 
+          background:white; 
+          font-size:0.85rem;
+        }
+
+        th, td { 
+          padding:6px 8px;               /* ← 縦幅を小さく */
+          border-bottom:1px solid #eee; 
+          text-align:center; 
+          white-space:nowrap;            /* ← 改行防止 */
+        }
+
+        th { 
+          background:#2563eb; 
+          color:white; 
+        }
       </style>
+
     </head>
     <body>
       <h1>${store} マニュアル閲覧ログ</h1>
