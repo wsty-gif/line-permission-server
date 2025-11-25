@@ -4865,7 +4865,7 @@ app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
 app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // store 別にフィルター
+  // store 別フィルター
   const snapshot = await db
     .collection("manualViews")
     .where("store", "==", store)
@@ -4874,20 +4874,28 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
 
   const logs = snapshot.docs.map(doc => doc.data());
 
-  let rows = logs.map(l => `
-    <tr>
-      <td>${l.name || "名前未登録"}</td>
-      <td>${l.manualTitle || "未設定"}</td>
-      <td>${
-        new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000)
+  let rows = logs.map(l => {
+
+    const viewedTime = l.viewedAt?.toDate
+      ? new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000)
           .toLocaleString("ja-JP")
-      }</td>
-    </tr>
-  `).join("");
+      : "日時不明";
+
+    return `
+      <tr>
+        <td>${l.name || "名前未登録"}</td>
+        <td>${l.manualTitle || "未設定"}</td>
+        <td>${viewedTime}</td>
+      </tr>
+    `
+  }).join("");
 
   if (!rows) {
     rows = "<tr><td colspan='3'>まだ閲覧ログがありません</td></tr>";
   }
+
+  // ★ 作り直し：CSP を解除して外部 CSS を許可
+  res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
 
   res.send(`
     <!DOCTYPE html>
@@ -4899,44 +4907,12 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
       <title>マニュアル閲覧ログ</title>
 
       <style>
-        body { 
-          font-family: sans-serif; 
-          padding: 16px; 
-          background:#f9fafb; 
-        }
-
-        h1 { 
-          font-size: 1.2rem;   /* ← タイトル小さめ */
-          margin-bottom: 10px;
-          color:#111;
-        }
-
-        table { 
-          width:100%; 
-          border-collapse: collapse; 
-          background:white; 
-          font-size: 0.85rem; /* ← 全体の文字小さめ */
-        }
-
-        th, td { 
-          padding: 6px 8px;       /* ← 行の高さを小さく */
-          border-bottom: 1px solid #eee; 
-          text-align: center; 
-          white-space: nowrap;    /* ← 改行しない */
-        }
-
-        th { 
-          background:#2563eb; 
-          color:white; 
-          font-weight:600;
-        }
-
-        a { 
-          display:inline-block;
-          margin-bottom:12px;
-          color:#2563eb; 
-          font-size:0.9rem;
-        }
+        body { font-family: sans-serif; padding: 16px; background:#f9fafb; }
+        h1 { font-size:1.2rem; margin-bottom: 10px; }
+        table { width:100%; border-collapse:collapse; font-size:0.85rem; background:white; }
+        th, td { padding:6px 8px; border-bottom:1px solid #eee; text-align:center; white-space:nowrap; }
+        th { background:#2563eb; color:white; }
+        a { margin-bottom:12px; display:inline-block; font-size:0.9rem; color:#2563eb; }
       </style>
     </head>
 
