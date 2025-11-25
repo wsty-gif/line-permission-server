@@ -1340,7 +1340,7 @@ async function submitRequest() {
     breakEnd:    mergeDT(document.getElementById("newDateBreakEnd").value, document.getElementById("newBreakEnd").value)
   };
 
-  await fetch("/storeA/attendance/request", {
+  await fetch("/" + STORE + "/attendance/request", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
