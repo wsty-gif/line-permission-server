@@ -31,6 +31,11 @@ const STORES = {
       todo: process.env.STORE_A_MANUAL_URL_TODO,
       default: process.env.STORE_A_MANUAL_URL_DEFAULT,
     },
+    manualTitles: {
+      line: process.env.STORE_A_MANUAL_TITLE_LINE,
+      todo: process.env.STORE_A_MANUAL_TITLE_TODO,
+      default: process.env.STORE_A_MANUAL_TITLE_DEFAULT,
+    },
   },
   nice_sweets: {
     channelAccessToken: process.env.STORE_B_CHANNEL_ACCESS_TOKEN,
@@ -44,6 +49,11 @@ const STORES = {
       line: process.env.STORE_B_MANUAL_URL_LINE,
       todo: process.env.STORE_B_MANUAL_URL_TODO,
       default: process.env.STORE_B_MANUAL_URL_DEFAULT,
+    },
+    manualTitles: {
+      line: process.env.STORE_B_MANUAL_TITLE_LINE,
+      todo: process.env.STORE_B_MANUAL_TITLE_TODO,
+      default: process.env.STORE_B_MANUAL_TITLE_DEFAULT,
     },
   },
 };
@@ -621,10 +631,21 @@ app.get("/:store/manual-check", ensureStore, async (req, res) => {
 
   const userName = userDoc.exists ? (userDoc.data().name || "名前未登録") : "名前未登録";
 
+  // type を取得
+  const title = req.query.type || "default";
+
+  // --- マニュアルタイトルを .env から取得 ---
+  const manualTitle =
+    req.storeConf.manualTitles[title] ||
+    req.storeConf.manualTitles.default ||
+    "マニュアル";
+
   await db.collection("manualViews").add({
-    name: userName,
+    name: userName,              // ← 申請名（既に実装済み）
+    title: manualTitle,          // ← .env から取得したマニュアル名
     viewedAt: admin.firestore.Timestamp.now()
   });
+
 
   // ★ manual-view を必ず経由させる（静的URLは公開しない）
   return res.redirect(`/${store}/manual-view?userId=${userId}&type=${type}`);
@@ -4852,6 +4873,7 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   let rows = logs.map(l => `
     <tr>
       <td>${l.name || "名前未登録"}</td>
+      <td>${l.title || "マニュアル名不明"}</td>
       <td>${
         new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000)
           .toLocaleString("ja-JP")
@@ -4884,6 +4906,7 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
         <thead>
           <tr>
             <th>名前</th>
+            <th>マニュアル名</th>
             <th>閲覧日時</th>
           </tr>
         </thead>
