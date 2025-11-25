@@ -850,7 +850,21 @@
 		font-size: 1.25em !important; /* 見出しは少し控えめに拡大 */
 		line-height: 1.4 !important;
 		}
+		/* ▼ 通常文字を h1 のタイトル文字サイズに合わせる ▼ */
+		summary,
+		summary strong,
+		li,
+		li strong,
+		p,
+		p strong {
+			font-size: 1.4rem !important;   /* ← h1 と同じくらいに調整 */
+			line-height: 1.6 !important;
+		}
 
+		/* トグル(summary)の矢印がタイトルに合わせて大きく表示 */
+		summary::marker {
+			font-size: 1.4rem !important;
+		}
 	</style>
 </head>
 
@@ -1030,8 +1044,8 @@
 						<ol type="1" id="2b25898c-3c37-80d3-bbef-c14269686210" class="numbered-list" start="4">
 							<li><strong>注文が入ったら電子レンジでちょっとだけ温めて完成（また何秒温めるか教えてください）</strong>
 								<figure id="2b25898c-3c37-8053-ab55-d73d329e4396" class="image"><a
-										href="nice_sweets.png"><img style="width:653.953125px"
-											src="nice_sweets.png" /></a></figure>
+										href="nice_sweets/nice_sweets.png"><img style="width:653.953125px"
+											src="nice_sweets/nice_sweets.png" /></a></figure>
 							</li>
 						</ol>
 					</details>
