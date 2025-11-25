@@ -864,7 +864,37 @@
 		/* トグル(summary)の矢印がタイトルに合わせて大きく表示 */
 		summary::marker {
 			font-size: 1.4rem !important;
-		}	
+		}
+		/* ▼ 赤背景の材料ボックス（block-color-red_background など）を2カラムに整える */
+		.block-color-red_background ul,
+		.block-color-red_background ol {
+			display: grid !important;
+			grid-template-columns: 1fr 1fr; /* 左右2列 */
+			column-gap: 20px;
+			row-gap: 6px;
+		}
+
+		.block-color-red_background li {
+			white-space: nowrap;  /* 改行しない */
+			padding: 4px 0;
+			font-size: 1.2rem !important;
+		}
+
+		/* block-color-pink_background など別の色でも材料リストがあるため同じ処理を適用 */
+		.block-color-pink_background ul,
+		.block-color-pink_background ol {
+			display: grid !important;
+			grid-template-columns: 1fr 1fr;
+			column-gap: 20px;
+			row-gap: 6px;
+		}
+
+		.block-color-pink_background li {
+			white-space: nowrap;
+			padding: 4px 0;
+			font-size: 1.2rem !important;
+		}
+
 	</style>
 </head>
 
