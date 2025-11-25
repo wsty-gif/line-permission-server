@@ -1356,80 +1356,70 @@ async function submitRequest() {
   closeModal();
 }
 
+  async function loadRecords() {
+    const month = document.getElementById("monthSelect").value;
 
-async function loadRecords() {
-  const month = document.getElementById("monthSelect").value;
+    const res = await fetch(
+      "/${store}/attendance/records?userId=" + userId + "&month=" + month
+    );
+    const data = await res.json();
+    allRecords = data;
 
-  const res = await fetch(
-    "/${store}/attendance/records?userId=" + userId + "&month=" + month
-  );
-  const data = await res.json();
-  allRecords = data;
+    // テーブル描画
+    const tbody = document.getElementById("recordsBody");
+    tbody.innerHTML = data
+      .map(function (r) {
+        let works = r.works || [];
+        let first = works[0] || {};
+        let last = works[works.length - 1] || {};
 
-  // テーブル描画
-  const tbody = document.getElementById("recordsBody");
-  tbody.innerHTML = data
-    .map(function (r) {
-      let works = r.works || [];
-      let first = works[0] || {};
-      let last = works[works.length - 1] || {};
+        let breakStarts = works.map(w => timeOnly(w.breakStart)).join("<br>");
+        let breakEnds   = works.map(w => timeOnly(w.breakEnd)).join("<br>");
 
-      let breakStarts = works.map(w => timeOnly(w.breakStart)).join("<br>");
-      let breakEnds   = works.map(w => timeOnly(w.breakEnd)).join("<br>");
+        return (
+          "<tr>" +
+            "<td>" + (r.date || "--") + "</td>" +
+            "<td>" + timeOnly(first.clockIn) + "</td>" +
+            "<td>" + timeOnly(last.clockOut) + "</td>" +
+            "<td>" + breakStarts + "</td>" +
+            "<td>" + breakEnds + "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
 
-      // 今日の日付キーを取得
-      const today = getTodayKey();
-      const todayRecord = data.find(r => r.date === today);
+    // ここから下が「ボタンに最新勤務を反映する処理」
+    const today = getTodayKey();
+    const todayRecord = data.find(r => r.date === today);
 
-      // 今日の中で最新の勤務（未退勤 or 一番最後の works）
-      let latestWork = null;
+    let latestWork = null;
 
-      if (todayRecord && todayRecord.works && todayRecord.works.length > 0) {
-        latestWork = todayRecord.works[todayRecord.works.length - 1];
-      }
+    if (todayRecord && todayRecord.works && todayRecord.works.length > 0) {
+      latestWork = todayRecord.works[todayRecord.works.length - 1];
+    }
 
-      return (
-        "<tr>" +
-        "<td>" + (r.date || "--") + "</td>" +
-        "<td>" + timeOnly(first.clockIn) + "</td>" +
-        "<td>" + timeOnly(last.clockOut) + "</td>" +
-        "<td>" + breakStarts + "</td>" +
-        "<td>" + breakEnds + "</td>" +
-        "</tr>"
-      );
-    })
-    .join("");
+    if (latestWork && !latestWork.clockOut) {
+      // 出勤済み・未退勤
+      document.getElementById("btnIn").disabled = true;
+      document.getElementById("btnOut").disabled = false;
 
-  // ボタン制御
-  const today = getTodayKey();
-  const todayData = data.find(function (r) {
-    return r.date === today;
-  });
+      document.getElementById("timeIn").innerText         = timeOnly(latestWork.clockIn);
+      document.getElementById("timeBreakStart").innerText = timeOnly(latestWork.breakStart);
+      document.getElementById("timeBreakEnd").innerText   = timeOnly(latestWork.breakEnd);
+      document.getElementById("timeOut").innerText        = "--:--";
 
-  const latestRecord = data[data.length - 1]; // 最後の勤務
+    } else {
+      // 退勤済み or 勤務なし
+      document.getElementById("btnIn").disabled = false;
+      document.getElementById("btnOut").disabled = true;
 
-  if (latestWork && !latestWork.clockOut) {
-    // 出勤済み・未退勤
-    document.getElementById("btnIn").disabled = true;
-    document.getElementById("btnOut").disabled = false;
-
-    document.getElementById("timeIn").innerText         = timeOnly(latestWork.clockIn);
-    document.getElementById("timeBreakStart").innerText = timeOnly(latestWork.breakStart);
-    document.getElementById("timeBreakEnd").innerText   = timeOnly(latestWork.breakEnd);
-    document.getElementById("timeOut").innerText        = "--:--";
-
-  } else {
-    // 退勤済み or 勤務なし
-    document.getElementById("btnIn").disabled = false;
-    document.getElementById("btnOut").disabled = true;
-
-    document.getElementById("timeIn").innerText         = timeOnly(latestWork ? latestWork.clockIn : null);
-    document.getElementById("timeOut").innerText        = timeOnly(latestWork ? latestWork.clockOut : null);
-    document.getElementById("timeBreakStart").innerText = timeOnly(latestWork ? latestWork.breakStart : null);
-    document.getElementById("timeBreakEnd").innerText   = timeOnly(latestWork ? latestWork.breakEnd : null);
+      document.getElementById("timeIn").innerText         = timeOnly(latestWork ? latestWork.clockIn : null);
+      document.getElementById("timeOut").innerText        = timeOnly(latestWork ? latestWork.clockOut : null);
+      document.getElementById("timeBreakStart").innerText = timeOnly(latestWork ? latestWork.breakStart : null);
+      document.getElementById("timeBreakEnd").innerText   = timeOnly(latestWork ? latestWork.breakEnd : null);
+    }
   }
 
-}
       function showToast(message) {
         const toast = document.getElementById("toast");
         toast.textContent = message;
