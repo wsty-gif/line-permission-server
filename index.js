@@ -4862,110 +4862,153 @@ app.post("/:store/admin/fix/approve", ensureStore, async (req, res) => {
   res.send("勤怠データを更新し、申請を承認しました");
 });
 
-// 🔥 店舗ごとのマニュアル閲覧ログ表示
 app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   const { store } = req;
 
-  const snapshot = await db
+  // 🔍 日付フィルタ（YYYY-MM-DD）
+  const { start, end } = req.query;
+
+  let collectionRef = db
     .collection("companies")
     .doc(store)
     .collection("manualViews")
-    .orderBy("viewedAt", "desc")
-    .get();
+    .orderBy("viewedAt", "desc");
 
+  // 📌 開始日が指定されている場合
+  if (start) {
+    const startDate = new Date(`${start}T00:00:00+09:00`);
+    collectionRef = collectionRef.where("viewedAt", ">=", startDate);
+  }
 
+  // 📌 終了日が指定されている場合
+  if (end) {
+    const endDate = new Date(`${end}T23:59:59+09:00`);
+    collectionRef = collectionRef.where("viewedAt", "<=", endDate);
+  }
+
+  const snapshot = await collectionRef.get();
   const logs = snapshot.docs.map(doc => doc.data());
 
   let rows = logs.map(l => `
     <tr>
       <td>${l.name || "名前未登録"}</td>
       <td>${l.title || "マニュアル名不明"}</td>
-      <td>${
-        new Date(l.viewedAt.toDate().getTime() + 9 * 60 * 60 * 1000)
-          .toLocaleString("ja-JP")
-      }</td>
+      <td>${new Date(l.viewedAt.toDate()).toLocaleString("ja-JP")}</td>
     </tr>
   `).join("");
 
-  if (!rows) {
-    rows = "<tr><td colspan='2'>まだ閲覧ログがありません</td></tr>";
-  }
+  if (!rows) rows = `<tr><td colspan="3">指定期間の閲覧ログはありません</td></tr>`;
 
   res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>${store} マニュアル閲覧ログ</title>
-      <style>
-        body { 
-          font-family:sans-serif; 
-          padding:16px; 
-          background:#f9fafb; 
-        }
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>マニュアル閲覧ログ</title>
 
-        h1 { 
-          font-size:1.2rem; 
-          margin-bottom:12px; 
-          font-weight:600;
-        }
+    <style>
+      body { font-family: sans-serif; padding:20px; background:#f9fafb; }
 
-        a { 
-          margin-bottom:12px; 
-          display:inline-block; 
-          font-size:0.9rem;
-          color:#2563eb;
-          text-decoration:none;
-        }
-        .table-wrap {
-          overflow-x: auto;      /* ← 横スクロールはここだけ */
-          width: 100%;
-          -webkit-overflow-scrolling: touch;  /* スマホで滑らか */
-        }
-        table { 
-          width:100%; 
-          border-collapse:collapse; 
-          background:white; 
-          font-size:0.85rem;
-          min-width: 480px;
-        }
+      h2 { font-size:1.2rem; margin-bottom:10px; }
 
-        th, td { 
-          padding:6px 8px;               /* ← 縦幅を小さく */
-          border-bottom:1px solid #eee; 
-          text-align:center; 
-          white-space:nowrap;            /* ← 改行防止 */
-        }
+      /* 🔵 管理TOPボタン */
+      .back-btn {
+        display:inline-block;
+        margin-bottom:20px;
+        padding:8px 16px;
+        background:#2563eb;
+        color:#fff;
+        border-radius:6px;
+        text-decoration:none;
+        font-size:0.9rem;
+      }
 
-        th { 
-          background:#2563eb; 
-          color:white; 
-        }
-      </style>
+      /* 🔍 フィルターエリア */
+      .filter-box {
+        padding:10px;
+        background:white;
+        border-radius:6px;
+        box-shadow:0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom:20px;
+      }
+      .filter-box label { font-size:0.9rem; }
+      .filter-box input[type="date"] {
+        padding:6px;
+        font-size:0.9rem;
+        margin-right:8px;
+      }
+      .filter-box button {
+        padding:6px 12px;
+        font-size:0.9rem;
+        background:#2563eb;
+        color:white;
+        border:none;
+        border-radius:4px;
+        cursor:pointer;
+      }
 
-    </head>
-    <body>
-      <h1>${store} マニュアル閲覧ログ</h1>
-      <a href="/${store}/admin">← 管理TOPへ戻る</a>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>名前</th>
-              <th>マニュアル名</th>
-              <th>閲覧日時</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-      </div>
-    </body>
-    </html>
+      /* 🟦 テーブル表示 */
+      .table-wrap {
+        overflow-x:auto;
+        width:100%;
+        -webkit-overflow-scrolling:touch;
+      }
+      table {
+        width:100%;
+        border-collapse:collapse;
+        background:white;
+        min-width:520px;
+        font-size:0.85rem;
+      }
+      th, td {
+        padding:6px 8px;
+        border-bottom:1px solid #eee;
+        white-space:nowrap;
+        text-align:center;
+      }
+      th { background:#2563eb; color:white; }
+    </style>
+  </head>
+
+  <body>
+
+    <h2>マニュアル閲覧ログ</h2>
+
+    <a class="back-btn" href="/${store}/admin">← 管理TOPへ戻る</a>
+
+    <div class="filter-box">
+      <form method="GET" action="/${store}/admin/manual-logs">
+        <label>開始日：</label>
+        <input type="date" name="start" value="${start || ""}">
+
+        <label>終了日：</label>
+        <input type="date" name="end" value="${end || ""}">
+
+        <button type="submit">検索</button>
+      </form>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>名前</th>
+            <th>マニュアル名</th>
+            <th>閲覧日時</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+
+  </body>
+  </html>
   `);
 });
+
 
 
 // ==============================
