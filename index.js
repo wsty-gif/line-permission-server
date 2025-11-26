@@ -4894,94 +4894,86 @@ app.get("/:store/admin/payroll", ensureStore, async (req, res) => {
   </body></html>`);
 });
 
-// ==============================
-// 💾 給与CSV出力
-// ==============================
 app.get("/:store/admin/payroll/export", ensureStore, async (req, res) => {
-  if (!req.session.loggedIn || req.session.store !== req.store)
-    return res.redirect(`/${req.store}/login`);
+  try {
+    const { store } = req;
 
-  const store = req.store;
+    const general = (await db.collection("companies").doc(store)
+      .collection("settings").doc("storeGeneral").get()).data();
 
-  // --- 設定値の取得 ---
-  const settingsRef = db.collection("companies").doc(store).collection("settings");
-  const general = (await settingsRef.doc("storeGeneral").get()).data() || {};
-  const fulltime = (await settingsRef.doc("employment_fulltime").get()).data() || {};
-  const parttime = (await settingsRef.doc("employment_parttime").get()).data() || {};
-  const contract = (await settingsRef.doc("employment_contract").get()).data() || {};
-  const employmentMap = { fulltime, parttime, contract };
-  const regularHours = general.regularHours || 8;
-  const closingDay = general.closingDay || 25;
+    const usersSnap = await db.collection("companies").doc(store)
+      .collection("permissions").get();
 
-  // --- 対象期間 ---
-  const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth(), closingDay);
-  const start = new Date(end);
-  start.setMonth(start.getMonth() - 1);
-  start.setDate(closingDay + 1);
+    let results = [];
 
-  // --- 従業員リスト取得 ---
-  const empSnap = await db.collection("companies").doc(store).collection("employees").get();
-  const employees = empSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    for (const userDoc of usersSnap.docs) {
+      const user = userDoc.data();
+      const userId = userDoc.id;
 
-  const rows = [];
+      const attendanceSnap = await db.collection("companies").doc(store)
+        .collection("attendance").doc(userId)
+        .collection("records")
+        .get();
 
-  for (const emp of employees) {
-    const type = emp.contractType || "parttime";
-    const empSetting = employmentMap[type] || {};
-    const hourly = emp.hourly || empSetting.basePay || 0;
-    const overtimeRate = empSetting.overtimeRate || 25;
-    const holidayRate = empSetting.holidayRate || 35;
+      let totalHours = 0;
 
-    // --- 勤怠データ取得 ---
-    const attSnap = await db.collection("companies").doc(store)
-      .collection("attendance").doc(emp.id).collection("records")
-      .where("date", ">=", start.toISOString().split("T")[0])
-      .where("date", "<=", end.toISOString().split("T")[0])
-      .get();
+      attendanceSnap.forEach(day => {
+        const data = day.data();
+        if (!data.works || data.works.length === 0) return;
 
-    let totalWork = 0, overtime = 0, holiday = 0, night = 0;
+        data.works.forEach(w => {
+          const start = new Date(w.clockIn);
+          const end = new Date(w.clockOut);
+          if (!isNaN(start) && !isNaN(end)) {
+            totalHours += (end - start) / (1000 * 60 * 60);
+          }
+        });
+      });
 
-    attSnap.docs.forEach(doc => {
-      const d = doc.data();
-      const [inH, inM] = (d.clockIn || "00:00").split(":").map(Number);
-      const [outH, outM] = (d.clockOut || "00:00").split(":").map(Number);
-      let workHours = ((outH * 60 + outM) - (inH * 60 + inM)) / 60 - (d.restHours || 0);
-      if (workHours < 0) workHours = 0;
-      totalWork += workHours;
-      if (workHours > regularHours) overtime += workHours - regularHours;
-      if (outH >= 22 || outH < 5) night += (outH >= 22 ? outH - 22 : outH + 2);
-      if (d.type === "休日") holiday += workHours;
-    });
+      results.push({
+        userId,
+        name: user.name || "",
+        totalHours: totalHours.toFixed(2),
+        totalPay: "", // あとで計算用
+        normalHours: "",
+        nightHours: "",
+        overtimeHours: "",
+      });
+    }
 
-    const basePay = totalWork * hourly;
-    const overPay = overtime * hourly * (overtimeRate / 100);
-    const nightPay = night * hourly * 0.25;
-    const holidayMinutes = 0;
-    const holidayPay     = 0;
-    // const holidayPay = holiday * hourly * (holidayRate / 100);
-    const total = Math.round(basePay + overPay + nightPay);
-    // const total = Math.round(basePay + overPay + nightPay + holidayPay);
+    // ここが今回のエラー原因！
+    if (results.length === 0) {
+      return res.status(200).send(`
+        <html><body>
+          <h2>給与データがありません</h2>
+          <p>集計対象の勤怠データが0件です。</p>
+          <a href="/${store}/admin/settings">←戻る</a>
+        </body></html>
+      `);
+    }
 
-    rows.push({
-      名前: emp.name,
-      区分: type,
-      勤務時間: totalWork.toFixed(1),
-      残業: overtime.toFixed(1),
-      深夜: night.toFixed(1),
-      休日: holiday.toFixed(1),
-      時給: hourly,
-      支給額: total,
-    });
+    // 必ず fields を指定
+    const fields = [
+      "userId",
+      "name",
+      "totalHours",
+      "totalPay",
+      "normalHours",
+      "nightHours",
+      "overtimeHours",
+    ];
+
+    const parser = new Parser({ fields });
+    const csv = parser.parse(results);
+
+    res.header("Content-Type", "text/csv");
+    res.attachment("payroll.csv");
+    res.send(csv);
+
+  } catch (err) {
+    console.error("❌ Payroll export error:", err);
+    res.status(500).send("給与集計時にエラーが発生しました");
   }
-
-  // --- CSV生成 ---
-  const parser = new Parser();
-  const csv = parser.parse(rows);
-
-  res.setHeader('Content-Disposition', `attachment; filename="${store}_給与集計_${now.getFullYear()}-${now.getMonth()+1}.csv"`);
-  res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
-  res.send('\uFEFF' + csv); // Excelで文字化け防止
 });
 
 app.post("/:store/admin/attendance/update-full", ensureStore, async (req, res) => {
