@@ -121,6 +121,181 @@ function ensureStore(req, res, next) {
   req.lineClient = lineClients[store];
   next();
 }
+
+// ==============================
+// 💰 給与計算ユーティリティ（あなたのDB構造対応版）
+// ==============================
+
+// "2025/11/25 18:24" などを Date に変換
+function parseDT(str) {
+  if (!str) return null;
+  const s = str.replace(/-/g, "/");
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function diffMin(start, end) {
+  if (!start || !end) return 0;
+  return Math.max(0, Math.round((end - start) / 60000));
+}
+
+// 1 勤務分を計算（総時間・休憩・深夜）
+function calcOneWork(work, general) {
+  const clockIn = parseDT(work.clockIn);
+  const clockOut = parseDT(work.clockOut);
+  const breakStart = parseDT(work.breakStart);
+  const breakEnd = parseDT(work.breakEnd);
+
+  const total = diffMin(clockIn, clockOut);
+  const breakMin = diffMin(breakStart, breakEnd);
+  const working = Math.max(0, total - breakMin);
+
+  // 深夜（22:00-05:00）
+  const nightStart = general.nightStart || "22:00"; // ex. "22:00"
+  const nightEnd = general.nightEnd || "05:00";
+
+  function toMin(hhmm) {
+    const [h, m] = hhmm.split(":").map(n => parseInt(n));
+    return h * 60 + m;
+  }
+
+  const ns = toMin(nightStart);
+  const ne = toMin(nightEnd);
+
+  let nightMinutes = 0;
+
+  if (clockIn && clockOut) {
+    const s = clockIn.getHours() * 60 + clockIn.getMinutes();
+    const e = clockOut.getHours() * 60 + clockOut.getMinutes();
+
+    // 深夜帯 intersects (簡易ロジック)
+    if (!(e <= ns && s >= ne)) {
+      const startInt = Math.max(s, ns);
+      const endInt = Math.min(e, ne);
+      if (endInt > startInt) nightMinutes += endInt - startInt;
+    }
+  }
+  return { working, nightMinutes };
+}
+
+// 日ごと合計
+function calcDaily(works, general) {
+  let total = 0;
+  let night = 0;
+
+  works.forEach(w => {
+    const r = calcOneWork(w, general);
+    total += r.working;
+    night += r.nightMinutes;
+  });
+
+  const otThreshold = 8 * 60; // 1 日 8 時間
+  const overtime = total > otThreshold ? total - otThreshold : 0;
+  const normal = total - overtime;
+
+  return { normal, overtime, night };
+}
+
+// 締め日 → 期間計算
+function getPeriod(monthStr, closingDay) {
+  const [y, m] = monthStr.split("-").map(n => parseInt(n));
+
+  const close = Number(closingDay || 25);
+
+  const end = new Date(y, m - 1, close);
+  const start = new Date(y, m - 2, close + 1);
+
+  const pad = n => (n < 10 ? "0" + n : n);
+
+  return {
+    startDate: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
+    endDate: `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`
+  };
+}
+
+// ▼ 給与計算メイン
+async function calcPayroll(db, store, userId, period) {
+  // 店舗設定
+  const generalSnap = await db
+    .collection("companies")
+    .doc(store)
+    .collection("settings")
+    .doc("storeGeneral")
+    .get();
+  const general = generalSnap.exists ? generalSnap.data() : {};
+
+  // スタッフ設定
+  const staffSnap = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
+  const staff = staffSnap.exists ? staffSnap.data() : {};
+
+  const hourly = staff.salary?.hourly || general.defaultHourlyWage || 0;
+  const monthly = staff.salary?.monthly || 0;
+  const nightRate = general.nightRate || 1.25;
+  const overtimeRate = general.overtimeRate || 1.25;
+
+  // 勤怠取得
+  const attendanceRef = db
+    .collection("companies")
+    .doc(store)
+    .collection("attendance")
+    .doc(userId)
+    .collection("records");
+
+  const snap = await attendanceRef
+    .where("date", ">=", period.startDate)
+    .where("date", "<=", period.endDate)
+    .get();
+
+  let totalNormal = 0;
+  let totalOver = 0;
+  let totalNight = 0;
+
+  const daily = [];
+
+  snap.forEach(doc => {
+    const d = doc.data();
+    const r = calcDaily(d.works || [], general);
+
+    totalNormal += r.normal;
+    totalOver += r.overtime;
+    totalNight += r.night;
+
+    daily.push({ date: d.date, ...r });
+  });
+
+  // 給与計算
+  const perMin = hourly / 60;
+
+  const normalPay = Math.round(totalNormal * perMin);
+  const overtimePay = Math.round(totalOver * perMin * (overtimeRate - 1));
+  const nightPay = Math.round(totalNight * perMin * (nightRate - 1));
+
+  const totalPay =
+    (staff.employmentType === "正社員" ? monthly : 0) +
+    normalPay + overtimePay + nightPay;
+
+  return {
+    userId,
+    name: staff.name,
+    employmentType: staff.employmentType,
+    hourly,
+    monthly,
+    totalNormal,
+    totalOver,
+    totalNight,
+    normalPay,
+    overtimePay,
+    nightPay,
+    totalPay,
+    daily
+  };
+}
+
 // app.use("/manuals", express.static("manuals"));
 // ==============================
 // 🔐 管理者ログイン
@@ -5070,8 +5245,91 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   `);
 });
 
+function calculateWorkTimes(works, storeSettings, staffSettings) {
 
+  let totalMinutes = 0;
+  let nightMinutes = 0;
+  let overtimeMinutes = 0;
 
+  for (const w of works) {
+    const start = new Date(w.clockIn);
+    const end   = new Date(w.clockOut);
+    const breakStart = w.breakStart ? new Date(w.breakStart) : null;
+    const breakEnd   = w.breakEnd   ? new Date(w.breakEnd)   : null;
+
+    let workMinutes = (end - start) / 60000;
+
+    // 休憩控除
+    if (breakStart && breakEnd) {
+      workMinutes -= (breakEnd - breakStart) / 60000;
+    }
+
+    // 深夜時間 → 22:00〜5:00 を計算
+    nightMinutes += calcNightMinutes(start, end);
+
+    totalMinutes += workMinutes;
+  }
+
+  // 残業（例：8時間超）
+  if (totalMinutes > storeSettings.standardMinutes) {
+    overtimeMinutes = totalMinutes - storeSettings.standardMinutes;
+  }
+
+  return { totalMinutes, nightMinutes, overtimeMinutes };
+}
+
+function calcSalary(times, staff, store) {
+
+  const baseWage = staff.hourlyWage;
+  const nightWage = staff.nightWage || Math.floor(baseWage * store.nightRate);
+  const overtimeWage = Math.floor(baseWage * store.overtimeRate);
+
+  const normalMinutes  = times.totalMinutes - times.nightMinutes - times.overtimeMinutes;
+
+  const normalPay  = (normalMinutes  / 60) * baseWage;
+  const nightPay   = (times.nightMinutes / 60) * nightWage;
+  const overtimePay= (times.overtimeMinutes / 60) * overtimeWage;
+
+  return {
+    normalPay,
+    nightPay,
+    overtimePay,
+    transport: staff.transport,
+    total: normalPay + nightPay + overtimePay + staff.transport
+  };
+}
+
+app.get("/:store/admin/payroll/json", ensureStore, async (req, res) => {
+  try {
+    const { store } = req;
+    const userId = req.query.userId;
+    const month = req.query.month;
+
+    if (!userId || !month)
+      return res.status(400).json({ error: "userId と month が必要です" });
+
+    // 店舗設定から締め日取得
+    const storeGeneralSnap = await db
+      .collection("companies")
+      .doc(store)
+      .collection("settings")
+      .doc("storeGeneral")
+      .get();
+
+    const closingDay = storeGeneralSnap.exists
+      ? storeGeneralSnap.data().closingDay
+      : 25;
+
+    const period = getPeriod(month, closingDay);
+
+    const result = await calcPayroll(db, store, userId, period);
+
+    res.json(result);
+  } catch (e) {
+    console.error("payroll error:", e);
+    res.status(500).json({ error: "給与計算エラー" });
+  }
+});
 
 // ==============================
 const PORT = process.env.PORT || 3000;
