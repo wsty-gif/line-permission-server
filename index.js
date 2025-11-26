@@ -3747,7 +3747,7 @@ app.post("/:store/admin/contract", ensureStore, express.urlencoded({ extended: t
       basePay: Number(req.body[`${t}_basePay`]) || 0,
       overtimeRate: Number(req.body[`${t}_overtimeRate`]) || 25,
       nightRate: Number(req.body[`${t}_nightRate`]) || 25,
-      holidayRate: Number(req.body[`${t}_holidayRate`]) || 35,
+      // holidayRate: Number(req.body[`${t}_holidayRate`]) || 35,
     };
   });
 
@@ -3986,7 +3986,7 @@ app.post("/:store/admin/settings/general/save", ensureStore, async (req, res) =>
     nightRate: Number(req.body.nightRate),
     nightStart: req.body.nightStart,
     nightEnd: req.body.nightEnd,
-    holidayRate: Number(req.body.holidayRate),
+    // holidayRate: Number(req.body.holidayRate),
     closingDay: Number(req.body.closingDay),  // ← 修正
     updatedAt: new Date(),
   };
@@ -4957,8 +4957,11 @@ app.get("/:store/admin/payroll/export", ensureStore, async (req, res) => {
     const basePay = totalWork * hourly;
     const overPay = overtime * hourly * (overtimeRate / 100);
     const nightPay = night * hourly * 0.25;
-    const holidayPay = holiday * hourly * (holidayRate / 100);
-    const total = Math.round(basePay + overPay + nightPay + holidayPay);
+    const holidayMinutes = 0;
+    const holidayPay     = 0;
+    // const holidayPay = holiday * hourly * (holidayRate / 100);
+    const total = Math.round(basePay + overPay + nightPay);
+    // const total = Math.round(basePay + overPay + nightPay + holidayPay);
 
     rows.push({
       名前: emp.name,
