@@ -5764,6 +5764,12 @@ app.post("/:store/shift-admin/update-submission/:periodId/:userId", ensureStore,
   }
 });
 
+function ensureLoginAdmin(req, res, next) {
+  if (!req.session || !req.session.admin) {
+    return res.status(401).send("管理者ログインが必要です");
+  }
+  next();
+}
 
 // ==============================
 const PORT = process.env.PORT || 3000;
