@@ -430,6 +430,54 @@
   // すべて保存
   // ===========================
 async function saveAllShifts() {
+
+  if (periodData.status !== "open") {
+    alert("現在は提出できません（ステータス: " + periodData.status + "）");
+    return;
+  }
+
+  if (!USER_ID) {
+    alert("ユーザー情報が取得できません（USER_ID が空）。再ログインしてください。");
+    return;
+  }
+
+  if (!selectedDate) {
+    alert("日付が選択されていません。もう一度日付を選んでください。");
+    return;
+  }
+
+  if (!submitData[selectedDate]) {
+    submitData[selectedDate] = [];
+  }
+
+  const list = submitData[selectedDate];
+
+  list.forEach((s, i) => {
+    s.start = document.getElementById(`start-${i}`).value;
+    s.end   = document.getElementById(`end-${i}`).value;
+  });
+
+  const filtered = list.filter(s => s.start && s.end);
+
+  const res = await fetch(`/${STORE}/shift-submit/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      periodId: PERIOD_ID,
+      userId:   USER_ID,
+      date:     selectedDate,
+      shifts:   filtered
+    })
+  });
+
+  const json = await res.json();
+  if (json.status === "ok") {
+    closeModal();
+    loadData();
+  } else {
+    alert("保存に失敗しました");
+  }
+}
   // ステータスチェック
   if (periodData.status !== "open") {
     alert("現在は提出できません（ステータス: " + periodData.status + "）");
@@ -487,39 +535,6 @@ async function saveAllShifts() {
     alert("保存に失敗しました");
   }
 }
-    const list = submitData[selectedDate] || [];
-
-    // ★ ここでもステータスチェック
-    if (periodData.status !== "open") {
-      alert("現在は提出できません（ステータス: " + periodData.status + "）");
-      return;
-    }
-
-    // HTML の内容を list に反映
-    list.forEach((s, i) => {
-      s.start = document.getElementById(`start-${i}`).value;
-      s.end = document.getElementById(`end-${i}`).value;
-    });
-
-    const res = await fetch(`/${STORE}/shift-submit/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        periodId: PERIOD_ID,
-        userId: USER_ID,
-        date: selectedDate,
-        shifts: list
-      })
-    });
-
-    const json = await res.json();
-    if (json.status === "ok") {
-      closeModal();
-      loadData(); // カレンダー更新
-    } else {
-      alert("保存に失敗しました");
-    }
-  }
 
   // ===========================
   // カレンダー描画
