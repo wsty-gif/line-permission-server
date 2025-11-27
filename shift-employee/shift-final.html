@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>確定シフト（閲覧専用）</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    margin:0;
+    font-family:'Noto Sans JP',sans-serif;
+    background:#f5f7fb;
+  }
+  header {
+    background:white;
+    padding:16px 20px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+  }
+  .title {
+    font-size:20px;
+    font-weight:700;
+  }
+  .subtitle {
+    font-size:13px;
+    color:#6b7280;
+    margin-top:4px;
+  }
+
+  .container {
+    max-width:900px;
+    margin:0 auto;
+    padding:20px;
+  }
+
+  .calendar-wrapper {
+    margin-top:20px;
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  table.calendar {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+  }
+  th {
+    padding:6px;
+    background:#f3f4f6;
+    font-size:12px;
+    color:#6b7280;
+  }
+  td {
+    border:1px solid #e5e7eb;
+    height:65px;
+    vertical-align:top;
+    padding:4px;
+    font-size:13px;
+  }
+  .day-num {
+    font-weight:600;
+    margin-bottom:4px;
+  }
+
+  /* シフトタグ（確定） */
+  .shift-tag {
+    display:block;
+    font-size:11px;
+    padding:3px 6px;
+    background:#d1fae5;
+    color:#065f46;
+    border-radius:6px;
+    margin-bottom:3px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">確定シフト</div>
+  <div class="subtitle" id="headerSub">読み込み中…</div>
+</header>
+
+<div class="container">
+
+  <div id="calendarArea"></div>
+
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const PERIOD_ID = params.get("periodId");
+  const STORE = location.pathname.split("/")[1];
+  const USER_ID = localStorage.getItem("lineUserId");
+
+  let period = null;
+  let finalData = {};
+
+  async function loadData() {
+    const [resP, resF] = await Promise.all([
+      fetch(`/${STORE}/shift-period/${PERIOD_ID}`),
+      fetch(`/${STORE}/shift-final-data/${PERIOD_ID}`)
+    ]);
+
+    period = await resP.json();
+    const final = await resF.json();
+
+    finalData = final.finalData || {};
+
+    document.getElementById("headerSub").textContent =
+      `${period.name}（${period.startDate}〜${period.endDate}）【確定済み】`;
+
+    buildCalendar();
+  }
+
+  function buildCalendar() {
+    const area = document.getElementById("calendarArea");
+
+    const start = new Date(period.startDate);
+    const end = new Date(period.endDate);
+
+    const year = start.getFullYear();
+    const month = start.getMonth();
+
+    const first = new Date(year, month, 1);
+    const last = new Date(year, month + 1, 0);
+
+    area.innerHTML = `
+      <div class="calendar-wrapper">
+        <div class="subtitle">確定されたシフトを表示しています（編集不可）</div>
+        <table class="calendar">
+          <thead>
+            <tr>
+              <th>日</th><th>月</th><th>火</th><th>水</th>
+              <th>木</th><th>金</th><th>土</th>
+            </tr>
+          </thead>
+          <tbody id="calBody"></tbody>
+        </table>
+      </div>
+    `;
+
+    const body = document.getElementById("calBody");
+
+    let row = "<tr>";
+    for (let i = 0; i < first.getDay(); i++) {
+      row += "<td></td>";
+    }
+
+    // 自分の確定データ
+    const myShifts = finalData[USER_ID] || {};
+
+    for (let d = 1; d <= last.getDate(); d++) {
+      const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+
+      const shifts = myShifts[dateStr] || [];
+
+      row += "<td>";
+      row += `<div class="day-num">${d}</div>`;
+
+      shifts.forEach(s => {
+        const label = s.type || `${s.start}〜${s.end}`;
+        row += `<span class="shift-tag">${label}</span>`;
+      });
+
+      row += "</td>";
+
+      if ((first.getDay() + d) % 7 === 0) {
+        row += "</tr><tr>";
+      }
+    }
+
+    row += "</tr>";
+    body.innerHTML = row;
+  }
+
+  loadData();
+</script>
+
+</body>
+</html>

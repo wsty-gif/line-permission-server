@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>管理者ダッシュボード</title>
+
+  <!-- フォント & アイコン -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <style>
+    body {
+      margin:0;
+      font-family:'Noto Sans JP',sans-serif;
+      background:#f5f7fb;
+      color:#111827;
+    }
+
+    header {
+      padding:20px;
+      background:white;
+      box-shadow:0 2px 4px rgba(0,0,0,0.05);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .title {
+      font-size:22px;
+      font-weight:700;
+    }
+    .subtitle {
+      margin-top:4px;
+      font-size:12px;
+      color:#6b7280;
+    }
+
+    .container {
+      max-width:1100px;
+      margin:30px auto;
+      padding:0 20px;
+    }
+
+    /* ========= カード ========= */
+    .stats {
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:16px;
+    }
+
+    .stat-card {
+      background:white;
+      padding:20px;
+      border-radius:12px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.06);
+    }
+
+    .stat-title {
+      font-size:14px;
+      color:#6b7280;
+      margin-bottom:6px;
+    }
+    .stat-value {
+      font-size:26px;
+      font-weight:700;
+      color:#2563eb;
+    }
+
+    /* ========= 期間一覧 ========= */
+    .periods-title {
+      margin-top:30px;
+      font-size:18px;
+      font-weight:700;
+    }
+
+    .no-period {
+      text-align:center;
+      padding:60px 0;
+      color:#6b7280;
+    }
+
+    .create-btn {
+      padding:10px 16px;
+      background:#4f46e5;
+      color:white;
+      border:none;
+      border-radius:8px;
+      font-size:14px;
+      cursor:pointer;
+    }
+
+    /* ========== 期間カード ========== */
+    .period-card {
+      background:white;
+      border-radius:12px;
+      padding:20px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.06);
+      margin-top:20px;
+    }
+
+    .period-header {
+      font-size:20px;
+      font-weight:700;
+      display:flex;
+      justify-content:space-between;
+    }
+
+    .badge {
+      font-size:12px;
+      padding:4px 10px;
+      border-radius:999px;
+      color:white;
+    }
+    .badge.open { background:#16a34a; }
+    .badge.locked { background:#eab308; }
+    .badge.closed { background:#6b7280; }
+
+    .period-info {
+      margin-top:10px;
+      font-size:14px;
+      line-height:1.7;
+    }
+
+    .period-actions {
+      margin-top:20px;
+      display:flex;
+      gap:12px;
+    }
+
+    .action-btn {
+      padding:8px 14px;
+      border-radius:8px;
+      border:none;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .view-btn { background:#2563eb; color:white; }
+    .edit-btn { background:#e5e7eb; }
+    .delete-btn { background:#fca5a5; color:white; }
+
+    /* ========= モーダル ========= */
+    .modal-bg {
+      position:fixed;
+      top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.3);
+      display:none;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .modal {
+      background:white;
+      width:95%;
+      max-width:480px;
+      padding:24px;
+      border-radius:12px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .modal-title {
+      font-size:18px;
+      font-weight:700;
+      margin-bottom:20px;
+    }
+
+    .form-group {
+      margin-bottom:16px;
+    }
+
+    .form-group label {
+      font-size:14px;
+      font-weight:600;
+      display:block;
+      margin-bottom:6px;
+    }
+
+    input[type="text"],
+    input[type="date"] {
+      width:100%;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid #d1d5db;
+      font-size:14px;
+    }
+
+    .modal-footer {
+      text-align:right;
+      margin-top:20px;
+    }
+
+    .modal-close {
+      position:absolute;
+      top:14px;
+      right:16px;
+      font-size:18px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div>
+    <div class="title">管理者ダッシュボード</div>
+    <div class="subtitle">シフト期間の管理と従業員の提出状況確認</div>
+  </div>
+
+  <button class="create-btn" onclick="openCreateModal()">
+    <i class="fa-solid fa-plus"></i> 新規期間作成
+  </button>
+</header>
+
+<div class="container">
+
+  <!-- ---- 統計 ---- -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-title">シフト期間</div>
+      <div class="stat-value" id="statPeriodCount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">従業員数</div>
+      <div class="stat-value" id="statUserCount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">募集中</div>
+      <div class="stat-value" id="statOpenCount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">確定済み</div>
+      <div class="stat-value" id="statClosedCount">0</div>
+    </div>
+  </div>
+
+  <div class="periods-title">シフト期間一覧</div>
+
+  <div id="periodList"></div>
+
+</div>
+
+<!-- ==============================
+ モーダル
+=============================== -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+
+    <div class="modal-close" onclick="closeModal()">×</div>
+    <div class="modal-title">新規シフト期間を作成</div>
+
+    <div class="form-group">
+      <label>期間名</label>
+      <input type="text" id="periodName" placeholder="例：2024年1月シフト">
+    </div>
+
+    <div class="form-group">
+      <label>開始日</label>
+      <input type="date" id="startDate">
+    </div>
+
+    <div class="form-group">
+      <label>終了日</label>
+      <input type="date" id="endDate">
+    </div>
+
+    <div class="form-group">
+      <label>提出締切日</label>
+      <input type="date" id="deadline">
+    </div>
+
+    <div class="modal-footer">
+      <button class="create-btn" onclick="createPeriod()">作成</button>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+const STORE = window.location.pathname.split("/")[1];
+
+// ========= モーダル制御 =========
+function openCreateModal() {
+  document.getElementById("modalBg").style.display = "flex";
+}
+function closeModal() {
+  document.getElementById("modalBg").style.display = "none";
+}
+
+// ========= 期間作成 =========
+async function createPeriod() {
+  const name = document.getElementById("periodName").value;
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
+  const dl = document.getElementById("deadline").value;
+
+  if (!name || !start || !end || !dl) {
+    alert("全て入力してください");
+    return;
+  }
+
+  const res = await fetch(`/${STORE}/shift-period/create`, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      name,
+      startDate:start,
+      endDate:end,
+      deadline:dl
+    })
+  });
+
+  const json = await res.json();
+  if (json.status === "ok") {
+    closeModal();
+    loadPeriods();
+  } else {
+    alert("保存に失敗しました");
+  }
+}
+
+// ========= 期間一覧取得 =========
+async function loadPeriods() {
+  const res = await fetch(`/${STORE}/shift-period/list`);
+  const periods = await res.json();
+
+  document.getElementById("statPeriodCount").textContent = periods.length;
+
+  // 状態別カウント
+  const openCount = periods.filter(p => p.status === "open").length;
+  const closedCount = periods.filter(p => p.status !== "open").length;
+  document.getElementById("statOpenCount").textContent = openCount;
+  document.getElementById("statClosedCount").textContent = closedCount;
+
+  const list = document.getElementById("periodList");
+  list.innerHTML = "";
+
+  if (periods.length === 0) {
+    list.innerHTML = `
+      <div class="no-period">
+        <div style="font-size:40px; margin-bottom:14px;">📅</div>
+        シフト期間がありません<br><br>
+        <button class="create-btn" onclick="openCreateModal()">最初の期間を作成</button>
+      </div>`;
+    return;
+  }
+
+  periods.forEach(p => {
+    const badgeClass = p.status === "open" ? "open" : p.status === "locked" ? "locked" : "closed";
+
+    list.innerHTML += `
+      <div class="period-card">
+        <div class="period-header">
+          ${p.name}
+          <span class="badge ${badgeClass}">
+            ${p.status === "open" ? "募集中" :
+               p.status === "locked" ? "調整中" : "確定済み"}
+          </span>
+        </div>
+
+        <div class="period-info">
+          期間: ${p.startDate} 〜 ${p.endDate}<br>
+          締切: ${p.deadline}
+        </div>
+
+        <div class="period-actions">
+          <button class="action-btn view-btn" onclick="location.href='/${STORE}/shift-admin/${p.id}'">
+            👁 シフト管理
+          </button>
+          <button class="action-btn edit-btn">✏ 編集</button>
+          <button class="action-btn delete-btn">🗑 削除</button>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:10px;">
+        <button class="action-btn" onclick="changeStatus('open')">募集中に変更</button>
+        <button class="action-btn" onclick="changeStatus('locked')">調整中に変更</button>
+        <button class="action-btn" style="background:#4caf50;color:white;" onclick="changeStatus('closed')">
+            確定済みに変更
+        </button>
+        </div>
+
+      </div>`;
+  });
+}
+
+async function changeStatus(newStatus) {
+  if (!confirm(`ステータスを「${newStatus}」に変更しますか？`)) return;
+
+  const res = await fetch(`/${STORE}/shift-period/${PERIOD_ID}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: newStatus })
+  });
+
+  const json = await res.json();
+  if (json.status === "ok") {
+    alert("ステータスを変更しました");
+    loadDetail(); // 表示更新
+  } else {
+    alert("変更に失敗しました");
+  }
+}
+
+loadPeriods();
+</script>
+
+</body>
+</html>

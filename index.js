@@ -5411,669 +5411,359 @@ app.post("/:store/shift/save", ensureStore, async (req, res) => {
 });
 
 // ==============================
-// 🗓 シフト管理画面（スタッフ自分用）
+// 従業員ビュー（カレンダー）
 // ==============================
 app.get("/:store/shift", ensureStore, (req, res) => {
-  const { store, storeConf } = req;
-
-  res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${store} シフト管理</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif;
-        margin: 0;
-        padding: 0;
-        background: #f3f4f6;
-      }
-      .layout {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 16px;
-      }
-      h1 {
-        text-align: center;
-        color: #2563eb;
-        margin-bottom: 8px;
-      }
-      #userStatus {
-        text-align: center;
-        color: #6b7280;
-        font-size: 14px;
-        margin-bottom: 16px;
-      }
-
-      .toolbar {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 12px;
-        flex-wrap: wrap;
-      }
-      .toolbar button {
-        border: none;
-        padding: 6px 10px;
-        border-radius: 6px;
-        cursor: pointer;
-        background: #2563eb;
-        color: white;
-        font-size: 13px;
-      }
-      .toolbar input[type="month"] {
-        padding: 6px 8px;
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
-        font-size: 14px;
-      }
-
-      .main {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-        gap: 16px;
-      }
-      @media (max-width: 800px) {
-        .main {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      /* カレンダー */
-      .calendar {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
-        padding: 12px;
-      }
-      .calendar table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-        font-size: 12px;
-      }
-      .calendar th,
-      .calendar td {
-        border: 1px solid #e5e7eb;
-        padding: 4px;
-        vertical-align: top;
-        height: 70px;
-      }
-      .calendar th {
-        background: #eff6ff;
-        color: #2563eb;
-        text-align: center;
-        font-weight: 600;
-      }
-      .day-cell {
-        cursor: pointer;
-        position: relative;
-      }
-      .day-num {
-        font-size: 11px;
-        font-weight: 600;
-        color: #4b5563;
-      }
-      .today .day-num {
-        background: #2563eb;
-        color: white;
-        border-radius: 999px;
-        padding: 2px 6px;
-      }
-      .has-shift {
-        background: #ecfeff;
-      }
-      .shift-chip {
-        margin-top: 4px;
-        display: inline-block;
-        padding: 2px 4px;
-        border-radius: 999px;
-        background: #dbeafe;
-        color: #1d4ed8;
-      }
-      .selected-day {
-        outline: 2px solid #2563eb;
-        outline-offset: -2px;
-      }
-
-      /* 日別詳細 */
-      .detail {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
-        padding: 16px;
-      }
-      .detail-title {
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 4px;
-        color: #111827;
-      }
-      .detail-sub {
-        font-size: 13px;
-        color: #6b7280;
-        margin-bottom: 12px;
-      }
-      .shift-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-bottom: 12px;
-      }
-      .shift-row {
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 8px;
-        background: #f9fafb;
-      }
-      .shift-row-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 13px;
-        margin-bottom: 6px;
-      }
-      .shift-row-header button {
-        border: none;
-        background: none;
-        color: #dc2626;
-        font-size: 12px;
-        cursor: pointer;
-      }
-      .shift-row-body {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 6px;
-      }
-      .shift-row-body label {
-        font-size: 12px;
-        color: #4b5563;
-        display: block;
-        margin-bottom: 2px;
-      }
-      .shift-row-body input[type="time"] {
-        width: 100%;
-        padding: 4px 6px;
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
-        font-size: 13px;
-      }
-
-      /* ドラッグ用スライダー（start / end） */
-      .slider-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        align-items: center;
-        margin-top: 4px;
-      }
-      .slider-row input[type="range"] {
-        width: 100%;
-      }
-      .slider-label {
-        font-size: 11px;
-        color: #6b7280;
-      }
-
-      .detail-buttons {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .btn-primary {
-        border: none;
-        background: #2563eb;
-        color: white;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 13px;
-        cursor: pointer;
-      }
-      .btn-secondary {
-        border: none;
-        background: #e5e7eb;
-        color: #374151;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 13px;
-        cursor: pointer;
-      }
-
-      /* トースト */
-      #toast {
-        display: none;
-        position: fixed;
-        top: 24px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(15,23,42,0.9);
-        color: #f9fafb;
-        padding: 10px 18px;
-        border-radius: 999px;
-        font-size: 13px;
-        box-shadow: 0 4px 12px rgba(15,23,42,0.4);
-        z-index: 9999;
-        opacity: 0;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="layout">
-      <h1>${store} シフト管理</h1>
-      <div id="userStatus">LINEログイン中...</div>
-
-      <div class="toolbar">
-        <button id="prevMonthBtn">◀ 前月</button>
-        <input type="month" id="monthInput" />
-        <button id="nextMonthBtn">次月 ▶</button>
-      </div>
-
-      <div class="main">
-        <!-- カレンダー -->
-        <div class="calendar">
-          <table>
-            <thead>
-              <tr>
-                <th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th>
-              </tr>
-            </thead>
-            <tbody id="calendarBody"></tbody>
-          </table>
-        </div>
-
-        <!-- 日別詳細 -->
-        <div class="detail">
-          <div class="detail-title" id="detailDateLabel">日付を選択してください</div>
-          <div class="detail-sub" id="detailSubLabel"></div>
-
-          <div class="shift-list" id="shiftList"></div>
-
-          <div class="detail-buttons">
-            <button class="btn-secondary" id="addShiftBtn">＋ シフトを追加</button>
-            <button class="btn-primary" id="saveShiftBtn">この日のシフトを保存</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="toast"></div>
-
-    <script>
-      const STORE = "${store}";
-      const LIFF_ID = "${storeConf.liffId}";
-
-      let userId = null;
-      let userName = "";
-      let currentMonth = null; // "YYYY-MM"
-      let shiftsMap = {}; // { "YYYY-MM-DD": [{start,end}, ...] }
-      let selectedDate = null; // "YYYY-MM-DD"
-
-      // ========= ユーティリティ =========
-      function showToast(msg) {
-        const t = document.getElementById("toast");
-        t.textContent = msg;
-        t.style.display = "block";
-        t.style.transition = "none";
-        t.style.opacity = "1";
-        setTimeout(() => {
-          t.style.transition = "opacity 0.4s";
-          t.style.opacity = "0";
-          setTimeout(() => {
-            t.style.display = "none";
-          }, 400);
-        }, 2000);
-      }
-
-      function toDateKey(d) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2,"0");
-        const day = String(d.getDate()).padStart(2,"0");
-        return y + "-" + m + "-" + day;
-      }
-
-      function getTodayKey() {
-        const now = new Date();
-        const jst = new Date(now.getTime() + 9*60*60*1000);
-        return toDateKey(jst);
-      }
-
-      function minToTimeStr(min) {
-        const h = Math.floor(min/60);
-        const m = min % 60;
-        return String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0");
-      }
-
-      function timeStrToMin(str) {
-        if (!str) return 0;
-        const [h,m] = str.split(":").map(n => parseInt(n));
-        return h*60 + m;
-      }
-
-      // ========= カレンダー描画 =========
-      function buildCalendar(year, month) { // month: 0-11
-        const body = document.getElementById("calendarBody");
-        body.innerHTML = "";
-
-        const first = new Date(year, month, 1);
-        const firstDay = first.getDay(); // 0:日
-        const daysInMonth = new Date(year, month+1, 0).getDate();
-        const todayKey = getTodayKey();
-
-        let dateCounter = 1;
-        for (let row = 0; row < 6; row++) {
-          let tr = document.createElement("tr");
-          for (let col = 0; col < 7; col++) {
-            let td = document.createElement("td");
-            td.classList.add("day-cell");
-
-            if (row === 0 && col < firstDay || dateCounter > daysInMonth) {
-              td.innerHTML = "";
-            } else {
-              const d = new Date(year, month, dateCounter);
-              const dateKey = toDateKey(d);
-
-              const wrapper = document.createElement("div");
-              const dayNum = document.createElement("div");
-              dayNum.className = "day-num";
-              dayNum.textContent = dateCounter;
-
-              if (dateKey === todayKey) {
-                td.classList.add("today");
-              }
-
-              const shifts = shiftsMap[dateKey] || [];
-              if (shifts.length > 0) {
-                td.classList.add("has-shift");
-                const chip = document.createElement("div");
-                chip.className = "shift-chip";
-                chip.textContent = shifts
-                  .map(s => (s.start || "") + "-" + (s.end || ""))
-                  .join(" / ");
-                wrapper.appendChild(chip);
-              }
-
-              wrapper.insertBefore(dayNum, wrapper.firstChild);
-              td.appendChild(wrapper);
-
-              td.dataset.date = dateKey;
-              td.onclick = () => selectDate(dateKey);
-              if (selectedDate === dateKey) {
-                td.classList.add("selected-day");
-              }
-
-              dateCounter++;
-            }
-
-            tr.appendChild(td);
-          }
-          body.appendChild(tr);
-        }
-      }
-
-      function refreshCalendar() {
-        const [y,m] = currentMonth.split("-").map(n => parseInt(n));
-        buildCalendar(y, m-1);
-      }
-
-      // ========= 日別詳細 =========
-      function renderDetail() {
-        const list = document.getElementById("shiftList");
-        const label = document.getElementById("detailDateLabel");
-        const sub = document.getElementById("detailSubLabel");
-
-        if (!selectedDate) {
-          label.textContent = "日付を選択してください";
-          sub.textContent = "";
-          list.innerHTML = "";
-          return;
-        }
-
-        label.textContent = selectedDate;
-        sub.textContent = userName + " さんのシフト";
-
-        const shifts = shiftsMap[selectedDate] || [];
-        list.innerHTML = "";
-
-        shifts.forEach((shift, idx) => {
-          const row = document.createElement("div");
-          row.className = "shift-row";
-
-          const header = document.createElement("div");
-          header.className = "shift-row-header";
-          header.innerHTML = \`
-            <span>シフト \${idx+1}</span>
-            <button type="button">削除</button>
-          \`;
-          header.querySelector("button").onclick = () => {
-            shifts.splice(idx,1);
-            shiftsMap[selectedDate] = shifts;
-            renderDetail();
-            refreshCalendar();
-          };
-
-          const body = document.createElement("div");
-          body.className = "shift-row-body";
-          body.innerHTML = \`
-            <div>
-              <label>開始</label>
-              <input type="time" value="\${shift.start || ""}" />
-            </div>
-            <div>
-              <label>終了</label>
-              <input type="time" value="\${shift.end || ""}" />
-            </div>
-          \`;
-
-          const startInput = body.querySelectorAll("input")[0];
-          const endInput = body.querySelectorAll("input")[1];
-
-          // スライダー行（ドラッグで編集）
-          const sliderRow = document.createElement("div");
-          sliderRow.className = "slider-row";
-          sliderRow.innerHTML = \`
-            <div>
-              <div class="slider-label">ドラッグで開始時刻</div>
-              <input type="range" min="0" max="1440" step="15" />
-            </div>
-            <div>
-              <div class="slider-label">ドラッグで終了時刻</div>
-              <input type="range" min="0" max="1440" step="15" />
-            </div>
-          \`;
-
-          const startSlider = sliderRow.querySelectorAll("input[type=range]")[0];
-          const endSlider = sliderRow.querySelectorAll("input[type=range]")[1];
-
-          // 初期値
-          startSlider.value = timeStrToMin(shift.start || "09:00");
-          endSlider.value   = timeStrToMin(shift.end   || "18:00");
-
-          // 入力→スライダー反映
-          startInput.onchange = () => {
-            const v = timeStrToMin(startInput.value);
-            startSlider.value = v;
-            shift.start = startInput.value;
-            shiftsMap[selectedDate] = shifts;
-            refreshCalendar();
-          };
-          endInput.onchange = () => {
-            const v = timeStrToMin(endInput.value);
-            endSlider.value = v;
-            shift.end = endInput.value;
-            shiftsMap[selectedDate] = shifts;
-            refreshCalendar();
-          };
-
-          // スライダー→入力反映（ドラッグで編集）
-          startSlider.oninput = () => {
-            const t = minToTimeStr(parseInt(startSlider.value));
-            startInput.value = t;
-            shift.start = t;
-            shiftsMap[selectedDate] = shifts;
-            refreshCalendar();
-          };
-          endSlider.oninput = () => {
-            const t = minToTimeStr(parseInt(endSlider.value));
-            endInput.value = t;
-            shift.end = t;
-            shiftsMap[selectedDate] = shifts;
-            refreshCalendar();
-          };
-
-          row.appendChild(header);
-          row.appendChild(body);
-          row.appendChild(sliderRow);
-          list.appendChild(row);
-        });
-
-        if (shifts.length === 0) {
-          list.innerHTML = "<div style='font-size:13px; color:#9ca3af;'>シフトが未登録です。「＋ シフトを追加」から登録してください。</div>";
-        }
-      }
-
-      function selectDate(dateKey) {
-        selectedDate = dateKey;
-        renderDetail();
-        refreshCalendar();
-      }
-
-      function addShift() {
-        if (!selectedDate) {
-          showToast("先にカレンダーから日付を選択してください");
-          return;
-        }
-        const arr = shiftsMap[selectedDate] || [];
-        arr.push({ start: "09:00", end: "18:00" });
-        shiftsMap[selectedDate] = arr;
-        renderDetail();
-        refreshCalendar();
-      }
-
-      async function saveShifts() {
-        if (!selectedDate) {
-          showToast("日付が選択されていません");
-          return;
-        }
-        const shifts = shiftsMap[selectedDate] || [];
-
-        try {
-          const res = await fetch("/" + STORE + "/shift/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId,
-              date: selectedDate,
-              shifts
-            })
-          });
-          const json = await res.json();
-          if (json.status === "ok") {
-            showToast("シフトを保存しました");
-          } else {
-            showToast("保存に失敗しました");
-            console.error(json);
-          }
-        } catch (e) {
-          console.error(e);
-          showToast("通信エラーが発生しました");
-        }
-      }
-
-      async function loadShifts() {
-        if (!userId || !currentMonth) return;
-
-        try {
-          const res = await fetch("/" + STORE + "/shift/records?userId=" + userId + "&month=" + currentMonth);
-          const data = await res.json();
-          shiftsMap = {};
-          data.forEach((row) => {
-            shiftsMap[row.date] = row.shifts || [];
-          });
-          refreshCalendar();
-          renderDetail();
-        } catch (e) {
-          console.error(e);
-          showToast("シフト取得に失敗しました");
-        }
-      }
-
-      // ========= 初期化 =========
-      async function main() {
-        try {
-          await liff.init({ liffId: LIFF_ID });
-          if (!liff.isLoggedIn()) {
-            return liff.login({ redirectUri: window.location.href });
-          }
-          const profile = await liff.getProfile();
-          userId = profile.userId;
-          userName = profile.displayName || "";
-          document.getElementById("userStatus").textContent =
-            userName + " さんでログイン中";
-
-          // 月の初期値（JST）
-          const now = new Date();
-          const jst = new Date(now.getTime() + 9*60*60*1000);
-          const y = jst.getFullYear();
-          const m = String(jst.getMonth() + 1).padStart(2,"0");
-          currentMonth = y + "-" + m;
-
-          const monthInput = document.getElementById("monthInput");
-          monthInput.value = currentMonth;
-
-          monthInput.onchange = () => {
-            currentMonth = monthInput.value;
-            loadShifts();
-          };
-
-          document.getElementById("prevMonthBtn").onclick = () => {
-            const [yy, mm] = currentMonth.split("-").map(n => parseInt(n));
-            const dt = new Date(yy, mm - 2, 1); // 1ヶ月前
-            const ny = dt.getFullYear();
-            const nm = String(dt.getMonth() + 1).padStart(2,"0");
-            currentMonth = ny + "-" + nm;
-            monthInput.value = currentMonth;
-            loadShifts();
-          };
-          document.getElementById("nextMonthBtn").onclick = () => {
-            const [yy, mm] = currentMonth.split("-").map(n => parseInt(n));
-            const dt = new Date(yy, mm, 1); // 1ヶ月後
-            const ny = dt.getFullYear();
-            const nm = String(dt.getMonth() + 1).padStart(2,"0");
-            currentMonth = ny + "-" + nm;
-            monthInput.value = currentMonth;
-            loadShifts();
-          };
-
-          document.getElementById("addShiftBtn").onclick = addShift;
-          document.getElementById("saveShiftBtn").onclick = saveShifts;
-
-          // 初期カレンダー描画 & データ読み込み
-          const [iy, im] = currentMonth.split("-").map(n => parseInt(n));
-          buildCalendar(iy, im-1);
-
-          // 今日を選択しておく
-          selectedDate = getTodayKey();
-          renderDetail();
-
-          await loadShifts();
-        } catch (e) {
-          console.error("LIFF 初期化エラー:", e);
-          document.getElementById("userStatus").textContent =
-            "LIFF 初期化エラー: " + e.message;
-        }
-      }
-
-      document.addEventListener("DOMContentLoaded", main);
-    </script>
-  </body>
-  </html>
-  `);
+  // ログインしていない → ログインページへ
+  if (!req.session.loggedIn || req.session.store !== req.store) {
+    return res.redirect(`/${req.store}/login`);
+  }
+
+  res.sendFile(path.join(__dirname, "shift-employee/shift.html"));
 });
+
+
+app.post("/:store/shift-period/create", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { name, startDate, endDate, deadline } = req.body;
+
+  if (!name || !startDate || !endDate || !deadline) {
+    return res.status(400).json({ error: "すべての項目は必須です" });
+  }
+
+  try {
+    const doc = await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftPeriods")
+      .add({
+        name,
+        startDate,
+        endDate,
+        deadline,
+        status: "open",
+        createdAt: new Date()
+      });
+
+    res.json({ status: "ok", id: doc.id });
+  } catch (e) {
+    console.error("shift-period create error:", e);
+    res.status(500).json({ error: "保存に失敗しました" });
+  }
+});
+
+app.get("/:store/shift-period/list", ensureStore, async (req, res) => {
+  const { store } = req.params;
+
+  const snap = await db
+    .collection("companies")
+    .doc(store)
+    .collection("shiftPeriods")
+    .orderBy("startDate", "desc")
+    .get();
+
+  const periods = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  res.json(periods);
+});
+
+app.get("/:store/shift-submit/status", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { periodId, userId } = req.query;
+
+  const docId = `${periodId}_${userId}`;
+
+  const doc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("shiftSubmits")
+    .doc(docId)
+    .get();
+
+  res.json(doc.exists ? doc.data() : { submitted: false });
+});
+
+// 🔹 シフト提出保存（1ユーザー分 / 1日分）
+app.post("/:store/shift-submit/save", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { periodId, userId, date, shifts, note } = req.body;
+
+  if (!periodId || !userId || !date || !Array.isArray(shifts)) {
+    return res.status(400).json({ error: "不正なリクエストです" });
+  }
+
+  const docId = `${periodId}_${userId}`;
+
+  try {
+    const ref = db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftSubmits")
+      .doc(docId);
+
+    const current = (await ref.get()).data() || { shifts: {} };
+    current.shifts[date] = shifts; // { "2025-12-01": [{start,end}, ...] }
+
+    await ref.set(
+      {
+        userId,
+        periodId,
+        note: note || "",
+        shifts: current.shifts,
+        updatedAt: admin.firestore.Timestamp.now(),
+      },
+      { merge: true }
+    );
+
+    res.json({ status: "ok" });
+  } catch (e) {
+    console.error("shift-submit save error:", e);
+    res.status(500).json({ error: "保存に失敗しました" });
+  }
+});
+
+
+// ==============================
+// 👤 シフト管理（管理者ダッシュボード & 期間詳細）
+// ==============================
+// ダッシュボード
+app.get("/:store/shift-admin", ensureStore, (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  res.sendFile(path.join(__dirname, "shift-admin/index.html"));
+});
+
+// 期間詳細ページ（今から作るやつ）
+app.get("/:store/shift-admin/:periodId", ensureStore, (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store)
+    return res.redirect(`/${req.store}/login`);
+
+  res.sendFile(path.join(__dirname, "shift-admin/period.html"));
+});
+
+
+// 🔹 期間1件取得
+app.get("/:store/shift-period/:periodId", ensureStore, async (req, res) => {
+  const { store, params } = req;
+  const { periodId } = params;
+
+  try {
+    const doc = await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftPeriods")
+      .doc(periodId)
+      .get();
+
+    if (!doc.exists) return res.status(404).json({ error: "not_found" });
+
+    res.json({ id: doc.id, ...doc.data() });
+  } catch (e) {
+    console.error("shift-period get error:", e);
+    res.status(500).json({ error: "internal" });
+  }
+});
+
+// 🔹 ある期間の提出一覧（shiftSubmits）取得
+app.get("/:store/shift-period/:periodId/submissions", ensureStore, async (req, res) => {
+  const { store, params } = req;
+  const { periodId } = params;
+
+  try {
+    const snap = await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftSubmits")
+      .where("periodId", "==", periodId)
+      .get();
+
+    const list = snap.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        userId: data.userId,
+        periodId: data.periodId,
+        note: data.note || "",
+        shifts: data.shifts || {},
+        updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null,
+      };
+    });
+
+    res.json(list);
+  } catch (e) {
+    console.error("shift-period submissions error:", e);
+    res.status(500).json({ error: "internal" });
+  }
+});
+
+// ==============================
+// 管理者の調整画面（提出一覧）
+// ==============================
+app.get("/:store/shift-admin/:periodId/adjust", ensureStore, (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store) {
+    return res.redirect(`/${req.store}/login`);
+  }
+
+  res.sendFile(path.join(__dirname, "shift-admin/adjust.html"));
+});
+
+// 🔹 管理者が確定シフトを保存する
+app.post("/:store/shift-final/save", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { periodId, finalData } = req.body;
+
+  if (!periodId || !finalData) {
+    return res.status(400).json({ error: "invalid_params" });
+  }
+
+  try {
+    await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftFinal")
+      .doc(periodId)
+      .set(
+        {
+          finalData,
+          updatedAt: admin.firestore.Timestamp.now(),
+        },
+        { merge: true }
+      );
+
+    // 期間ステータスを「確定済み」に変更
+    await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftPeriods")
+      .doc(periodId)
+      .update({
+        status: "closed",
+      });
+
+    res.json({ status: "ok" });
+  } catch (e) {
+    console.error("shift-final save error:", e);
+    res.status(500).json({ error: "server_error" });
+  }
+});
+
+// ==============================
+// シフト期間ステータス変更
+// ==============================
+app.post("/:store/shift-period/:periodId/status", ensureStore, async (req, res) => {
+  const { store, params } = req;
+  const { periodId } = params;
+  const { status } = req.body;
+
+  // status must be: open / locked / closed
+  if (!["open", "locked", "closed"].includes(status)) {
+    return res.status(400).json({ error: "invalid_status" });
+  }
+
+  try {
+    await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftPeriods")
+      .doc(periodId)
+      .update({ status });
+
+    res.json({ status: "ok" });
+  } catch (e) {
+    console.error("status update error:", e);
+    res.status(500).json({ error: "server_error" });
+  }
+});
+
+// ==============================
+// 従業員の確定シフト閲覧ページ
+// ==============================
+app.get("/:store/shift-final", ensureStore, (req, res) => {
+  if (!req.session.loggedIn || req.session.store !== req.store) {
+    return res.redirect(`/${req.store}/login`);
+  }
+
+  res.sendFile(path.join(__dirname, "shift-employee/shift-final.html"));
+});
+
+// ==============================
+// 確定シフトを取得（従業員用 & 管理者用）
+// ==============================
+app.get("/:store/shift-final-data/:periodId", ensureStore, async (req, res) => {
+  const { store, periodId } = req.params;
+
+  try {
+    const doc = await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftFinal")
+      .doc(periodId)
+      .get();
+
+    if (!doc.exists) {
+      return res.json({ exists: false, finalData: {} });
+    }
+
+    res.json({ exists: true, finalData: doc.data().finalData });
+  } catch (e) {
+    console.error("shift-final-data error:", e);
+    res.status(500).json({ error: "server_error" });
+  }
+});
+
+// ==============================
+// 管理者用：確定後シフト編集ページ
+// ==============================
+app.get("/:store/shift-admin/final-edit", ensureStore, ensureLoginAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, "shift-admin/final-edit.html"));
+});
+
+// ==============================
+// 確定シフトを更新（管理者用）
+// ==============================
+app.post("/:store/shift-final-update/:periodId", ensureStore, ensureLoginAdmin, async (req, res) => {
+  const { store, periodId } = req.params;
+  const { finalData } = req.body;
+
+  try {
+    await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftFinal")
+      .doc(periodId)
+      .set({ finalData }, { merge: true });
+
+    res.json({ status: "ok" });
+  } catch (e) {
+    console.error("shift-final-update error:", e);
+    res.status(500).json({ error: "server_error" });
+  }
+});
+
+// ===================================
+// 管理者：提出データを更新する
+// ===================================
+app.post("/:store/shift-admin/update-submission/:periodId/:userId", ensureStore, ensureLoginAdmin, async (req, res) => {
+  const { store, periodId, userId } = req.params;
+  const { shifts } = req.body;  // { date: [ {start,end}, ... ] }
+
+  try {
+    await db
+      .collection("companies")
+      .doc(store)
+      .collection("shiftSubmissions")
+      .doc(periodId)
+      .collection("users")
+      .doc(userId)
+      .set({ userId, shifts }, { merge: true });
+
+    res.json({ status: "ok" });
+  } catch (e) {
+    console.error("admin update submission error:", e);
+    res.status(500).json({ error: "server_error" });
+  }
+});
+
 
 // ==============================
 const PORT = process.env.PORT || 3000;

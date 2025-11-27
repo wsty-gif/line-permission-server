@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>シフト管理（期間詳細）</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin:0;
+      font-family:'Noto Sans JP',sans-serif;
+      background:#f5f7fb;
+      color:#111827;
+    }
+    header {
+      background:white;
+      padding:16px 20px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.05);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .left {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .back {
+      border:none;
+      background:#e5e7eb;
+      border-radius:50%;
+      width:32px;height:32px;
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;
+    }
+    .page-title {
+      font-size:20px;
+      font-weight:700;
+    }
+    .page-sub {
+      font-size:12px;
+      color:#6b7280;
+      margin-top:4px;
+    }
+    .badge-admin {
+      font-size:11px;
+      padding:4px 10px;
+      border-radius:999px;
+      background:#e0f2fe;
+      color:#2563eb;
+      font-weight:600;
+    }
+    .container {
+      max-width:1100px;
+      margin:24px auto;
+      padding:0 20px 40px;
+    }
+
+    .stats {
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:16px;
+    }
+    .stat-card {
+      background:white;
+      padding:18px;
+      border-radius:12px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.06);
+    }
+    .stat-label {
+      font-size:13px;
+      color:#6b7280;
+      margin-bottom:6px;
+    }
+    .stat-value {
+      font-size:22px;
+      font-weight:700;
+      color:#2563eb;
+    }
+
+    .section-title {
+      margin-top:28px;
+      font-size:16px;
+      font-weight:700;
+    }
+
+    .period-card {
+      margin-top:12px;
+      background:white;
+      border-radius:12px;
+      padding:18px 20px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.06);
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+    }
+    .period-main-title {
+      font-size:18px;
+      font-weight:700;
+      margin-bottom:6px;
+    }
+    .badge-status {
+      font-size:11px;
+      padding:3px 9px;
+      border-radius:999px;
+      color:white;
+      margin-left:8px;
+    }
+    .badge-open { background:#16a34a; }
+    .badge-locked { background:#eab308; }
+    .badge-closed { background:#6b7280; }
+
+    .period-sub {
+      font-size:13px;
+      color:#4b5563;
+      line-height:1.7;
+    }
+
+    .btn-primary {
+      padding:10px 16px;
+      border-radius:999px;
+      background:#4f46e5;
+      color:white;
+      border:none;
+      font-size:13px;
+      cursor:pointer;
+    }
+
+    .table-wrap {
+      margin-top:16px;
+      background:white;
+      border-radius:12px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.06);
+      overflow:hidden;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    th, td {
+      padding:8px 10px;
+      border-bottom:1px solid #e5e7eb;
+      text-align:left;
+    }
+    th {
+      background:#f3f4f6;
+      font-weight:600;
+      color:#4b5563;
+    }
+    tr:nth-child(even) td {
+      background:#f9fafb;
+    }
+    .status-pill {
+      display:inline-block;
+      padding:3px 9px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:600;
+    }
+    .status-done {
+      background:#dcfce7;
+      color:#166534;
+    }
+    .status-wait {
+      background:#fee2e2;
+      color:#b91c1c;
+    }
+    .tag-small {
+      font-size:11px;
+      color:#6b7280;
+    }
+    .empty {
+      text-align:center;
+      padding:20px;
+      color:#6b7280;
+    }
+
+    @media (max-width:768px){
+      .stats { grid-template-columns:repeat(2,1fr); }
+      .period-card { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="left">
+    <button class="back" onclick="history.back()">←</button>
+    <div>
+      <div class="page-title">シフト管理</div>
+      <div class="page-sub" id="periodSubTitle">期間情報を読み込み中…</div>
+    </div>
+  </div>
+  <div class="badge-admin">管理者ビュー</div>
+</header>
+
+<div class="container">
+  <!-- ステータスカード -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">ステータス</div>
+      <div class="stat-value" id="statStatus">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">従業員数</div>
+      <div class="stat-value" id="statStaff">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">提出済み</div>
+      <div class="stat-value" id="statSubmitted">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">未提出</div>
+      <div class="stat-value" id="statNotSubmitted">0</div>
+    </div>
+  </div>
+
+  <!-- 期間情報 -->
+  <div class="section-title">シフト期間</div>
+  <div class="period-card">
+    <div>
+      <div class="period-main-title" id="periodName">
+        -
+        <span class="badge-status badge-open" id="badgeStatus">募集中</span>
+      </div>
+      <div class="period-sub" id="periodSummary">
+        -
+      </div>
+    </div>
+    <div>
+      <button class="btn-primary" onclick="goEmployeeView()">従業員ビューへ</button>
+    </div>
+  </div>
+
+  <!-- 従業員一覧 -->
+  <div class="section-title" style="margin-top:26px;">従業員の提出状況</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>名前</th>
+          <th>状態</th>
+          <th>登録シフト数</th>
+          <th>最終更新</th>
+        </tr>
+      </thead>
+      <tbody id="staffTableBody">
+        <tr><td colspan="4" class="empty">読み込み中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const pathParts = window.location.pathname.split("/"); // ["", "storeA", "shift-admin", "periodId"]
+  const STORE = pathParts[1];
+  const PERIOD_ID = pathParts[3];
+
+  function fmtDateStr(str) {
+    if (!str) return "-";
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return "-";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    return `${y}/${m}/${da}`;
+  }
+
+  function statusText(status) {
+    if (status === "open") return "募集中";
+    if (status === "locked") return "調整中";
+    if (status === "closed") return "確定済み";
+    return "-";
+  }
+
+  function statusBadgeClass(status) {
+    if (status === "open") return "badge-open";
+    if (status === "locked") return "badge-locked";
+    if (status === "closed") return "badge-closed";
+    return "badge-open";
+  }
+
+  async function loadDetail() {
+    try {
+      const [periodRes, staffRes, submitRes] = await Promise.all([
+        fetch(`/${STORE}/shift-period/${PERIOD_ID}`),
+        fetch(`/${STORE}/admin/search-staff`),
+        fetch(`/${STORE}/shift-period/${PERIOD_ID}/submissions`)
+      ]);
+
+      const period = await periodRes.json();
+      const staffList = await staffRes.json();   // [{id,name,approved,...}]
+      const submits = await submitRes.json();    // [{userId, shifts, updatedAt,...}]
+
+      // 期間情報
+      document.getElementById("periodName").innerHTML =
+        `${period.name || "シフト期間"}` +
+        ` <span class="badge-status ${statusBadgeClass(period.status)}" id="badgeStatus">${statusText(period.status)}</span>`;
+
+      document.getElementById("periodSubTitle").textContent =
+        `期間: ${fmtDateStr(period.startDate)} 〜 ${fmtDateStr(period.endDate)} ／ 締切: ${fmtDateStr(period.deadline)}`;
+
+      document.getElementById("periodSummary").innerHTML =
+        `期間: ${fmtDateStr(period.startDate)} 〜 ${fmtDateStr(period.endDate)}<br>` +
+        `提出締切日: ${fmtDateStr(period.deadline)}`;
+
+      // 従業員 & 提出状況
+      const approvedStaff = staffList.filter(s => s.approved);
+      const totalStaff = approvedStaff.length;
+
+      const submitMap = {};
+      submits.forEach(s => { submitMap[s.userId] = s; });
+
+      let submittedCount = 0;
+
+      const tbody = document.getElementById("staffTableBody");
+      tbody.innerHTML = "";
+
+      if (!approvedStaff.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">承認済み従業員が登録されていません。</td></tr>';
+      } else {
+        approvedStaff.forEach(s => {
+          const sub = submitMap[s.id];
+          const done = !!sub;
+          if (done) submittedCount++;
+
+          let shiftCount = 0;
+          if (sub && sub.shifts) {
+            Object.values(sub.shifts).forEach(list => {
+              shiftCount += Array.isArray(list) ? list.length : 0;
+            });
+          }
+
+          const updated = sub && sub.updatedAt ? fmtDateStr(sub.updatedAt) : "-";
+
+          const statusLabel = done ? "提出済み" : "未提出";
+          const statusClass = done ? "status-done" : "status-wait";
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${s.name || "(名前未登録)"}</td>
+            <td><span class="status-pill ${statusClass}">${statusLabel}</span></td>
+            <td>${shiftCount}</td>
+            <td><span class="tag-small">${updated}</span></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // ステータスカード
+      document.getElementById("statStatus").textContent = statusText(period.status);
+      document.getElementById("statStaff").textContent = totalStaff;
+      document.getElementById("statSubmitted").textContent = submittedCount;
+      document.getElementById("statNotSubmitted").textContent = Math.max(totalStaff - submittedCount, 0);
+    } catch (e) {
+      console.error(e);
+      const tbody = document.getElementById("staffTableBody");
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">データ取得に失敗しました。</td></tr>';
+    }
+  }
+
+  function goEmployeeView() {
+    // 従業員ビューのトップ（後で作る /store/shift ）に遷移
+    window.location.href = `/${STORE}/shift?periodId=${PERIOD_ID}`;
+  }
+
+  loadDetail();
+</script>
+</body>
+</html>

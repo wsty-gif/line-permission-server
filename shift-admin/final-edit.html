@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>確定後シフト編集（管理者）</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    margin:0;
+    font-family:'Noto Sans JP',sans-serif;
+    background:#f5f7fb;
+  }
+  header {
+    background:white;
+    padding:16px 20px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+  }
+  .title {
+    font-size:20px;
+    font-weight:700;
+  }
+  .subtitle {
+    font-size:13px;
+    color:#6b7280;
+    margin-top:4px;
+  }
+
+  .container { max-width:900px; margin:0 auto; padding:20px; }
+
+  .day-title {
+    font-size:17px;
+    font-weight:700;
+    margin-top:20px;
+  }
+
+  /* シフトボックス */
+  .shift-block {
+    background:white;
+    border-radius:10px;
+    border:1px solid #ddd;
+    margin-top:12px;
+    padding:12px;
+  }
+  .shift-header {
+    font-weight:600;
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:8px;
+  }
+  .delete-link {
+    color:#dc2626;
+    cursor:pointer;
+    font-size:14px;
+  }
+
+  .time-row {
+    display:flex;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  .time-row input[type="time"] {
+    width:48%;
+    padding:8px;
+    font-size:15px;
+    border:1px solid #ccc;
+    border-radius:6px;
+  }
+
+  .range-row { margin-bottom:8px; }
+  .range-row label { font-size:13px; color:#374151; }
+  .range-row input[type="range"] { width:100%; }
+
+  .add-btn {
+    margin-top:10px;
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#e5e7eb;
+    cursor:pointer;
+    font-size:14px;
+  }
+
+  .save-btn {
+    margin-top:30px;
+    width:100%;
+    background:#4f46e5;
+    color:white;
+    border:none;
+    padding:12px;
+    font-size:15px;
+    border-radius:10px;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">確定後シフト編集（管理者）</div>
+  <div class="subtitle" id="headerSub">読み込み中...</div>
+</header>
+
+<div class="container">
+
+  <div id="editArea"></div>
+
+  <button class="save-btn" onclick="saveFinal()">確定後シフトを保存</button>
+
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const PERIOD_ID = params.get("periodId");
+  const STORE = location.pathname.split("/")[1];
+
+  let period = null;
+  let finalData = {};
+
+  async function loadData() {
+    const [resP, resF] = await Promise.all([
+      fetch(`/${STORE}/shift-period/${PERIOD_ID}`),
+      fetch(`/${STORE}/shift-final-data/${PERIOD_ID}`)
+    ]);
+
+    period = await resP.json();
+    const final = await resF.json();
+
+    finalData = final.finalData || {};
+
+    document.getElementById("headerSub").textContent =
+      `${period.name}（${period.startDate}〜${period.endDate}）`;
+
+    buildEditor();
+  }
+
+  function buildEditor() {
+    const area = document.getElementById("editArea");
+    area.innerHTML = "";
+
+    Object.keys(finalData).forEach(userId => {
+      const userShifts = finalData[userId];
+
+      area.innerHTML += `<div class="day-title">スタッフ：${userId}</div>`;
+
+      Object.keys(userShifts).forEach(date => {
+        const list = userShifts[date];
+
+        area.innerHTML += `<div class="day-title">${date}</div>`;
+        area.innerHTML += `<div id="list-${userId}-${date}"></div>`;
+
+        list.forEach((shift, index) => {
+          renderShiftBlock(userId, date, shift, index);
+        });
+
+        area.innerHTML +=
+          `<button class="add-btn" onclick="addShift('${userId}','${date}')">＋ シフト追加</button>`;
+      });
+    });
+  }
+
+  function renderShiftBlock(userId, date, shift, index) {
+    const container = document.getElementById(`list-${userId}-${date}`);
+
+    container.insertAdjacentHTML("beforeend", `
+      <div class="shift-block" id="block-${userId}-${date}-${index}">
+        <div class="shift-header">
+          シフト ${index + 1}
+          <span class="delete-link" onclick="deleteShift('${userId}','${date}',${index})">削除</span>
+        </div>
+
+        <div class="time-row">
+          <input type="time" id="start-${userId}-${date}-${index}" value="${shift.start}">
+          <input type="time" id="end-${userId}-${date}-${index}" value="${shift.end}">
+        </div>
+
+        <div class="range-row">
+          <label>開始（ドラッグ）</label>
+          <input type="range" min="0" max="1439" value="${timeToMin(shift.start)}"
+            onchange="dragStart('${userId}','${date}',${index}, this.value)">
+        </div>
+
+        <div class="range-row">
+          <label>終了（ドラッグ）</label>
+          <input type="range" min="0" max="1439" value="${timeToMin(shift.end)}"
+            onchange="dragEnd('${userId}','${date}',${index}, this.value)">
+        </div>
+      </div>
+    `);
+  }
+
+  function addShift(userId, date) {
+    finalData[userId][date].push({
+      start:"09:00",
+      end:"18:00"
+    });
+    buildEditor();
+  }
+
+  function deleteShift(userId, date, index) {
+    finalData[userId][date].splice(index, 1);
+    buildEditor();
+  }
+
+  function timeToMin(t) {
+    const [h,m]=t.split(":").map(Number);
+    return h*60+m;
+  }
+  function minToTime(min) {
+    const h=String(Math.floor(min/60)).padStart(2,"0");
+    const m=String(min%60).padStart(2,"0");
+    return `${h}:${m}`;
+  }
+
+  function dragStart(userId,date,index,val) {
+    const t=minToTime(Number(val));
+    document.getElementById(`start-${userId}-${date}-${index}`).value=t;
+    finalData[userId][date][index].start=t;
+  }
+  function dragEnd(userId,date,index,val) {
+    const t=minToTime(Number(val));
+    document.getElementById(`end-${userId}-${date}-${index}`).value=t;
+    finalData[userId][date][index].end=t;
+  }
+
+  async function saveFinal() {
+    const res = await fetch(`/${STORE}/shift-final-update/${PERIOD_ID}`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ finalData })
+    });
+
+    const json=await res.json();
+    if(json.status==="ok"){
+      alert("確定後シフトを保存しました");
+    }else{
+      alert("保存に失敗しました");
+    }
+  }
+
+  loadData();
+</script>
+
+</body>
+</html>

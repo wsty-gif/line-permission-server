@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>シフト管理（従業員）</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    margin:0;
+    font-family:'Noto Sans JP',sans-serif;
+    background:#f5f7fb;
+    color:#111827;
+  }
+  header {
+    background:white;
+    padding:16px 20px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+  }
+  .title {
+    font-size:20px;
+    font-weight:700;
+  }
+  .subtitle {
+    margin-top:4px;
+    color:#6b7280;
+    font-size:13px;
+  }
+
+  .container {
+    max-width:900px;
+    margin:0 auto;
+    padding:20px;
+  }
+
+  /* ====== シフト期間カード ====== */
+  .period-card {
+    background:white;
+    border-radius:12px;
+    padding:18px 20px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom:20px;
+    cursor:pointer;
+  }
+  .period-title {
+    font-size:17px;
+    font-weight:700;
+  }
+  .period-sub {
+    margin-top:4px;
+    font-size:13px;
+    color:#6b7280;
+  }
+  .badge {
+    padding:3px 9px;
+    border-radius:999px;
+    font-size:11px;
+    color:white;
+  }
+  .badge.open { background:#16a34a; }
+  .badge.locked { background:#eab308; }
+  .calendar-wrapper {
+    margin-top:20px;
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  /* ===== カレンダー ===== */
+  .calendar {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+  }
+  th {
+    color:#6b7280;
+    font-size:13px;
+    padding-bottom:6px;
+  }
+  td {
+    height:68px;
+    width:14.28%;
+    border:1px solid #e5e7eb;
+    vertical-align:top;
+    padding:4px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  td:hover {
+    background:#eef2ff;
+  }
+  .disabled {
+    background:#f9fafb;
+    color:#cbd5e1;
+    cursor:not-allowed;
+  }
+  .day-num {
+    font-weight:600;
+    margin-bottom:4px;
+  }
+  .shift-tag {
+    display:inline-block;
+    font-size:11px;
+    padding:2px 6px;
+    border-radius:6px;
+    margin-top:2px;
+    background:#dbeafe;
+    color:#1e40af;
+  }
+
+  /* ===== モーダル ===== */
+  .modal-bg {
+    position:fixed;
+    top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,0.3);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+  }
+  .modal {
+    background:white;
+    padding:20px;
+    width:90%;
+    max-width:420px;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+    position:relative;
+  }
+  .modal-close {
+    position:absolute;
+    top:12px;right:14px;
+    font-size:18px;
+    cursor:pointer;
+  }
+  .modal-title {
+    font-size:17px;
+    font-weight:700;
+    margin-bottom:14px;
+  }
+  .form-group {
+    margin-bottom:14px;
+  }
+  select,input,textarea {
+    width:100%;
+    padding:10px;
+    border-radius:8px;
+    border:1px solid #d1d5db;
+    font-size:14px;
+  }
+  textarea { height:70px; }
+
+  .save-btn {
+    background:#4f46e5;
+    color:white;
+    border:none;
+    padding:10px 16px;
+    font-size:14px;
+    border-radius:8px;
+    width:100%;
+    cursor:pointer;
+  }
+
+  /* ==== 時間入力エリア ==== */
+  .time-box {
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .time-box input {
+    width:48%;
+  }
+
+  .tab-box {
+    display:flex;
+    margin-bottom:12px;
+  }
+  .tab-btn {
+    flex:1;
+    padding:10px;
+    border:none;
+    cursor:pointer;
+    font-size:14px;
+    background:#e5e7eb;
+  }
+  .tab-btn.active {
+    background:#4f46e5;
+    color:white;
+    font-weight:600;
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">シフト管理</div>
+  <div class="subtitle" id="headerSub"></div>
+</header>
+
+<div class="container">
+  <!-- カレンダーは JS が生成 -->
+  <div id="calendarArea"></div>
+</div>
+
+<!-- ========== モーダル ========== -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-close" onclick="closeModal()">×</div>
+    <div class="modal-title" id="modalTitle">-</div>
+
+    <!-- シフト一覧 -->
+    <div id="shiftListArea"></div>
+
+    <button class="add-btn" onclick="addShiftBlock()">＋ シフトを追加</button>
+
+    <button class="save-btn" onclick="saveAllShifts()">この日のシフトを保存</button>
+  </div>
+</div>
+
+<style>
+  .shift-block {
+    border:1px solid #d1d5db;
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:14px;
+    background:#fafafa;
+  }
+  .shift-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:600;
+    margin-bottom:8px;
+  }
+  .delete-link {
+    color:#dc2626;
+    cursor:pointer;
+    font-size:13px;
+  }
+  .time-row {
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .time-row input[type="time"] {
+    width:48%;
+    padding:10px;
+    border:1px solid #cbd5e1;
+    border-radius:8px;
+  }
+  .range-row {
+    margin-bottom:12px;
+  }
+  .range-row input[type="range"] {
+    width:100%;
+  }
+  .add-btn {
+    width:100%;
+    background:#e5e7eb;
+    border:none;
+    padding:10px;
+    border-radius:8px;
+    margin-top:6px;
+    cursor:pointer;
+    font-size:14px;
+  }
+</style>
+
+
+
+<script>
+  // URL から periodId を取得
+  const params = new URLSearchParams(location.search);
+  const PERIOD_ID = params.get("periodId");
+
+  // /storeA/shift の "storeA" 部分
+  const STORE = location.pathname.split("/")[1];
+
+  // ログイン時にどこかで localStorage に保存している想定
+  const USER_ID = localStorage.getItem("lineUserId");
+
+  // 期間情報 & 自分の提出データ
+  let periodData = null;      // { name, startDate, endDate, status ... }
+  let submitData = {};        // { "YYYY-MM-DD": [ {start,end,...}, ... ] }
+
+  let selectedDate = null;
+
+  // ===========================
+  // モーダルを開く
+  // ===========================
+  function openModal(date) {
+    // ★ ステータスが open 以外なら編集禁止
+    if (periodData && periodData.status !== "open") {
+      alert("現在はシフト提出期間ではありません。（ステータス: " + periodData.status + "）");
+      return;
+    }
+
+    selectedDate = date;
+
+    document.getElementById("modalTitle").textContent =
+      `${date} のシフト編集`;
+
+    buildShiftList();
+    document.getElementById("modalBg").style.display = "flex";
+  }
+
+  function closeModal() {
+    document.getElementById("modalBg").style.display = "none";
+  }
+
+  // ===========================
+  // この日のシフト一覧を描画
+  // ===========================
+  function buildShiftList() {
+    const area = document.getElementById("shiftListArea");
+    area.innerHTML = "";
+
+    const list = submitData[selectedDate] || [];
+
+    list.forEach((shift, index) => {
+      area.innerHTML += renderShiftBlock(shift, index);
+    });
+  }
+
+  // ===========================
+  // シフトブロック HTML
+  // ===========================
+  function renderShiftBlock(shift, index) {
+    return `
+      <div class="shift-block" id="shift-${index}">
+        <div class="shift-header">
+          シフト ${index + 1}
+          <span class="delete-link" onclick="deleteShift(${index})">削除</span>
+        </div>
+
+        <div class="time-row">
+          <input type="time" id="start-${index}" value="${shift.start || ''}">
+          <input type="time" id="end-${index}" value="${shift.end || ''}">
+        </div>
+
+        <div class="range-row">
+          <label>ドラッグで開始時刻</label>
+          <input type="range" min="0" max="1439"
+                 value="${timeToMin(shift.start)}"
+                 onchange="dragStart(${index}, this.value)">
+        </div>
+
+        <div class="range-row">
+          <label>ドラッグで終了時刻</label>
+          <input type="range" min="0" max="1439"
+                 value="${timeToMin(shift.end)}"
+                 onchange="dragEnd(${index}, this.value)">
+        </div>
+      </div>
+    `;
+  }
+
+  // ===========================
+  // シフト削除
+  // ===========================
+  function deleteShift(index) {
+    const list = submitData[selectedDate] || [];
+    list.splice(index, 1);
+    submitData[selectedDate] = list;
+    buildShiftList();
+  }
+
+  // ===========================
+  // シフト追加
+  // ===========================
+  function addShiftBlock() {
+    if (!submitData[selectedDate]) submitData[selectedDate] = [];
+
+    submitData[selectedDate].push({
+      start: "09:00",
+      end: "18:00"
+    });
+
+    buildShiftList();
+  }
+
+  // ===========================
+  // 時間 → 分
+  // ===========================
+  function timeToMin(t) {
+    if (!t) return 0;
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  }
+
+  // 分 → 00:00
+  function minToTime(min) {
+    const h = String(Math.floor(min / 60)).padStart(2, "0");
+    const m = String(min % 60).padStart(2, "0");
+    return `${h}:${m}`;
+  }
+
+  // ===========================
+  // range → time
+  // ===========================
+  function dragStart(index, val) {
+    const time = minToTime(Number(val));
+    document.getElementById(`start-${index}`).value = time;
+    submitData[selectedDate][index].start = time;
+  }
+
+  function dragEnd(index, val) {
+    const time = minToTime(Number(val));
+    document.getElementById(`end-${index}`).value = time;
+    submitData[selectedDate][index].end = time;
+  }
+
+  // ===========================
+  // すべて保存
+  // ===========================
+  async function saveAllShifts() {
+    const list = submitData[selectedDate] || [];
+
+    // ★ ここでもステータスチェック
+    if (periodData.status !== "open") {
+      alert("現在は提出できません（ステータス: " + periodData.status + "）");
+      return;
+    }
+
+    // HTML の内容を list に反映
+    list.forEach((s, i) => {
+      s.start = document.getElementById(`start-${i}`).value;
+      s.end = document.getElementById(`end-${i}`).value;
+    });
+
+    const res = await fetch(`/${STORE}/shift-submit/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        periodId: PERIOD_ID,
+        userId: USER_ID,
+        date: selectedDate,
+        shifts: list
+      })
+    });
+
+    const json = await res.json();
+    if (json.status === "ok") {
+      closeModal();
+      loadData(); // カレンダー更新
+    } else {
+      alert("保存に失敗しました");
+    }
+  }
+
+  // ===========================
+  // カレンダー描画
+  // ===========================
+  function buildCalendar() {
+    const area = document.getElementById("calendarArea");
+
+    const start = new Date(periodData.startDate);
+    const end = new Date(periodData.endDate);
+
+    const year = start.getFullYear();
+    const month = start.getMonth(); // 0-11
+
+    const first = new Date(year, month, 1);
+    const last = new Date(year, month + 1, 0);
+
+    area.innerHTML = `
+      <div class="calendar-wrapper">
+        <div class="period-title">${periodData.name}</div>
+        <div class="period-sub">
+          期間: ${periodData.startDate} 〜 ${periodData.endDate}
+          / 締切: ${periodData.deadline || "-"}
+        </div>
+
+        <table class="calendar">
+          <thead>
+            <tr>
+              <th>日</th><th>月</th><th>火</th><th>水</th>
+              <th>木</th><th>金</th><th>土</th>
+            </tr>
+          </thead>
+          <tbody id="calBody"></tbody>
+        </table>
+      </div>
+    `;
+
+    const body = document.getElementById("calBody");
+    let row = "<tr>";
+
+    // 1日の曜日分の空セル
+    for (let i = 0; i < first.getDay(); i++) {
+      row += `<td class="disabled"></td>`;
+    }
+
+    for (let d = 1; d <= last.getDate(); d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const shifts = submitData[dateStr] || [];
+
+      row += `<td onclick="openModal('${dateStr}')">
+                <div class="day-num">${d}</div>
+                ${
+                  shifts
+                    .map(s => `<div class="shift-tag">${s.type || (s.start + "〜" + s.end)}</div>`)
+                    .join("")
+                }
+              </td>`;
+
+      if ((first.getDay() + d) % 7 === 0) {
+        row += "</tr><tr>";
+      }
+    }
+
+    row += "</tr>";
+    body.innerHTML = row;
+  }
+
+  // ===========================
+  // データ読み込み & Step4: ステータスで制御
+  // ===========================
+  async function loadData() {
+    const [resP, resS] = await Promise.all([
+      fetch(`/${STORE}/shift-period/${PERIOD_ID}`),
+      fetch(`/${STORE}/shift-period/${PERIOD_ID}/submissions`)
+    ]);
+
+    periodData = await resP.json();
+
+    const all = await resS.json();
+    const mine = all.find(s => s.userId === USER_ID);
+    submitData = mine ? (mine.shifts || {}) : {};
+
+    const headerSub = document.getElementById("headerSub");
+    headerSub.textContent =
+      `${periodData.name}（${periodData.startDate} 〜 ${periodData.endDate}）`;
+
+    buildCalendar();
+
+    // ★★★ ここが Step4：ステータスが open 以外ならボタン非表示にする ★★★
+    if (periodData.status !== "open") {
+      const buttons = document.querySelectorAll(".add-btn, .save-btn");
+      buttons.forEach(btn => btn.style.display = "none");
+
+      headerSub.textContent +=
+        ` ｜ 現在は編集できません（ステータス: ${periodData.status}）`;
+    }
+    // ★ ステータスが closed の場合 → 閲覧ページへ飛ばす
+    if (periodData.status === "closed") {
+      location.href = `/${STORE}/shift-final?periodId=${PERIOD_ID}`;
+      return;
+    }
+
+  }
+
+  // 最初の読み込み
+  loadData();
+</script>
+
+
+</body>
+</html>
