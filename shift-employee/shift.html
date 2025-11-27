@@ -1,3 +1,34 @@
+<!-- ★ LIFF SDK 読み込み -->
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+<script>
+async function initLiffAndGetUser() {
+  try {
+    await liff.init({ liffId: "{{storeConf.liffId}}" });
+
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    const uid = profile.userId;
+
+    // ★★★ これが無いからエラーになっていた ★★★
+    localStorage.setItem("lineUserId", uid);
+
+    console.log("LINE USER ID:", uid);
+
+  } catch (err) {
+    console.error("LIFF error:", err);
+    alert("LINEログインに失敗しました。");
+  }
+}
+
+// ページ初回ロード時に実行
+initLiffAndGetUser();
+</script>
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
