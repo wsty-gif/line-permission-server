@@ -478,63 +478,7 @@ async function saveAllShifts() {
     alert("保存に失敗しました");
   }
 }
-  // ステータスチェック
-  if (periodData.status !== "open") {
-    alert("現在は提出できません（ステータス: " + periodData.status + "）");
-    return;
-  }
 
-  // 必須チェック（userId / 日付）
-  if (!USER_ID) {
-    alert("ユーザー情報が取得できません（USER_ID が空）。LINE ログインが正しく完了しているか確認してください。");
-    return;
-  }
-  if (!selectedDate) {
-    alert("日付が選択されていません。もう一度カレンダーから日付を選び直してください。");
-    return;
-  }
-
-  // この日の配列を必ず用意する
-  if (!submitData[selectedDate]) {
-    submitData[selectedDate] = [];
-  }
-  const list = submitData[selectedDate];
-
-  // HTML の入力値を list に反映
-  list.forEach((s, i) => {
-    s.start = document.getElementById(`start-${i}`).value;
-    s.end   = document.getElementById(`end-${i}`).value;
-  });
-
-  // （任意）空のシフトを除外したい場合
-  const filtered = list.filter(s => s.start && s.end);
-
-  if (filtered.length === 0) {
-    if (!confirm("この日のシフトが 0 件になります。よろしいですか？")) {
-      return;
-    }
-  }
-
-  const res = await fetch(`/${STORE}/shift-submit/save`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      periodId: PERIOD_ID || "",
-      userId:   USER_ID   || "",
-      date:     selectedDate || "",
-      shifts:   filtered   // ← サーバー側が期待している Array
-    })
-  });
-
-  const json = await res.json();
-  if (json.status === "ok") {
-    closeModal();
-    loadData(); // カレンダー更新
-  } else {
-    console.error("save error:", json);
-    alert("保存に失敗しました");
-  }
-}
 
   // ===========================
   // カレンダー描画
