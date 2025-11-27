@@ -283,84 +283,82 @@
     return "badge-open";
   }
 
-  async function loadDetail() {
-    try {
-      const [resP, resS] = await Promise.all([
-        fetch(`/${STORE}/shift-period/${PERIOD_ID}`),
-        fetch(`/${STORE}/shift-period/${PERIOD_ID}/submissions`)
-      ]);
+async function loadDetail() {
+  try {
+    const [periodRes, staffRes, submitRes] = await Promise.all([
+      fetch(`/${STORE}/shift-period/${PERIOD_ID}`),
+      fetch(`/${STORE}/admin/search-staff`),
+      fetch(`/${STORE}/shift-period/${PERIOD_ID}/submissions`)
+    ]);
 
+    const period = await periodRes.json();
+    const staffList = await staffRes.json();
+    const submits = await submitRes.json();
 
-      const period = await periodRes.json();
-      const staffList = await staffRes.json();   // [{id,name,approved,...}]
-      const submits = await submitRes.json();    // [{userId, shifts, updatedAt,...}]
+    // 期間情報の表示
+    document.getElementById("periodName").innerHTML =
+      `${period.name}` +
+      ` <span class="badge-status ${statusBadgeClass(period.status)}">${statusText(period.status)}</span>`;
 
-      // 期間情報
-      document.getElementById("periodName").innerHTML =
-        `${period.name || "シフト期間"}` +
-        ` <span class="badge-status ${statusBadgeClass(period.status)}" id="badgeStatus">${statusText(period.status)}</span>`;
+    document.getElementById("periodSubTitle").textContent =
+      `期間: ${fmtDateStr(period.startDate)} 〜 ${fmtDateStr(period.endDate)} ／ 締切: ${fmtDateStr(period.deadline)}`;
 
-      document.getElementById("periodSubTitle").textContent =
-        `期間: ${fmtDateStr(period.startDate)} 〜 ${fmtDateStr(period.endDate)} ／ 締切: ${fmtDateStr(period.deadline)}`;
+    document.getElementById("periodSummary").innerHTML =
+      `期間: ${fmtDateStr(period.startDate)} 〜 ${fmtDateStr(period.endDate)}<br>` +
+      `提出締切日: ${fmtDateStr(period.deadline)}`;
 
-      document.getElementById("periodSummary").innerHTML =
-        `期間: ${fmtDateStr(period.startDate)} 〜 ${fmtDateStr(period.endDate)}<br>` +
-        `提出締切日: ${fmtDateStr(period.deadline)}`;
+    // 従業員と提出状況
+    const approvedStaff = staffList.filter(s => s.approved);
+    const totalStaff = approvedStaff.length;
 
-      // 従業員 & 提出状況
-      const approvedStaff = staffList.filter(s => s.approved);
-      const totalStaff = approvedStaff.length;
+    const submitMap = {};
+    submits.forEach(s => { submitMap[s.userId] = s; });
 
-      const submitMap = {};
-      submits.forEach(s => { submitMap[s.userId] = s; });
+    let submittedCount = 0;
+    const tbody = document.getElementById("staffTableBody");
+    tbody.innerHTML = "";
 
-      let submittedCount = 0;
+    if (!approvedStaff.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">承認済み従業員が登録されていません。</td></tr>';
+    } else {
+      approvedStaff.forEach(s => {
+        const sub = submitMap[s.id];
+        const done = !!sub;
+        if (done) submittedCount++;
 
-      const tbody = document.getElementById("staffTableBody");
-      tbody.innerHTML = "";
+        let shiftCount = 0;
+        if (sub?.shifts) {
+          Object.values(sub.shifts).forEach(list => {
+            shiftCount += Array.isArray(list) ? list.length : 0;
+          });
+        }
 
-      if (!approvedStaff.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">承認済み従業員が登録されていません。</td></tr>';
-      } else {
-        approvedStaff.forEach(s => {
-          const sub = submitMap[s.id];
-          const done = !!sub;
-          if (done) submittedCount++;
+        const updated = sub?.updatedAt ? fmtDateStr(sub.updatedAt) : "-";
 
-          let shiftCount = 0;
-          if (sub && sub.shifts) {
-            Object.values(sub.shifts).forEach(list => {
-              shiftCount += Array.isArray(list) ? list.length : 0;
-            });
-          }
-
-          const updated = sub && sub.updatedAt ? fmtDateStr(sub.updatedAt) : "-";
-
-          const statusLabel = done ? "提出済み" : "未提出";
-          const statusClass = done ? "status-done" : "status-wait";
-
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${s.name || "(名前未登録)"}</td>
-            <td><span class="status-pill ${statusClass}">${statusLabel}</span></td>
+        tbody.innerHTML += `
+          <tr>
+            <td>${s.name}</td>
+            <td><span class="status-pill ${done ? "status-done" : "status-wait"}">${done ? "提出済み" : "未提出"}</span></td>
             <td>${shiftCount}</td>
-            <td><span class="tag-small">${updated}</span></td>
-          `;
-          tbody.appendChild(tr);
-        });
-      }
-
-      // ステータスカード
-      document.getElementById("statStatus").textContent = statusText(period.status);
-      document.getElementById("statStaff").textContent = totalStaff;
-      document.getElementById("statSubmitted").textContent = submittedCount;
-      document.getElementById("statNotSubmitted").textContent = Math.max(totalStaff - submittedCount, 0);
-    } catch (e) {
-      console.error(e);
-      const tbody = document.getElementById("staffTableBody");
-      tbody.innerHTML = '<tr><td colspan="4" class="empty">データ取得に失敗しました。</td></tr>';
+            <td>${updated}</td>
+          </tr>
+        `;
+      });
     }
+
+    // カード情報
+    document.getElementById("statStatus").textContent = statusText(period.status);
+    document.getElementById("statStaff").textContent = totalStaff;
+    document.getElementById("statSubmitted").textContent = submittedCount;
+    document.getElementById("statNotSubmitted").textContent = totalStaff - submittedCount;
+
+  } catch (e) {
+    console.error(e);
+    const tbody = document.getElementById("staffTableBody");
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">データ取得に失敗しました。</td></tr>';
   }
+}
+
 
   function goEmployeeView() {
     // 従業員ビューのトップ（後で作る /store/shift ）に遷移
