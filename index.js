@@ -5414,13 +5414,24 @@ app.post("/:store/shift/save", ensureStore, async (req, res) => {
 // 従業員ビュー（カレンダー）
 // ==============================
 app.get("/:store/shift", ensureStore, (req, res) => {
-  // ログインしていない → ログインページへ
-  if (!req.session.loggedIn || req.session.store !== req.store) {
-    return res.redirect(`/${req.store}/login`);
-  }
+  const store = req.params.store;
 
-  res.sendFile(path.join(__dirname, "shift-employee/shift.html"));
+  // Firestore から store 設定を取得
+  db.collection("companies")
+    .doc(store)
+    .collection("config")
+    .doc("line")
+    .get()
+    .then((doc) => {
+      const conf = doc.data() || {};
+
+      res.render("shift", {
+        store,
+        storeConf: conf  // ← これが必要。liffId を含む
+      });
+    });
 });
+
 
 
 app.post("/:store/shift-period/create", ensureStore, async (req, res) => {
