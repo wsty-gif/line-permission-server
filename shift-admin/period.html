@@ -285,11 +285,11 @@
 
   async function loadDetail() {
     try {
-      const [periodRes, staffRes, submitRes] = await Promise.all([
+      const [resP, resS] = await Promise.all([
         fetch(`/${STORE}/shift-period/${PERIOD_ID}`),
-        fetch(`/${STORE}/admin/search-staff`),
         fetch(`/${STORE}/shift-period/${PERIOD_ID}/submissions`)
       ]);
+
 
       const period = await periodRes.json();
       const staffList = await staffRes.json();   // [{id,name,approved,...}]
