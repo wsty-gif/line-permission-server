@@ -6079,5 +6079,21 @@ app.get("/:store/shift", ensureStore, (req, res) => {
 });
 
 // ==============================
+// Render 無料プランのスリープ対策（Health Check）
+// ==============================
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
+// ==============================
+// Render keep-alive（4分ごとに自分自身へ ping）
+// ==============================
+setInterval(() => {
+  fetch("https://line-permission-server.onrender.com/health")
+    .then(() => console.log("KeepAlive: OK"))
+    .catch(() => console.log("KeepAlive: NG"));
+}, 4 * 60 * 1000); // 4分ごと
+
+// ==============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
