@@ -492,9 +492,11 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
 
     <!-- ✅ ボタン群 -->
     <div class="nav">
-      <a href="/${store}/admin/attendance">勤怠管理</a>
-      <a href="/${store}/admin/fix">打刻修正依頼</a>
-      <a href="/${store}/admin/settings">店舗設定</a>
+      <!-- 
+        <a href="/${store}/admin/attendance">勤怠管理</a>
+        <a href="/${store}/admin/fix">打刻修正依頼</a>
+        <a href="/${store}/admin/settings">店舗設定</a>
+      -->
       <a href="/${store}/admin/manual-logs"
         style="display:block;margin-top:20px;padding:12px;
                 background:#2563eb;color:white;border-radius:8px;
