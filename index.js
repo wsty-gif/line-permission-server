@@ -484,6 +484,47 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         cursor:pointer;
       }
       .btn-edit:hover { background:#2563eb; }
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .page-numbers {
+        display: flex;
+        gap: 4px;
+      }
+
+      .page-num {
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 14px;
+        background: #f7f7f7;
+      }
+
+      .page-num.active {
+        background: #000;
+        color: #fff;
+        border-color: #000;
+      }
+
+      .p-btn {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        background: #fff;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+
+      .p-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
     </style>
 
   </head>
@@ -525,11 +566,14 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       <tbody id="staffBody"><tr><td colspan="5" class="empty">読み込み中...</td></tr></tbody>
     </table>
 
-    <div id="pagination" style="text-align:center; margin:16px 0;">
-      <button id="prevPage" disabled>前へ</button>
-      <span id="pageInfo">1ページ目</span>
-      <button id="nextPage">次へ</button>
+    <div id="pagination" class="pagination">
+      <button id="prevPage" class="p-btn">＜ 前のページへ</button>
+
+      <div id="pageNumbers" class="page-numbers"></div>
+
+      <button id="nextPage" class="p-btn">次のページへ ＞</button>
     </div>
+
 
     <footer>© ${new Date().getFullYear()} ${store} 管理システム</footer>
 
@@ -567,27 +611,70 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         currentOffset = offset;
 
         renderFiltered();
-        updatePagination(json.nextOffset);
+        updatePagination(json.nextOffset, json.total);
       }
 
-      function updatePagination(nextOffset) {
-        document.getElementById("prevPage").disabled = currentOffset === 0;
-        var pageNum = (currentOffset / limit) + 1;
-        document.getElementById("pageInfo").innerText =
-          pageNum + " ページ目";
+      function updatePagination(nextOffset, totalItems) {
+        const totalPages = Math.ceil(totalItems / limit);
+        const currentPage = (currentOffset / limit) + 1;
 
-        // next が無ければボタン無効
-        document.getElementById("nextPage").disabled = staffData.length < limit;
-
-        // イベント
-        document.getElementById("prevPage").onclick = () => {
-          if (currentOffset > 0) loadStaff(currentOffset - limit);
+        // ＜ 前のページへ ボタン制御
+        const prevBtn = document.getElementById("prevPage");
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = () => {
+          if (currentPage > 1) loadStaff((currentPage - 2) * limit);
         };
 
-        document.getElementById("nextPage").onclick = () => {
-          loadStaff(currentOffset + limit);
+        // ＞ 次のページへ ボタン制御
+        const nextBtn = document.getElementById("nextPage");
+        nextBtn.disabled = currentPage >= totalPages;
+        nextBtn.onclick = () => {
+          if (currentPage < totalPages) loadStaff(currentPage * limit);
         };
+
+        // --- ページ番号の描画 ---
+        const pageArea = document.getElementById("pageNumbers");
+        pageArea.innerHTML = "";
+
+        //「…」を表示する境界（例：1,2,3,4,…84）
+        const pagesToShow = [];
+
+        if (totalPages <= 7) {
+          // 全部表示（1〜7ページ以内）
+          for (let i = 1; i <= totalPages; i++) pagesToShow.push(i);
+        } else {
+          pagesToShow.push(1);
+          if (currentPage > 3) pagesToShow.push("...");
+
+          const start = Math.max(2, currentPage - 1);
+          const end   = Math.min(totalPages - 1, currentPage + 1);
+
+          for (let i = start; i <= end; i++) pagesToShow.push(i);
+
+          if (currentPage < totalPages - 2) pagesToShow.push("...");
+          pagesToShow.push(totalPages);
+        }
+
+        // 要素生成
+        pagesToShow.forEach(p => {
+          const div = document.createElement("div");
+
+          if (p === "...") {
+            div.textContent = "...";
+            div.className = "page-num";
+            div.style.cursor = "default";
+          } else {
+            div.textContent = p;
+            div.className = "page-num" + (p === currentPage ? " active" : "");
+
+            div.onclick = () => {
+              loadStaff((p - 1) * limit);
+            };
+          }
+          pageArea.appendChild(div);
+        });
       }
+
 
 
       function renderFiltered() {
