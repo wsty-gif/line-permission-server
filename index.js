@@ -3188,13 +3188,46 @@ app.post("/:store/admin/update-staff", ensureStore, async (req, res) => {
 
 
 // 🗑 スタッフ削除API
+// app.post("/:store/admin/delete-staff", ensureStore, async (req, res) => {
+//   const { store } = req.params;
+//   const { userId } = req.body;
+//   try {
+//     await db.collection("companies").doc(store)
+//       .collection("permissions").doc(userId).delete();
+//     res.json({ success: true });
+//   } catch (err) {
+//     console.error("❌ delete-staff error:", err);
+//     res.status(500).json({ error: "削除に失敗しました。" });
+//   }
+// });
 app.post("/:store/admin/delete-staff", ensureStore, async (req, res) => {
-  const { store } = req.params;
+  const { store, storeConf, lineClient } = req;
   const { userId } = req.body;
+
   try {
+    // ① Firestore の権限フラグを false に変更（安全対策）
+    await db.collection("companies").doc(store)
+      .collection("permissions").doc(userId)
+      .set({ approved: false }, { merge: true });
+
+    // ② リッチメニューを BEFORE に戻す（権限剥奪）
+    try {
+      await lineClient.linkRichMenuToUser(userId, storeConf.richmenuBefore);
+      console.log(`🔄 ${userId} → BEFOREリッチメニューへ戻しました`);
+    } catch (e) {
+      console.error("❌ リッチメニュー戻しエラー:", e.originalError?.response?.data || e);
+      // リッチメニューだけ失敗しても処理は継続する
+    }
+
+    // ③ Firestore でスタッフ権限情報を削除
     await db.collection("companies").doc(store)
       .collection("permissions").doc(userId).delete();
+
+    console.log(`🗑 権限データ削除: ${userId}`);
+
+    // ④ 正常応答
     res.json({ success: true });
+
   } catch (err) {
     console.error("❌ delete-staff error:", err);
     res.status(500).json({ error: "削除に失敗しました。" });
