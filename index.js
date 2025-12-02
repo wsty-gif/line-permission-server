@@ -3160,62 +3160,58 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   `);
 });
 
-// 🔍 スタッフ検索API（初期表示＋フィルタ対応）
+// 🔍 スタッフ検索API（検索＋ページネーション対応）
 app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
   const { store } = req.params;
-  const { keyword = "", page = "1" } = req.query;  // ★ page をクエリから受け取る
+  const {
+    keyword = "",
+    limit = "20",
+    offset = "0",
+  } = req.query;
+
+  // limit / offset を数値に変換
+  const limitNum  = Math.max(1, Math.min(parseInt(limit, 10)  || 20, 100)); // 最大100件まで
+  const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
 
   try {
-    // 1ページあたりの表示件数を固定（必要なら後で変更可能）
-    const PER_PAGE = 20;
-
-    // Firestore から権限情報を全件取得
     const snap = await db
       .collection("companies")
       .doc(store)
       .collection("permissions")
       .get();
 
-    // Firestore のデータ → JS 配列に変換し、名前でフィルタリング
-    const all = snap.docs
-      .map((doc) => ({
-        id: doc.id,
-        name: doc.data().name || "未登録",
-        approved: doc.data().approved || false,
-      }))
-      .filter((s) => s.name.includes(keyword)); // ★ keyword フィルタは今までどおり
+    // 全件 → {id, name, approved} に整形
+    const all = snap.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data().name || "未登録",
+      approved: !!doc.data().approved,
+    }));
 
-    // 現在ページ（不正値対策込み）
-    let currentPage = parseInt(page, 10);
-    if (isNaN(currentPage) || currentPage < 1) {
-      currentPage = 1;
-    }
+    // キーワードフィルタ（前方一致とかにしたければここを調整）
+    const filtered = keyword
+      ? all.filter(s => s.name.includes(keyword))
+      : all;
 
-    const total = all.length; // ★ 該当件数
-    const totalPages = total === 0 ? 1 : Math.ceil(total / PER_PAGE);
+    // ページ分だけ切り出し
+    const pageData = filtered.slice(offsetNum, offsetNum + limitNum);
 
-    // currentPage が totalPages を超えていたら補正
-    if (currentPage > totalPages) {
-      currentPage = totalPages;
-    }
+    // 次のページがある場合は nextOffset を返す（使わなくてもOK）
+    const nextOffset =
+      offsetNum + limitNum < filtered.length
+        ? offsetNum + limitNum
+        : null;
 
-    // ★ ページに応じて配列を切り出す
-    const startIndex = (currentPage - 1) * PER_PAGE;
-    const paginated = all.slice(startIndex, startIndex + PER_PAGE);
-
-    // ★ ページネーション情報付きで返す
     res.json({
-      page: currentPage,
-      perPage: PER_PAGE,
-      total,       // 全件数（フィルタ後）
-      totalPages,  // 総ページ数
-      data: paginated, // このページに表示するデータ配列
+      data: pageData,      // ← フロント側は json.data を使う
+      nextOffset,          // ← 今の実装では使っていないが将来用に残しておく
+      total: filtered.length, // 総件数（表示用）
     });
   } catch (err) {
     console.error("❌ search-staff error:", err);
     res.status(500).json({ error: "検索に失敗しました。" });
   }
 });
+
 
 
 // ==============================
