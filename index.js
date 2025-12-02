@@ -525,6 +525,12 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       <tbody id="staffBody"><tr><td colspan="5" class="empty">読み込み中...</td></tr></tbody>
     </table>
 
+    <div id="pagination" style="text-align:center; margin:16px 0;">
+      <button id="prevPage" disabled>前へ</button>
+      <span id="pageInfo">1ページ目</span>
+      <button id="nextPage">次へ</button>
+    </div>
+
     <footer>© ${new Date().getFullYear()} ${store} 管理システム</footer>
 
     <script>
@@ -543,18 +549,46 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         timer = setTimeout(() => renderFiltered(), 300);
       }
 
-      async function loadStaff() {
-        const tbody = document.getElementById("staffBody");
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">読み込み中...</td></tr>';
-        try {
-          const res = await fetch(\`/${store}/admin/search-staff\`);
-          staffData = await res.json();
-          renderFiltered();
-        } catch (err) {
-          console.error(err);
-          tbody.innerHTML = '<tr><td colspan="5" class="empty">データ取得に失敗しました</td></tr>';
-        }
+      let currentOffset = 0;
+      const limit = 20;
+
+      // ページ読み込み
+      async function loadStaff(offset = 0) {
+        // ★ バッククォートを使わずに文字列連結に変更
+        const url =
+          "/" + store + "/admin/search-staff"
+          + "?limit=" + limit
+          + "&offset=" + offset;
+
+        const res = await fetch(url);
+        const json = await res.json();
+
+        staffData = json.data;
+        currentOffset = offset;
+
+        renderFiltered();
+        updatePagination(json.nextOffset);
       }
+
+      function updatePagination(nextOffset) {
+        document.getElementById("prevPage").disabled = currentOffset === 0;
+        var pageNum = (currentOffset / limit) + 1;
+        document.getElementById("pageInfo").innerText =
+          pageNum + " ページ目";
+
+        // next が無ければボタン無効
+        document.getElementById("nextPage").disabled = staffData.length < limit;
+
+        // イベント
+        document.getElementById("prevPage").onclick = () => {
+          if (currentOffset > 0) loadStaff(currentOffset - limit);
+        };
+
+        document.getElementById("nextPage").onclick = () => {
+          loadStaff(currentOffset + limit);
+        };
+      }
+
 
       function renderFiltered() {
         const keyword = document.getElementById("searchInput").value;
@@ -3129,27 +3163,60 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
 // 🔍 スタッフ検索API（初期表示＋フィルタ対応）
 app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
   const { store } = req.params;
-  const { keyword = "" } = req.query;
+  const { keyword = "", page = "1" } = req.query;  // ★ page をクエリから受け取る
 
   try {
-    const snap = await db.collection("companies").doc(store)
+    // 1ページあたりの表示件数を固定（必要なら後で変更可能）
+    const PER_PAGE = 20;
+
+    // Firestore から権限情報を全件取得
+    const snap = await db
+      .collection("companies")
+      .doc(store)
       .collection("permissions")
       .get();
 
-    const result = snap.docs
-      .map(doc => ({
+    // Firestore のデータ → JS 配列に変換し、名前でフィルタリング
+    const all = snap.docs
+      .map((doc) => ({
         id: doc.id,
         name: doc.data().name || "未登録",
-        approved: doc.data().approved || false
+        approved: doc.data().approved || false,
       }))
-      .filter(s => s.name.includes(keyword));
+      .filter((s) => s.name.includes(keyword)); // ★ keyword フィルタは今までどおり
 
-    res.json(result);
+    // 現在ページ（不正値対策込み）
+    let currentPage = parseInt(page, 10);
+    if (isNaN(currentPage) || currentPage < 1) {
+      currentPage = 1;
+    }
+
+    const total = all.length; // ★ 該当件数
+    const totalPages = total === 0 ? 1 : Math.ceil(total / PER_PAGE);
+
+    // currentPage が totalPages を超えていたら補正
+    if (currentPage > totalPages) {
+      currentPage = totalPages;
+    }
+
+    // ★ ページに応じて配列を切り出す
+    const startIndex = (currentPage - 1) * PER_PAGE;
+    const paginated = all.slice(startIndex, startIndex + PER_PAGE);
+
+    // ★ ページネーション情報付きで返す
+    res.json({
+      page: currentPage,
+      perPage: PER_PAGE,
+      total,       // 全件数（フィルタ後）
+      totalPages,  // 総ページ数
+      data: paginated, // このページに表示するデータ配列
+    });
   } catch (err) {
     console.error("❌ search-staff error:", err);
     res.status(500).json({ error: "検索に失敗しました。" });
   }
 });
+
 
 // ==============================
 // ✅ スタッフ承認・解除API（リッチメニュー切替対応）
