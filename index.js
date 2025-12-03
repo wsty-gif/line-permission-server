@@ -577,6 +577,19 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         border-radius: 6px;
         cursor: pointer;
       }
+      /* 承認済みのみ + スイッチ を横並び中央揃え */
+      .approve-filter {
+        display: flex;
+        align-items: center;   /* ← これが中央揃えの本体 */
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      /* テキストの位置調整 */
+      .approve-label {
+        font-size: 14px;
+        color: #333;
+      }
 
     </style>
 
@@ -608,13 +621,14 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         <button id="clearBtn" class="clear-btn">クリア</button>
       </div>
 
-        <label>
-        <span style="font-size:14px;">承認済みのみ</span>
+      <div class="approve-filter">
+        <span class="approve-label">承認済みのみ</span>
         <label class="switch">
           <input type="checkbox" id="approvedOnly">
           <span class="slider"></span>
         </label>
-      </label>
+      </div>
+
     </div>
 
     <!-- ✅ スタッフ一覧 -->
