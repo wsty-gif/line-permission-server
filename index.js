@@ -518,6 +518,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         background: #fff;
         cursor: pointer;
         border-radius: 4px;
+        color: #333;
       }
 
       .p-btn:disabled {
@@ -567,11 +568,11 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
     </table>
 
     <div id="pagination" class="pagination">
-      <button id="prevPage" class="p-btn">＜ 前のページへ</button>
+      <button id="prevPage" class="p-btn">前へ</button>
 
       <div id="pageNumbers" class="page-numbers"></div>
 
-      <button id="nextPage" class="p-btn">次のページへ ＞</button>
+      <button id="nextPage" class="p-btn">次へ</button>
     </div>
 
 
