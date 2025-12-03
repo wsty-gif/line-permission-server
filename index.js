@@ -296,33 +296,103 @@ async function calcPayroll(db, store, userId, period) {
   };
 }
 
-// app.use("/manuals", express.static("manuals"));
-// ==============================
-// 🔐 管理者ログイン
-// ==============================
 app.get("/:store/login", ensureStore, (req, res) => {
   res.send(`
   <!DOCTYPE html><html lang="ja"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>${req.store} 管理者ログイン</title>
+
   <style>
-    body { font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; background:#f9fafb; margin:0; }
-    .box { background:white; padding:24px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.1); width:100%; max-width:360px; }
-    h1 { color:#2563eb; text-align:center; }
-    input { width:100%; margin:8px 0; padding:8px; border:1px solid #ccc; border-radius:6px; }
-    button { width:100%; padding:10px; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer; }
-    button:hover { background:#1d4ed8; }
-  </style></head><body>
-    <div class="box">
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .login-card {
+      background: white;
+      padding: 32px 28px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      text-align: center;
+      color: #2563eb;
+      font-size: 22px;
+      margin-bottom: 22px;
+    }
+
+    /* スマホズーム防止 */
+    input, button {
+      font-size: 16px !important;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #f9fafb;
+      transition: 0.2s;
+    }
+
+    .login-input:focus {
+      border-color: #2563eb;
+      outline: none;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 6px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .login-btn:hover {
+      background: #1d4ed8;
+    }
+
+  </style>
+
+  </head><body>
+
+    <div class="login-card">
       <h1>${req.store} 管理者ログイン</h1>
+
       <form method="POST" action="/${req.store}/login">
-        <input type="text" name="user" placeholder="ユーザーID" required>
-        <input type="password" name="pass" placeholder="パスワード" required>
-        <button>ログイン</button>
+        <input type="text" name="user" placeholder="ユーザーID" required class="login-input">
+        <input type="password" name="pass" placeholder="パスワード" required class="login-input">
+        <button class="login-btn">ログイン</button>
       </form>
     </div>
+
   </body></html>`);
 });
+
 
 app.post("/:store/login", ensureStore, (req, res) => {
   const { user, pass } = req.body;
