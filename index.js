@@ -402,14 +402,86 @@ app.post("/:store/login", ensureStore, (req, res) => {
   const { user, pass } = req.body;
   const ADMIN_USER = process.env.ADMIN_USER || "owner";
   const ADMIN_PASS = process.env.ADMIN_PASS || "admin";
+
   if (user === ADMIN_USER && pass === ADMIN_PASS) {
     req.session.loggedIn = true;
     req.session.store = req.store;
     res.redirect(`/${req.store}/admin`);
   } else {
-    res.send("<h3>ログイン失敗</h3><a href='javascript:history.back()'>戻る</a>");
+    res.send(`
+    <!DOCTYPE html><html lang="ja"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン失敗</title>
+
+    <style>
+      body {
+        font-family: 'Noto Sans JP', sans-serif;
+        background: #f3f4f6;
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 16px;
+      }
+
+      .card {
+        background: white;
+        padding: 32px 28px;
+        border-radius: 14px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+        text-align: center;
+        max-width: 360px;
+        width: 100%;
+        animation: fadeIn 0.25s ease;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .title {
+        font-size: 22px;
+        font-weight: 700;
+        color: #dc2626;
+        margin-bottom: 18px;
+      }
+
+      .msg {
+        font-size: 15px;
+        color: #6b7280;
+        margin-bottom: 26px;
+      }
+
+      .back-btn {
+        display: inline-block;
+        padding: 12px 24px;
+        background: #2563eb;
+        color: white;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background 0.2s;
+      }
+
+      .back-btn:hover {
+        background: #1d4ed8;
+      }
+    </style>
+
+    </head><body>
+      <div class="card">
+        <div class="title">ログイン失敗</div>
+        <div class="msg">ユーザーID または パスワードが違います。</div>
+        <a href="javascript:history.back()" class="back-btn">← 戻る</a>
+      </div>
+    </body></html>
+    `);
   }
 });
+
 
 // 🔓 ログアウト
 app.get("/logout", (req, res) => {
