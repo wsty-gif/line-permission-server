@@ -333,23 +333,29 @@ app.get("/:store/login", ensureStore, (req, res) => {
     h1 {
       text-align: center;
       color: #2563eb;
-      font-size: 22px;
+      font-size: 20px;
       margin-bottom: 22px;
     }
 
-    /* スマホズーム防止 */
+    form {
+      margin: 0;
+    }
+
+    /* スマホズーム防止 + 幅ぴったりに揃える */
     input, button {
       font-size: 16px !important;
+      width: 100%;
+      box-sizing: border-box; /* ← これでボタンと入力欄の幅が揃う */
     }
 
     .login-input {
-      width: 100%;
       padding: 14px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       border: 1px solid #d1d5db;
       border-radius: 8px;
       background: #f9fafb;
       transition: 0.2s;
+      display: block;
     }
 
     .login-input:focus {
@@ -360,9 +366,8 @@ app.get("/:store/login", ensureStore, (req, res) => {
     }
 
     .login-btn {
-      width: 100%;
       padding: 14px;
-      margin-top: 6px;
+      margin-top: 8px;
       background: #2563eb;
       color: white;
       border: none;
@@ -370,12 +375,12 @@ app.get("/:store/login", ensureStore, (req, res) => {
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s;
+      display: block;
     }
 
     .login-btn:hover {
       background: #1d4ed8;
     }
-
   </style>
 
   </head><body>
@@ -392,7 +397,6 @@ app.get("/:store/login", ensureStore, (req, res) => {
 
   </body></html>`);
 });
-
 
 app.post("/:store/login", ensureStore, (req, res) => {
   const { user, pass } = req.body;
