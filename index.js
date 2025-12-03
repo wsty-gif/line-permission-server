@@ -543,6 +543,41 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         border-radius:4px;
         cursor:pointer;
       }
+      /* === 検索行を横並びに === */
+      .search-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;              /* ボタンとの隙間 */
+        margin-bottom: 10px;
+      }
+
+      #searchInput {
+        flex: 1;               /* 検索欄を広く */
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+      }
+
+      /* 検索ボタン */
+      .search-btn {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      /* クリアボタン */
+      .clear-btn {
+        background: #e5e7eb;
+        color: #333;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
     </style>
 
   </head>
@@ -566,10 +601,13 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
 
     <!-- ✅ 検索・フィルタ -->
     <div class="filters">
-      <input type="text" id="searchInput" placeholder="名前で検索..." />
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="名前で検索…">
+        
+        <button id="searchBtn" class="search-btn">検索</button>
+        <button id="clearBtn" class="clear-btn">クリア</button>
+      </div>
 
-      <button id="searchBtn" class="btn-search">検索</button>
-      <button id="clearBtn" class="btn-clear">クリア</button>
         <label>
         <span style="font-size:14px;">承認済みのみ</span>
         <label class="switch">
