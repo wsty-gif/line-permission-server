@@ -605,14 +605,8 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
 
       document.addEventListener("DOMContentLoaded", async () => {
         await loadStaff();
-        document.getElementById("searchInput").addEventListener("input", handleSearch);
         document.getElementById("approvedOnly").addEventListener("change", renderFiltered);
       });
-
-      function handleSearch(e) {
-        clearTimeout(timer);
-        timer = setTimeout(() => renderFiltered(), 300);
-      }
 
       let currentOffset = 0;
       const limit = 20;
