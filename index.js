@@ -3248,57 +3248,47 @@ app.get("/:store/attendance/fix", ensureStore, async (req, res) => {
   `);
 });
 
-// 🔍 スタッフ検索API（検索＋ページネーション対応）
 app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
   const { store } = req.params;
-  const {
-    keyword = "",
-    limit = "20",
-    offset = "0",
-  } = req.query;
-
-  // limit / offset を数値に変換
-  const limitNum  = Math.max(1, Math.min(parseInt(limit, 10)  || 20, 100)); // 最大100件まで
-  const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
+  const { keyword = "", limit = 20, offset = 0 } = req.query;
 
   try {
-    const snap = await db
-      .collection("companies")
-      .doc(store)
+    const snap = await db.collection("companies").doc(store)
       .collection("permissions")
       .get();
 
-    // 全件 → {id, name, approved} に整形
-    const all = snap.docs.map(doc => ({
+    // ① 全件取得
+    let allStaff = snap.docs.map(doc => ({
       id: doc.id,
       name: doc.data().name || "未登録",
-      approved: !!doc.data().approved,
+      approved: doc.data().approved || false
     }));
 
-    // キーワードフィルタ（前方一致とかにしたければここを調整）
-    const filtered = keyword
-      ? all.filter(s => s.name.includes(keyword))
-      : all;
+    // ② ここで全件検索
+    if (keyword) {
+      allStaff = allStaff.filter(s => s.name.includes(keyword));
+    }
 
-    // ページ分だけ切り出し
-    const pageData = filtered.slice(offsetNum, offsetNum + limitNum);
+    const total = allStaff.length;
 
-    // 次のページがある場合は nextOffset を返す（使わなくてもOK）
-    const nextOffset =
-      offsetNum + limitNum < filtered.length
-        ? offsetNum + limitNum
-        : null;
+    // ③ ページネーション処理（検索後に絞る）
+    const start = Number(offset);
+    const end = start + Number(limit);
+
+    const data = allStaff.slice(start, end);
 
     res.json({
-      data: pageData,      // ← フロント側は json.data を使う
-      nextOffset,          // ← 今の実装では使っていないが将来用に残しておく
-      total: filtered.length, // 総件数（表示用）
+      data,
+      total,
+      nextOffset: end < total ? end : null
     });
+
   } catch (err) {
     console.error("❌ search-staff error:", err);
     res.status(500).json({ error: "検索に失敗しました。" });
   }
 });
+
 
 
 
