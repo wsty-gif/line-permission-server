@@ -525,7 +525,24 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         opacity: 0.4;
         cursor: not-allowed;
       }
-
+      .btn-search {
+        padding:6px 12px;
+        margin-left:8px;
+        background:#2563eb;
+        color:white;
+        border:none;
+        border-radius:4px;
+        cursor:pointer;
+      }
+      .btn-clear {
+        padding:6px 12px;
+        margin-left:4px;
+        background:#e5e7eb;
+        color:#333;
+        border:none;
+        border-radius:4px;
+        cursor:pointer;
+      }
     </style>
 
   </head>
@@ -550,7 +567,10 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
     <!-- ✅ 検索・フィルタ -->
     <div class="filters">
       <input type="text" id="searchInput" placeholder="名前で検索..." />
-      <label>
+
+      <button id="searchBtn" class="btn-search">検索</button>
+      <button id="clearBtn" class="btn-clear">クリア</button>
+        <label>
         <span style="font-size:14px;">承認済みのみ</span>
         <label class="switch">
           <input type="checkbox" id="approvedOnly">
@@ -598,12 +618,14 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
       const limit = 20;
 
       // ページ読み込み
-      async function loadStaff(offset = 0) {
-        // ★ バッククォートを使わずに文字列連結に変更
+      async function loadStaff(offset = 0, isSearch = false) {
+        const keyword = document.getElementById("searchInput").value;
+
         const url =
           "/" + store + "/admin/search-staff"
           + "?limit=" + limit
-          + "&offset=" + offset;
+          + "&offset=" + offset
+          + "&keyword=" + encodeURIComponent(keyword);
 
         const res = await fetch(url);
         const json = await res.json();
@@ -614,6 +636,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         renderFiltered();
         updatePagination(json.nextOffset, json.total);
       }
+
 
       function updatePagination(nextOffset, totalItems) {
         const totalPages = Math.ceil(totalItems / limit);
@@ -676,7 +699,16 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         });
       }
 
+      document.getElementById("searchBtn").addEventListener("click", () => {
+        currentOffset = 0;
+        loadStaff(0, true);
+      });
 
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        document.getElementById("searchInput").value = "";
+        currentOffset = 0;
+        loadStaff(0, true);
+      });
 
       function renderFiltered() {
         const keyword = document.getElementById("searchInput").value;
@@ -3253,7 +3285,8 @@ app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
   const { keyword = "", limit = 20, offset = 0 } = req.query;
 
   try {
-    const snap = await db.collection("companies").doc(store)
+    const snap = await db.collection("companies")
+      .doc(store)
       .collection("permissions")
       .get();
 
@@ -3264,18 +3297,17 @@ app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
       approved: doc.data().approved || false
     }));
 
-    // ② ここで全件検索
+    // ② 全件検索
     if (keyword) {
       allStaff = allStaff.filter(s => s.name.includes(keyword));
     }
 
     const total = allStaff.length;
 
-    // ③ ページネーション処理（検索後に絞る）
+    // ③ ページネーション
     const start = Number(offset);
-    const end = start + Number(limit);
-
-    const data = allStaff.slice(start, end);
+    const end   = start + Number(limit);
+    const data  = allStaff.slice(start, end);
 
     res.json({
       data,
@@ -3288,9 +3320,6 @@ app.get("/:store/admin/search-staff", ensureStore, async (req, res) => {
     res.status(500).json({ error: "検索に失敗しました。" });
   }
 });
-
-
-
 
 // ==============================
 // ✅ スタッフ承認・解除API（リッチメニュー切替対応）
