@@ -3016,10 +3016,10 @@ app.post("/:store/admin/attendance/update", ensureStore, async (req,res)=>{
 
 
 app.get("/:store/manual-view", ensureStore, async (req, res) => {
-  const { store, storeConf } = req;   // ★ storeConf も使う
+  const { store } = req;
   const { userId, type } = req.query;
 
-  // 1️⃣ userId チェック
+  // 1️⃣ userId がない → エラー
   if (!userId) {
     return res
       .status(400)
@@ -3051,68 +3051,28 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
         <title>マニュアル閲覧権限なし</title>
       </head>
       <body>
-        <h3>承認待ちです。</h3>
-        <p>管理者に権限付与を依頼してください。</p>
+        <h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>
       </body>
       </html>
     `);
   }
 
-  // 3️⃣ 表示する Notion URL とタイトルを決定
-  const urls   = storeConf.manualUrls   || {};
-  const titles = storeConf.manualTitles || {};
+  // 3️⃣ 権限 OK → サーバー内の HTML を返す
+  const manualType = type || "default"; // todo / line / default
+  const htmlPath = path.join(
+    __dirname,
+    "manuals",
+    store,
+    manualType,
+    "index.html"
+  );
 
-  const targetUrl =
-    (type && urls[type]) ||
-    urls.default ||
-    storeConf.manualUrl;         // 万一のフォールバック
-
-  if (!targetUrl) {
-    return res.status(404).send("マニュアルURLが設定されていません。");
-  }
-
-  const manualTitle =
-    (type && titles[type]) ||
-    titles.default ||
-    "マニュアル";
-
-  const encoded = encodeURIComponent(targetUrl);
-
-  // 4️⃣ proxy 経由の iframe で Notion 公式ビューを埋め込む
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>${manualTitle}</title>
-      <style>
-        html, body {
-          margin: 0;
-          padding: 0;
-          height: 100%;
-          background: #f3f4f6;
-          overflow: hidden;
-        }
-        .frame-wrap {
-          position: fixed;
-          inset: 0;
-        }
-        iframe {
-          width: 100%;
-          height: 100%;
-          border: none;
-          background: #fff;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="frame-wrap">
-        <iframe src="/proxy?url=${encoded}" allowfullscreen></iframe>
-      </div>
-    </body>
-    </html>
-  `);
+  res.sendFile(htmlPath, (err) => {
+    if (err) {
+      console.error("manual-view sendFile error:", err);
+      res.status(500).send("マニュアルの読み込みに失敗しました。");
+    }
+  });
 });
 
 
