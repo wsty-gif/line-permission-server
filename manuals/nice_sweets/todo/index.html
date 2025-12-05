@@ -54,6 +54,13 @@
 			margin-bottom: 0;
 		}
 
+		/* Override strong tags inside headings to maintain consistent weight */
+		h1 strong,
+		h2 strong,
+		h3 strong {
+			font-weight: 600;
+		}
+
 		.page-title {
 			font-size: 2.5rem;
 			font-weight: 700;
@@ -840,6 +847,7 @@
 		.checkbox-off {
 			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
 		}
+
 		/* 文字サイズを全体的に大きくする（Notion書き出しHTML用） */
 		body {
 		font-size: 18px !important;   /* 基準文字サイズをUP */
@@ -857,13 +865,20 @@
 		li strong,
 		p,
 		p strong {
-			font-size: 1.4rem !important;   /* ← h1 と同じくらいに調整 */
+			font-size: 1.6rem !important;   /* ← h1 と同じくらいに調整 */
 			line-height: 1.6 !important;
 		}
 
 		/* トグル(summary)の矢印がタイトルに合わせて大きく表示 */
 		summary::marker {
-			font-size: 1.4rem !important;
+			font-size: 1.6rem !important;
+		}
+
+		/* 作り方の手順（番号付きリスト）の文字サイズを1.4emに統一 */
+		.numbered-list li strong,
+		.numbered-list li {
+			font-size: 1em !important;
+			line-height: 1.5em !important;
 		}
 	</style>
 </head>
@@ -871,109 +886,171 @@
 <body>
 	<article id="2b25898c-3c37-8066-9432-d500faea6b75" class="page sans">
 		<header>
-			<h1 class="page-title">nice_sweets</h1>
-			<p class="page-description"></p>
+			<h1 class="page-title" dir="auto">nice_sweets</h1>
+			<p class="page-description" dir="auto"></p>
 		</header>
 		<div class="page-body">
-			<h1 id="2b25898c-3c37-80c4-ad6a-da0d6106308e" class="">▶️ <strong>レジの使い方</strong></h1>
-			<p id="2b25898c-3c37-80ed-9c4c-c034ea3a14bc" class="">以下の手順に沿ってレジ操作を行ってください。</p>
-			<hr id="2b25898c-3c37-80f5-a299-d2300a3ff9f8" />
-			<ul id="2b25898c-3c37-8032-8268-cbcafa2868fe" class="toggle">
-				<li>
-					<details open="">
-						<summary>🔓 <strong>レジオープン（開店時）</strong></summary>
-						<ol type="1" id="2b25898c-3c37-80b8-83dc-f4d81510caf1" class="numbered-list" start="1">
-							<li>USENレジアプリをタップ</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-801f-9964-f06181cdab4f" class="numbered-list" start="2">
-							<li>担当者から自分の名前を選択</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-807e-aec6-e972faa1fc45" class="numbered-list" start="3">
-							<li>パスワード：「<strong>nice1111</strong>」<strong>（共通）</strong>を入力し、「<strong>Login</strong>」を押す
-							</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-8019-ace0-cba92b177125" class="numbered-list" start="4">
-							<li><strong>必ず金種別で金額確認を行う</strong></li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-80c0-86b8-cc1643f6f681" class="numbered-list" start="5">
-							<li>「<strong>即会計</strong>」を押す</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-8015-a85e-d0f708a0ee9e" class="numbered-list" start="6">
-							<li>担当者選択から自分の名前を選択</li>
-						</ol>
-						<figure id="2b25898c-3c37-800e-80c7-c98ca75930de" class="image"><a
-								href="nice_sweets/image.png"><img style="width:681.984375px"
-									src="nice_sweets/image.png" /></a></figure>
-					</details>
-				</li>
-			</ul>
-			<hr id="2b25898c-3c37-80dc-9eaa-de53e6b75ba9" />
-			<ul id="2b25898c-3c37-80ae-bc90-df0db40a0330" class="toggle">
-				<li>
-					<details open="">
-						<summary>🧾 <strong>注文操作（会計）</strong></summary>
-						<ol type="1" id="2b25898c-3c37-8090-a78b-cf6c11825d91" class="numbered-list" start="1">
-							<li>「<strong>注文</strong>」を押す</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-8031-9db3-ef055cfe39b5" class="numbered-list" start="2">
-							<li>注文内容を選択し、「<strong>注文確定</strong>」を押す（個数も確認する）</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-80d6-8e99-ff63d113be94" class="numbered-list" start="3">
-							<li>お預かり金額を入力し、「<strong>会計完了</strong>」を押す</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-803b-b09d-c4750f25a79c" class="numbered-list" start="4">
-							<li>（お客様情報画面）「<strong>登録</strong>」を押す</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-80a0-93cd-feeede214a96" class="numbered-list" start="5">
-							<li>会計完了画面で「<strong>レシート発行</strong>」を押す<mark
-									class="highlight-red"><strong>（必ず！）</strong></mark>
-								<p id="2b25898c-3c37-80e9-86c7-c67e162930ba" class="">
-									※領収書が必要な場合は「<strong>領収書発行</strong>」を押す</p>
-								<figure id="2b25898c-3c37-8045-8b2c-e20a70d08589" class="image"><a
-										href="nice_sweets/image%201.png"><img style="width:528px"
-											src="nice_sweets/image%201.png" /></a></figure>
-							</li>
-						</ol>
-					</details>
-				</li>
-			</ul>
-			<hr id="2b25898c-3c37-800d-95ca-c8b57e97d272" />
-			<ul id="2b25898c-3c37-802e-ad25-fa173d4c3e30" class="toggle">
-				<li>
-					<details open="">
-						<summary>🔐 <strong>レジクローズ（閉店時）</strong></summary>
-						<ol type="1" id="2b25898c-3c37-804d-a597-c756165fc20c" class="numbered-list" start="1">
-							<li>「<strong>レジクローズ</strong>」を押す</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-80e6-9575-c841784eabab" class="numbered-list" start="2">
-							<li>「<strong>金種別入力</strong>」を押す</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-807d-b12b-f0a6a925a7fe" class="numbered-list" start="3">
-							<li>レジを鍵で開けて金種別で数える</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-804b-a29d-c81c0e11ae1e" class="numbered-list" start="4">
-							<li>金種別で数字を入力し、「<strong>確定</strong>」を押す</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-80eb-a2b8-dba0ffee684a" class="numbered-list" start="5">
-							<li>「<strong>確定</strong>」を押す</li>
-						</ol>
-						<ol type="1" id="2b25898c-3c37-809f-8ca4-df902b48532e" class="numbered-list" start="6">
-							<li>（確認画面）「<strong>OK</strong>」を押す<figure id="2b25898c-3c37-8055-b69f-cb6606f93bda"
-									class="image"><a href="nice_sweets/image%202.png"><img style="width:528px"
-											src="nice_sweets/image%202.png" /></a></figure>
-							</li>
-						</ol>
-					</details>
-				</li>
-			</ul>
-			<p id="2b25898c-3c37-80ab-99ba-d319b276caad" class="">
-			</p>
+			<div style="display:contents" dir="auto">
+				<h1 id="2b25898c-3c37-80c4-ad6a-da0d6106308e" class=""><strong>レジマニュアル</strong></h1>
+			</div>
+			<div style="display:contents" dir="auto">
+				<p id="2b25898c-3c37-80ed-9c4c-c034ea3a14bc" class="">以下の手順に沿ってレジ操作を行ってください。</p>
+			</div>
+			<div style="display:contents" dir="auto">
+				<hr id="2b25898c-3c37-80f5-a299-d2300a3ff9f8" />
+			</div>
+			<div style="display:contents" dir="auto">
+				<ul id="2b25898c-3c37-8032-8268-cbcafa2868fe" class="block-color-yellow_background toggle">
+					<li>
+						<details open="">
+							<summary>🔓 <strong>レジオープン（開店時）</strong></summary>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-80b8-83dc-f4d81510caf1" class="numbered-list" start="1">
+									<li>USENレジアプリをタップ</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-801f-9964-f06181cdab4f" class="numbered-list" start="2">
+									<li>担当者から自分の名前を選択</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-807e-aec6-e972faa1fc45" class="numbered-list" start="3">
+									<li>パスワード：「<strong>nice1111</strong>」<strong>（共通）</strong>を入力し、「<strong>Login</strong>」を押す
+									</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-8019-ace0-cba92b177125" class="numbered-list" start="4">
+									<li><strong>必ず金種別で金額確認を行う</strong></li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-80c0-86b8-cc1643f6f681" class="numbered-list" start="5">
+									<li>「<strong>即会計</strong>」を押す</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-8015-a85e-d0f708a0ee9e" class="numbered-list" start="6">
+									<li>担当者選択から自分の名前を選択</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="ltr">
+								<figure id="2b25898c-3c37-800e-80c7-c98ca75930de" class="image"><a
+										href="nice_sweets/image.png"><img style="width:681.984375px"
+											src="nice_sweets/image.png" /></a></figure>
+							</div>
+						</details>
+					</li>
+				</ul>
+			</div>
+			<div style="display:contents" dir="auto">
+				<hr id="2b25898c-3c37-80dc-9eaa-de53e6b75ba9" />
+			</div>
+			<div style="display:contents" dir="auto">
+				<ul id="2b25898c-3c37-80ae-bc90-df0db40a0330" class="block-color-blue_background toggle">
+					<li>
+						<details open="">
+							<summary>🧾 <strong>注文操作（会計）</strong></summary>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-8090-a78b-cf6c11825d91" class="numbered-list" start="1">
+									<li>「<strong>注文</strong>」を押す</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-8031-9db3-ef055cfe39b5" class="numbered-list" start="2">
+									<li>注文内容を選択し、「<strong>注文確定</strong>」を押す（個数も確認する）</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-80d6-8e99-ff63d113be94" class="numbered-list" start="3">
+									<li>お預かり金額を入力し、「<strong>会計完了</strong>」を押す</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-803b-b09d-c4750f25a79c" class="numbered-list" start="4">
+									<li>（お客様情報画面）「<strong>登録</strong>」を押す</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-80a0-93cd-feeede214a96" class="numbered-list" start="5">
+									<li>会計完了画面で「<strong>レシート発行</strong>」を押す<mark
+											class="highlight-red"><strong>（必ず！）</strong></mark>
+										<div style="display:contents" dir="auto">
+											<p id="2b25898c-3c37-80e9-86c7-c67e162930ba" class="">
+												※領収書が必要な場合は「<strong>領収書発行</strong>」を押す</p>
+										</div>
+										<div style="display:contents" dir="ltr">
+											<figure id="2b25898c-3c37-8045-8b2c-e20a70d08589" class="image"><a
+													href="nice_sweets/image%201.png"><img style="width:528px"
+														src="nice_sweets/image%201.png" /></a></figure>
+										</div>
+									</li>
+								</ol>
+							</div>
+						</details>
+					</li>
+				</ul>
+			</div>
+			<div style="display:contents" dir="auto">
+				<hr id="2b25898c-3c37-800d-95ca-c8b57e97d272" />
+			</div>
+			<div style="display:contents" dir="auto">
+				<ul id="2b25898c-3c37-802e-ad25-fa173d4c3e30" class="block-color-gray_background toggle">
+					<li>
+						<details open="">
+							<summary>🔐 <strong>レジクローズ（閉店時）</strong></summary>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-804d-a597-c756165fc20c" class="numbered-list" start="1">
+									<li>「<strong>レジクローズ</strong>」を押す</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-80e6-9575-c841784eabab" class="numbered-list" start="2">
+									<li>「<strong>金種別入力</strong>」を押す</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-807d-b12b-f0a6a925a7fe" class="numbered-list" start="3">
+									<li>レジを鍵で開けて金種別で数える</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-804b-a29d-c81c0e11ae1e" class="numbered-list" start="4">
+									<li>金種別で数字を入力し、「<strong>確定</strong>」を押す</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-80eb-a2b8-dba0ffee684a" class="numbered-list" start="5">
+									<li>「<strong>確定</strong>」を押す</li>
+								</ol>
+							</div>
+							<div style="display:contents" dir="auto">
+								<ol type="1" id="2b25898c-3c37-809f-8ca4-df902b48532e" class="numbered-list" start="6">
+									<li>（確認画面）「<strong>OK</strong>」を押す<div style="display:contents" dir="ltr">
+											<figure id="2b25898c-3c37-8055-b69f-cb6606f93bda" class="image"><a
+													href="nice_sweets/image%202.png"><img style="width:528px"
+														src="nice_sweets/image%202.png" /></a></figure>
+										</div>
+									</li>
+								</ol>
+							</div>
+						</details>
+					</li>
+				</ul>
+			</div>
+			<div style="display:contents" dir="auto">
+				<p id="2b25898c-3c37-80ab-99ba-d319b276caad" class="">
+				</p>
+			</div>
 		</div>
 	</article><span class="sans" style="font-size:14px;padding-top:2em"></span>
 </body>
+
 <script>
 	document.addEventListener("DOMContentLoaded", () => {
 		document.querySelectorAll("details[open]").forEach(d => d.removeAttribute("open"));
 	});
 </script>
+
 </html>
