@@ -1,0 +1,730 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>ホールスタッフマニュアル</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 10px;
+	padding: 1rem;
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.collection-content td {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.column-list {
+	display: flex;
+	justify-content: space-between;
+}
+
+.column {
+	padding: 0 1em;
+}
+
+.column:first-child {
+	padding-left: 0;
+}
+
+.column:last-child {
+	padding-right: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding: 0.125rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+	border-collapse: collapse;
+}
+
+table {
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+	margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.callout img.notion-static-icon {
+	width: 1em;
+	height: 1em;
+}
+
+.callout p {
+	margin: 0;
+}
+
+.callout h1,
+.callout h2,
+.callout h3 {
+	margin: 0 0 0.6rem;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	transform: scale(1.5);
+	margin-right: 0.6em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+blockquote.quote-large {
+	font-size: 1.25em;
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.highlight-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.highlight-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.highlight-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.highlight-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.highlight-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.highlight-default_background {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray_background {
+	background: rgba(42, 28, 0, 0.07);
+}
+.highlight-brown_background {
+	background: rgba(139, 46, 0, 0.086);
+}
+.highlight-orange_background {
+	background: rgba(224, 101, 1, 0.129);
+}
+.highlight-yellow_background {
+	background: rgba(211, 168, 0, 0.137);
+}
+.highlight-teal_background {
+	background: rgba(0, 100, 45, 0.09);
+}
+.highlight-blue_background {
+	background: rgba(0, 124, 215, 0.094);
+}
+.highlight-purple_background {
+	background: rgba(102, 0, 178, 0.078);
+}
+.highlight-pink_background {
+	background: rgba(197, 0, 93, 0.086);
+}
+.highlight-red_background {
+	background: rgba(223, 22, 0, 0.094);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.block-color-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.block-color-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.block-color-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.block-color-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.block-color-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.block-color-default_background {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.block-color-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.block-color-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.block-color-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(229, 242, 252, 1);
+}
+.block-color-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.block-color-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.block-color-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.select-value-color-default { background-color: rgba(42, 28, 0, 0.07); }
+.select-value-color-gray { background-color: rgba(28, 19, 1, 0.11); }
+.select-value-color-brown { background-color: rgba(127, 51, 0, 0.156); }
+.select-value-color-orange { background-color: rgba(196, 88, 0, 0.203); }
+.select-value-color-yellow { background-color: rgba(209, 156, 0, 0.282); }
+.select-value-color-green { background-color: rgba(0, 96, 38, 0.156); }
+.select-value-color-blue { background-color: rgba(0, 118, 217, 0.203); }
+.select-value-color-purple { background-color: rgba(92, 0, 163, 0.141); }
+.select-value-color-pink { background-color: rgba(183, 0, 78, 0.152); }
+.select-value-color-red { background-color: rgba(206, 24, 0, 0.164); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+/* 文字サイズを全体的に大きくする（Notion書き出しHTML用） */
+body {
+font-size: 18px !important;   /* 基準文字サイズをUP */
+line-height: 1.8 !important;  /* 行間も整えて読みやすく */
+}
+
+h1, h2, h3, h4 {
+font-size: 1.25em !important; /* 見出しは少し控えめに拡大 */
+line-height: 1.4 !important;
+}
+/* ▼ 通常文字を h1 のタイトル文字サイズに合わせる ▼ */
+summary,
+summary strong,
+li,
+li strong,
+p,
+p strong {
+	font-size: 1.4rem !important;   /* ← h1 と同じくらいに調整 */
+	line-height: 1.6 !important;
+}
+
+/* トグル(summary)の矢印がタイトルに合わせて大きく表示 */
+summary::marker {
+	font-size: 1.4rem !important;
+}	
+</style></head><body><article id="2a35898c-3c37-8069-87ee-e876be68ae42" class="page sans"><header><h1 class="page-title">ホールスタッフマニュアル</h1><p class="page-description"></p></header><div class="page-body"><h2 id="2a35898c-3c37-8077-9f9b-cdcc2304845d" class="">1. ホールスタッフの心得</h2><h3 id="2a35898c-3c37-8076-9049-e04de24aed78" class="">役割</h3><ul id="2a35898c-3c37-80ba-ade4-fc5b821ba9c0" class="bulleted-list"><li style="list-style-type:disc">お客様に快適な食事の時間を提供する</li></ul><ul id="2a35898c-3c37-803f-89b6-e500cfe9600b" class="bulleted-list"><li style="list-style-type:disc">お客様と厨房の橋渡し役</li></ul><ul id="2a35898c-3c37-8090-85c4-fde35b94713d" class="bulleted-list"><li style="list-style-type:disc">店内の雰囲気作り</li></ul><ul id="2a35898c-3c37-80eb-ab74-ce77c87c7219" class="bulleted-list"><li style="list-style-type:disc">お客様のニーズを察知し、先回りして対応する</li></ul><h3 id="2a35898c-3c37-8006-a455-e45b41434a4b" class="">基本姿勢</h3><ul id="2a35898c-3c37-801e-ba73-eaf577c2a23a" class="bulleted-list"><li style="list-style-type:disc"><strong>笑顔</strong>：最高のサービス</li></ul><ul id="2a35898c-3c37-8009-8267-fb0c9e923e2a" class="bulleted-list"><li style="list-style-type:disc"><strong>迅速</strong>：お客様を待たせない</li></ul><ul id="2a35898c-3c37-802d-a9ba-e7cdc518ab79" class="bulleted-list"><li style="list-style-type:disc"><strong>丁寧</strong>：言葉遣いと所作</li></ul><ul id="2a35898c-3c37-80ee-9de8-f712762215c7" class="bulleted-list"><li style="list-style-type:disc"><strong>観察</strong>：常に店内全体に気を配る</li></ul><ul id="2a35898c-3c37-80dd-89b2-dc99d18fed6c" class="bulleted-list"><li style="list-style-type:disc"><strong>連携</strong>：スタッフ同士の協力</li></ul><hr id="2a35898c-3c37-8045-9b64-c3a245956134"/><h2 id="2a35898c-3c37-80fc-9d7c-e8c8aa3269f1" class="">2. 身だしなみチェックリスト</h2><h3 id="2a35898c-3c37-80d3-8d03-dac2f5be038e" class="">毎日確認すること</h3><ul id="2a35898c-3c37-8035-b04c-c0540dc78f5f" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">制服は清潔でシワがないか</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-807c-8e4c-cc9a84de57f5" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">名札は正しい位置についているか</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-8062-ad50-ea55cf37836e" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">髪は清潔で、長い場合はまとめているか</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-80d6-b535-ff4b54e2834a" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">爪は短く切られているか（マニキュアNG）</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-80c1-9bd9-e58748b5a4d2" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">靴は磨かれているか</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-80d0-b759-cf6c4d7c221e" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">アクセサリーは外しているか（結婚指輪のみOK）</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-805f-a8e3-c87eafa995a9" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">香水は控えめか（できれば無香料）</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-80fd-9fa1-f66af743768c" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">メイクは自然で清潔感があるか</span><div class="indented"></div></li></ul><hr id="2a35898c-3c37-80e5-b4b2-dcf523901605"/><h2 id="2a35898c-3c37-8037-a926-d78b16e9c0ba" class="">3. 開店準備（オープン作業）</h2><h3 id="2a35898c-3c37-8036-b813-d191fd37dedf" class="">出勤後の流れ</h3><ol type="1" id="2a35898c-3c37-80eb-a993-f99d992ce28f" class="numbered-list" start="1"><li><strong>タイムカード打刻</strong>（出勤時刻の15分前）</li></ol><ol type="1" id="2a35898c-3c37-8040-9d92-cda34fe76554" class="numbered-list" start="2"><li><strong>制服に着替え</strong></li></ol><ol type="1" id="2a35898c-3c37-80c1-a8f1-fdda63f3e587" class="numbered-list" start="3"><li><strong>身だしなみチェック</strong></li></ol><ol type="1" id="2a35898c-3c37-8035-9709-dc63b6c47677" class="numbered-list" start="4"><li><strong>手洗い・うがい</strong></li></ol><ol type="1" id="2a35898c-3c37-80e9-bb68-e40ee56c1c29" class="numbered-list" start="5"><li><strong>朝礼・申し送り確認</strong><ul id="2a35898c-3c37-80cf-b016-f84da2007d87" class="bulleted-list"><li style="list-style-type:disc">本日のおすすめメニュー</li></ul><ul id="2a35898c-3c37-8007-bb18-c092c256287e" class="bulleted-list"><li style="list-style-type:disc">品切れ情報</li></ul><ul id="2a35898c-3c37-8017-9d92-e4c5be7b482b" class="bulleted-list"><li style="list-style-type:disc">予約状況</li></ul><ul id="2a35898c-3c37-80b6-88d6-e97e10516588" class="bulleted-list"><li style="list-style-type:disc">注意事項</li></ul></li></ol><h3 id="2a35898c-3c37-806f-bd64-ce3314beab6c" class="">店内準備</h3><ul id="2a35898c-3c37-80d7-af74-c8129db06888" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">フロア全体の清掃（掃除機・モップがけ）</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-8052-ba2b-e755c860f014" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">テーブル・椅子の清掃と配置確認</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-8039-8c54-cf53d417e88b" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">テーブルセッティング</span><div class="indented"><ul id="2a35898c-3c37-8008-a3c2-c1686f1bae14" class="bulleted-list"><li style="list-style-type:disc">おしぼり</li></ul><ul id="2a35898c-3c37-8038-a7da-d9eabb780a15" class="bulleted-list"><li style="list-style-type:disc">箸・スプーン・フォーク</li></ul><ul id="2a35898c-3c37-8057-948b-dc036d4b46bd" class="bulleted-list"><li style="list-style-type:disc">調味料</li></ul><ul id="2a35898c-3c37-80af-8bad-f63304b3747b" class="bulleted-list"><li style="list-style-type:disc">メニュー</li></ul></div></li></ul><ul id="2a35898c-3c37-806b-8d1a-e1529f081c00" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">お水やお茶の準備</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-8051-8392-d2e16944a181" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">レジ金の確認（責任者と一緒に）</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-8051-92aa-c06883938431" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">トイレの清掃と備品確認</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-803b-bbfa-de2a9752f0c5" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">入口・待合スペースの清掃</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-80c6-a214-eae258b681da" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">BGMと照明の確認</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-809b-ac14-fc24acac49f5" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">本日のメニュー・品切れ情報の把握</span><div class="indented"></div></li></ul><hr id="2a35898c-3c37-803c-a3b9-dcedb3571b19"/><h2 id="2a35898c-3c37-8080-948c-df36a0e03eb4" class="">4. 接客の基本フロー</h2><h3 id="2a35898c-3c37-805b-8010-e23bf697dbe8" class="">①お客様のご来店</h3><p id="2a35898c-3c37-8005-a321-d787da918be8" class=""><strong>「いらっしゃいませ！」（明るく笑顔で）</strong></p><ol type="1" id="2a35898c-3c37-8003-82de-ca1a61857121" class="numbered-list" start="1"><li><strong>人数確認</strong><ul id="2a35898c-3c37-804c-9094-e2cbc410545a" class="bulleted-list"><li style="list-style-type:disc">「何名様でいらっしゃいますか？」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-800a-9946-cfee6cf10948" class="numbered-list" start="2"><li><strong>予約確認</strong>（予約がありそうな場合）<ul id="2a35898c-3c37-8000-ab58-c48d7a730ae2" class="bulleted-list"><li style="list-style-type:disc">「ご予約はいただいておりますか？」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8078-b731-d1561b601ac9" class="numbered-list" start="3"><li><strong>待ち時間の案内</strong>（満席の場合）<ul id="2a35898c-3c37-8027-bb7d-d253c8720815" class="bulleted-list"><li style="list-style-type:disc">「申し訳ございません。ただいま満席でして、○○分ほどお待ちいただきますが、よろしいでしょうか？」</li></ul><ul id="2a35898c-3c37-80c7-b59a-ef1c353fbf89" class="bulleted-list"><li style="list-style-type:disc">お名前と人数を伺い、待機リストに記入</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80c2-806f-f17f3c6d7aa4" class="numbered-list" start="4"><li><strong>席へのご案内</strong><ul id="2a35898c-3c37-808c-b5d1-c2472dee671f" class="bulleted-list"><li style="list-style-type:disc">「こちらへどうぞ」</li></ul><ul id="2a35898c-3c37-8070-8fb4-d8b68745c35e" class="bulleted-list"><li style="list-style-type:disc">お客様の前を歩いて案内</li></ul><ul id="2a35898c-3c37-80dc-af9a-e890a588fceb" class="bulleted-list"><li style="list-style-type:disc">席に着く前に椅子を引く（状況に応じて）</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80ce-8a12-e131e51f29b0" class="numbered-list" start="5"><li><strong>メニュー・お水の提供</strong><ul id="2a35898c-3c37-8017-964d-d6a00ca3c2bb" class="bulleted-list"><li style="list-style-type:disc">「メニューでございます」</li></ul><ul id="2a35898c-3c37-809e-bfd9-fc9af218e096" class="bulleted-list"><li style="list-style-type:disc">お水（お茶）を提供</li></ul><ul id="2a35898c-3c37-8001-9a67-f6bef3a0e79d" class="bulleted-list"><li style="list-style-type:disc">「ご注文がお決まりになりましたら、お声がけください」</li></ul></li></ol><hr id="2a35898c-3c37-8069-8554-dec57a3fd16c"/><h3 id="2a35898c-3c37-805b-b515-f42528a3817e" class="">②ご注文を伺う</h3><p id="2a35898c-3c37-8063-ac09-e143361ee51b" class=""><strong>「ご注文をお伺いいたします」</strong></p><ol type="1" id="2a35898c-3c37-80ab-bc0c-c2a96ab7e655" class="numbered-list" start="1"><li><strong>オーダーを聞く</strong><ul id="2a35898c-3c37-805b-891d-d8cb850442f3" class="bulleted-list"><li style="list-style-type:disc">メモとペンを準備</li></ul><ul id="2a35898c-3c37-801e-aa0a-e1ef915413a2" class="bulleted-list"><li style="list-style-type:disc">お客様の目を見て聞く</li></ul><ul id="2a35898c-3c37-804e-a10c-dec33af25a25" class="bulleted-list"><li style="list-style-type:disc">聞き取れなかった場合は「恐れ入ります、もう一度よろしいでしょうか？」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-808d-b70e-dbcbd50bbabf" class="numbered-list" start="2"><li><strong>復唱確認</strong><ul id="2a35898c-3c37-80bb-b723-daf75d212d86" class="bulleted-list"><li style="list-style-type:disc">「○○と△△でよろしいでしょうか？」</li></ul><ul id="2a35898c-3c37-805e-abb6-fe854b95f8a4" class="bulleted-list"><li style="list-style-type:disc">数量も必ず確認</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80d0-8618-d7561eb9a7bc" class="numbered-list" start="3"><li><strong>追加提案</strong>（タイミングを見て）<ul id="2a35898c-3c37-8063-a8bd-e7218b9b66cd" class="bulleted-list"><li style="list-style-type:disc">「お飲み物はいかがでしょうか？」</li></ul><ul id="2a35898c-3c37-80d8-83c2-ebc77d5f0ab0" class="bulleted-list"><li style="list-style-type:disc">「本日のおすすめは○○でございます」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-806e-96ef-cada8ed496e6" class="numbered-list" start="4"><li><strong>アレルギー確認</strong>（必要に応じて）<ul id="2a35898c-3c37-80e7-a014-c05f15d09aa5" class="bulleted-list"><li style="list-style-type:disc">「食物アレルギーはございませんか？」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-806d-a1c9-efdac30dd37c" class="numbered-list" start="5"><li><strong>調理時間の案内</strong>（時間がかかる場合）<ul id="2a35898c-3c37-80f5-9b43-d1ec9a1ed100" class="bulleted-list"><li style="list-style-type:disc">「○○は少々お時間をいただきますが、よろしいでしょうか？」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80c7-ac51-c6174e77839b" class="numbered-list" start="6"><li><strong>オーダー送信</strong><ul id="2a35898c-3c37-8036-b306-f3a410bd9142" class="bulleted-list"><li style="list-style-type:disc">厨房にオーダーを通す</li></ul><ul id="2a35898c-3c37-8027-8d7a-d031f1010381" class="bulleted-list"><li style="list-style-type:disc">伝票番号とテーブル番号を確認</li></ul></li></ol><hr id="2a35898c-3c37-8038-8111-cda7efdf22df"/><h3 id="2a35898c-3c37-8041-b634-ea5756a743ab" class="">③料理の提供</h3><p id="2a35898c-3c37-80f9-8bce-e7ddbb5d30b7" class=""><strong>「お待たせいたしました」</strong></p><ol type="1" id="2a35898c-3c37-8032-bfeb-df8625702ae7" class="numbered-list" start="1"><li><strong>配膳前の確認</strong><ul id="2a35898c-3c37-80e0-b029-e09e5747bde8" class="bulleted-list"><li style="list-style-type:disc">テーブル番号</li></ul><ul id="2a35898c-3c37-805a-b206-db8898208efb" class="bulleted-list"><li style="list-style-type:disc">料理名</li></ul><ul id="2a35898c-3c37-80a6-b53a-c38dd8a6942c" class="bulleted-list"><li style="list-style-type:disc">温度（熱いもの・冷たいもの）</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8068-8dba-dc93f7581481" class="numbered-list" start="2"><li><strong>料理を運ぶ</strong><ul id="2a35898c-3c37-8046-850a-ff62dc87650c" class="bulleted-list"><li style="list-style-type:disc">左手でトレイを持ち、右手で料理を置く</li></ul><ul id="2a35898c-3c37-8011-b03f-c27d336c635c" class="bulleted-list"><li style="list-style-type:disc">料理名を言いながら提供</li></ul><ul id="2a35898c-3c37-8030-8c5e-ca9aa2999eb6" class="bulleted-list"><li style="list-style-type:disc">「○○でございます」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8039-804c-c9e54af08aef" class="numbered-list" start="3"><li><strong>注意喚起</strong>（必要時）<ul id="2a35898c-3c37-809f-9c17-d1ff100ba4be" class="bulleted-list"><li style="list-style-type:disc">「熱くなっておりますので、お気をつけください」</li></ul><ul id="2a35898c-3c37-8033-885b-f755f9d028bf" class="bulleted-list"><li style="list-style-type:disc">「こちらのお皿は熱くなっております」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80aa-9227-c74141445655" class="numbered-list" start="4"><li><strong>取り皿・取り箸の提供</strong>（必要時）<ul id="2a35898c-3c37-80d2-b985-fab0e55b29ca" class="bulleted-list"><li style="list-style-type:disc">「お取り皿をお持ちしましょうか？」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-805e-8fc6-c51834501559" class="numbered-list" start="5"><li><strong>最後の一言</strong><ul id="2a35898c-3c37-8064-b049-c8aa62da1947" class="bulleted-list"><li style="list-style-type:disc">「ごゆっくりどうぞ」</li></ul><ul id="2a35898c-3c37-8015-9c22-dc1ffcb44301" class="bulleted-list"><li style="list-style-type:disc">「他にご注文はございますか？」</li></ul></li></ol><hr id="2a35898c-3c37-80c4-a81d-d4599bb08afa"/><h3 id="2a35898c-3c37-8021-b7dc-c4cec45790d8" class="">④食事中のサービス</h3><p id="2a35898c-3c37-80fa-bb1e-dd3f37dc3c74" class=""><strong>お客様の様子を常に観察</strong></p><ul id="2a35898c-3c37-8008-b727-c27babfdcdc4" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">空いたお皿の下げ（タイミングを見計らう）</span><div class="indented"><ul id="2a35898c-3c37-80a8-a235-f10fc98ff1cb" class="bulleted-list"><li style="list-style-type:disc">「お下げしてもよろしいでしょうか？」</li></ul></div></li></ul><ul id="2a35898c-3c37-8086-afa3-e5bd81748a1a" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">お水のおかわり（グラスが半分以下になったら）</span><div class="indented"><ul id="2a35898c-3c37-8068-990a-d090a4f75db1" class="bulleted-list"><li style="list-style-type:disc">「お水をお注ぎいたします」</li></ul></div></li></ul><ul id="2a35898c-3c37-808e-b015-f05b30951720" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">落としたおしぼりやカトラリーの交換</span><div class="indented"></div></li></ul><ul id="2a35898c-3c37-8066-a7a5-ef6936adf059" class="to-do-list"><li><div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">追加注文の声がけ</span><div class="indented"><ul id="2a35898c-3c37-80e8-8928-e0fe5acf3318" class="bulleted-list"><li style="list-style-type:disc">「お飲み物のおかわりはいかがでしょうか？」</li></ul><ul id="2a35898c-3c37-80d8-9814-dc06cac9bd93" class="bulleted-list"><li style="list-style-type:disc">「デザートはいかがでしょうか？」</li></ul></div></li></ul><p id="2a35898c-3c37-800b-84c8-c54426ca9120" class=""><strong>NGな行動</strong></p><ul id="2a35898c-3c37-805c-ae52-e34918f2cb84" class="bulleted-list"><li style="list-style-type:disc">お客様が食事中に無理に話しかける</li></ul><ul id="2a35898c-3c37-80bc-8f22-f9d4009f3406" class="bulleted-list"><li style="list-style-type:disc">何度もテーブルに行く</li></ul><ul id="2a35898c-3c37-8072-964b-ec0a35c4ca94" class="bulleted-list"><li style="list-style-type:disc">お皿を重ねて大きな音を立てる</li></ul><hr id="2a35898c-3c37-8092-bd3f-f33f4681b836"/><h3 id="2a35898c-3c37-8060-9df2-ed3f2fc2f527" class="">⑤お会計</h3><p id="2a35898c-3c37-8056-9090-c2d8de2fca48" class=""><strong>お客様から声をかけられたら</strong></p><ol type="1" id="2a35898c-3c37-80e8-a03e-cee6b6ac9aba" class="numbered-list" start="1"><li><strong>確認</strong><ul id="2a35898c-3c37-8070-960b-e19635721a29" class="bulleted-list"><li style="list-style-type:disc">「お会計でございますね。少々お待ちください」</li></ul><ul id="2a35898c-3c37-8029-915b-cf677f938e6a" class="bulleted-list"><li style="list-style-type:disc">テーブル番号と伝票を確認</li></ul></li></ol><ol type="1" id="2a35898c-3c37-804c-b3d1-c3669cbc5239" class="numbered-list" start="2"><li><strong>伝票をお渡し</strong><ul id="2a35898c-3c37-8075-9930-cdfe602e7388" class="bulleted-list"><li style="list-style-type:disc">「お会計は○○円でございます」</li></ul><ul id="2a35898c-3c37-80aa-b5ad-c79e3695adef" class="bulleted-list"><li style="list-style-type:disc">レジ前会計の場合：「レジにてお願いいたします」</li></ul><ul id="2a35898c-3c37-8023-9e99-d8b7c5038a62" class="bulleted-list"><li style="list-style-type:disc">テーブル会計の場合：その場で対応</li></ul></li></ol><ol type="1" id="2a35898c-3c37-806e-aa63-db2fb690a86f" class="numbered-list" start="3"><li><strong>お金の受け渡し</strong><ul id="2a35898c-3c37-80a5-919c-ffb30dd5912f" class="bulleted-list"><li style="list-style-type:disc">「○○円お預かりいたします」</li></ul><ul id="2a35898c-3c37-8071-b3a0-d2ca80add31b" class="bulleted-list"><li style="list-style-type:disc">両手で受け取る</li></ul><ul id="2a35898c-3c37-80fa-a6d3-c973632f4ab2" class="bulleted-list"><li style="list-style-type:disc">お金はすぐにレジに入れない（確認のため）</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8016-bb2f-e9146f3cef25" class="numbered-list" start="4"><li><strong>レジ操作</strong><ul id="2a35898c-3c37-80e9-91dc-e5d4fc0a2b80" class="bulleted-list"><li style="list-style-type:disc">金額を入力</li></ul><ul id="2a35898c-3c37-8015-8ae4-c8953bad943f" class="bulleted-list"><li style="list-style-type:disc">お釣りとレシートを確認</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80e9-b6d9-e0763a29c90e" class="numbered-list" start="5"><li><strong>お返し</strong><ul id="2a35898c-3c37-8049-8313-e1a75981cdde" class="bulleted-list"><li style="list-style-type:disc">「○○円のお返しでございます」</li></ul><ul id="2a35898c-3c37-8042-a77a-df236f4b4eb0" class="bulleted-list"><li style="list-style-type:disc">レシートと一緒にお渡し</li></ul><ul id="2a35898c-3c37-807b-ba66-c42c9784893e" class="bulleted-list"><li style="list-style-type:disc">「ありがとうございました」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8009-a2d7-d42d2ff2e6f8" class="numbered-list" start="6"><li><strong>お見送り</strong><ul id="2a35898c-3c37-8050-9dbc-db890a09c01d" class="bulleted-list"><li style="list-style-type:disc">ドアまで見送る（可能な場合）</li></ul><ul id="2a35898c-3c37-80a1-879f-e117a2788fb2" class="bulleted-list"><li style="list-style-type:disc">「ありがとうございました。またお越しくださいませ」</li></ul><ul id="2a35898c-3c37-8005-acdd-ec0954511e01" class="bulleted-list"><li style="list-style-type:disc">お辞儀をする</li></ul></li></ol><hr id="2a35898c-3c37-803d-a598-d81946755032"/><h2 id="2a35898c-3c37-80b6-8968-d247e5502d64" class="">5. バッシング（片付け）</h2><h3 id="2a35898c-3c37-806d-bac6-cf1cc95f4660" class="">テーブル片付けの手順</h3><ol type="1" id="2a35898c-3c37-8012-a3ed-dbd89ced5319" class="numbered-list" start="1"><li><strong>お客様退店後、すぐに対応</strong></li></ol><ol type="1" id="2a35898c-3c37-80d0-8679-c234ea09ffd3" class="numbered-list" start="2"><li><strong>食器の片付け</strong><ul id="2a35898c-3c37-80cc-8ada-ca2226e2a898" class="bulleted-list"><li style="list-style-type:disc">大きなお皿から</li></ul><ul id="2a35898c-3c37-80a9-9218-e8d3b9fae8c4" class="bulleted-list"><li style="list-style-type:disc">重ねすぎない</li></ul><ul id="2a35898c-3c37-8011-8a34-e848cb3e4bff" class="bulleted-list"><li style="list-style-type:disc">グラスは別に持つ</li></ul><ul id="2a35898c-3c37-8068-8ed9-dc29c837079d" class="bulleted-list"><li style="list-style-type:disc">食べ残しは厨房で処理</li></ul></li></ol><ol type="1" id="2a35898c-3c37-807d-ba40-cf7b443c3914" class="numbered-list" start="3"><li><strong>テーブル清掃</strong><ul id="2a35898c-3c37-8039-8dfd-d08f8bab1ade" class="bulleted-list"><li style="list-style-type:disc">テーブルを拭く</li></ul><ul id="2a35898c-3c37-80b7-81e1-d7c3fe648787" class="bulleted-list"><li style="list-style-type:disc">椅子を拭く</li></ul><ul id="2a35898c-3c37-8079-bd7c-f9fb9aa6e342" class="bulleted-list"><li style="list-style-type:disc">床のゴミを拾う</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8071-9e14-da112b124702" class="numbered-list" start="4"><li><strong>テーブルセッティング</strong><ul id="2a35898c-3c37-80e7-abc1-fa3bbde8377e" class="bulleted-list"><li style="list-style-type:disc">メニュー</li></ul><ul id="2a35898c-3c37-801b-a0d5-ec6424d3e40b" class="bulleted-list"><li style="list-style-type:disc">調味料</li></ul><ul id="2a35898c-3c37-80f4-b444-d5fa27a5943d" class="bulleted-list"><li style="list-style-type:disc">おしぼり</li></ul><ul id="2a35898c-3c37-8050-9a23-feea9c8d7b8e" class="bulleted-list"><li style="list-style-type:disc">カトラリー</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8089-9ddd-e5f021bcbb95" class="numbered-list" start="5"><li><strong>次のお客様をご案内</strong></li></ol><hr id="2a35898c-3c37-807d-851e-e92459562748"/><h2 id="2a35898c-3c37-8080-a13c-c349979dc4b4" class="">6. レジ業務</h2><h3 id="2a35898c-3c37-80ae-8deb-d43a40a86f8a" class="">基本操作</h3><ul id="2a35898c-3c37-80a1-8006-ea871ab7d3c2" class="bulleted-list"><li style="list-style-type:disc">金額入力</li></ul><ul id="2a35898c-3c37-807a-b586-dd6bf1b8cef3" class="bulleted-list"><li style="list-style-type:disc">預かり金額入力</li></ul><ul id="2a35898c-3c37-8055-9de4-e9825f4bda91" class="bulleted-list"><li style="list-style-type:disc">お釣り計算</li></ul><ul id="2a35898c-3c37-809a-a279-ed90257b69e6" class="bulleted-list"><li style="list-style-type:disc">レシート発行</li></ul><ul id="2a35898c-3c37-804a-82f6-d8a72ab86df7" class="bulleted-list"><li style="list-style-type:disc">現金・カード・QR決済の対応</li></ul><h3 id="2a35898c-3c37-80cb-8eaf-f25498b063a2" class="">注意点</h3><ul id="2a35898c-3c37-80a8-a8e3-d121b262b467" class="bulleted-list"><li style="list-style-type:disc">お金の受け渡しは両手で丁寧に</li></ul><ul id="2a35898c-3c37-8076-ba3a-d34bf9e00eef" class="bulleted-list"><li style="list-style-type:disc">お釣りは必ず声に出して確認</li></ul><ul id="2a35898c-3c37-8004-8198-d8a76d478b76" class="bulleted-list"><li style="list-style-type:disc">レシートは必ず渡す</li></ul><ul id="2a35898c-3c37-8064-870e-d53f54283fee" class="bulleted-list"><li style="list-style-type:disc">高額紙幣は偽札チェック</li></ul><ul id="2a35898c-3c37-8024-962f-f740f420c91d" class="bulleted-list"><li style="list-style-type:disc">現金は定期的に金庫へ（防犯のため）</li></ul><h3 id="2a35898c-3c37-8038-9a88-e62a8ced4c52" class="">レジ締め作業</h3><ul id="2a35898c-3c37-807b-acaf-c3159d5becfe" class="bulleted-list"><li style="list-style-type:disc">営業終了後、責任者と一緒に実施</li></ul><ul id="2a35898c-3c37-8044-893f-c466a5402296" class="bulleted-list"><li style="list-style-type:disc">売上金と伝票の照合</li></ul><ul id="2a35898c-3c37-8023-a9a0-f128c4e3a0a2" class="bulleted-list"><li style="list-style-type:disc">釣り銭の確認</li></ul><ul id="2a35898c-3c37-8087-9662-d0f603bb0e5d" class="bulleted-list"><li style="list-style-type:disc">金庫への保管</li></ul><hr id="2a35898c-3c37-8060-9bee-d8297adb08ac"/><h2 id="2a35898c-3c37-80ea-8aa9-f0ba7d23765e" class="">7. 電話対応</h2><h3 id="2a35898c-3c37-8040-8831-ce9e4fb621f6" class="">予約電話の受け方</h3><p id="2a35898c-3c37-807e-bc24-e88b58374d7f" class=""><strong>「お電話ありがとうございます。○○（店名）でございます」</strong></p><ol type="1" id="2a35898c-3c37-80f9-9dce-e9964e8f462a" class="numbered-list" start="1"><li><strong>ご予約の確認</strong><ul id="2a35898c-3c37-800c-a58b-ef3916352b54" class="bulleted-list"><li style="list-style-type:disc">「ご予約でございますね」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8032-a119-d940f2f48bf5" class="numbered-list" start="2"><li><strong>詳細を伺う</strong><ul id="2a35898c-3c37-806b-b694-e17c282a0b11" class="bulleted-list"><li style="list-style-type:disc">日時：「いつご利用でしょうか？」</li></ul><ul id="2a35898c-3c37-80c8-9172-eabe12c00d12" class="bulleted-list"><li style="list-style-type:disc">時間：「お時間は何時頃でしょうか？」</li></ul><ul id="2a35898c-3c37-805c-91f8-e8b0c95c0419" class="bulleted-list"><li style="list-style-type:disc">人数：「何名様でしょうか？」</li></ul><ul id="2a35898c-3c37-80bd-a601-f4bfbd35225f" class="bulleted-list"><li style="list-style-type:disc">お名前：「お名前をお伺いしてもよろしいでしょうか？」</li></ul><ul id="2a35898c-3c37-80f3-8716-c2740834adb8" class="bulleted-list"><li style="list-style-type:disc">連絡先：「念のためお電話番号をお伺いできますか？」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80f5-a3d2-c8c65bf92114" class="numbered-list" start="3"><li><strong>復唱確認</strong><ul id="2a35898c-3c37-8049-9858-efb5585c2067" class="bulleted-list"><li style="list-style-type:disc">「復唱させていただきます。○月○日、○時から○名様で○○様でございますね」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-806e-9473-de1a4e42e475" class="numbered-list" start="4"><li><strong>特別な要望の確認</strong><ul id="2a35898c-3c37-801b-9796-f368ebaf38ff" class="bulleted-list"><li style="list-style-type:disc">「アレルギーやお席のご希望などございますか？」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80c1-82aa-da411aedcef7" class="numbered-list" start="5"><li><strong>予約完了</strong><ul id="2a35898c-3c37-808e-907e-fe9e5740b342" class="bulleted-list"><li style="list-style-type:disc">「承りました。当日お待ちしております」</li></ul><ul id="2a35898c-3c37-802e-a5d7-c663fe87adc4" class="bulleted-list"><li style="list-style-type:disc">「ありがとうございました。失礼いたします」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8089-81a3-d914cc8b1497" class="numbered-list" start="6"><li><strong>予約台帳に記入</strong></li></ol><h3 id="2a35898c-3c37-8025-896f-d5b4382599d9" class="">キャンセル・変更の場合</h3><ul id="2a35898c-3c37-8002-816a-c61c439b300c" class="bulleted-list"><li style="list-style-type:disc">落ち着いて対応</li></ul><ul id="2a35898c-3c37-8062-be62-ee10268011a6" class="bulleted-list"><li style="list-style-type:disc">変更内容を正確に聞き取る</li></ul><ul id="2a35898c-3c37-8058-a421-d9a7cf5b81e9" class="bulleted-list"><li style="list-style-type:disc">予約台帳を修正</li></ul><hr id="2a35898c-3c37-8018-b7ae-e0f40fb58010"/><h2 id="2a35898c-3c37-80a3-b033-d5e7de8ce37a" class="">8. クレーム対応</h2><h3 id="2a35898c-3c37-807f-8cc8-ccf1924b3ebf" class="">基本の流れ</h3><ol type="1" id="2a35898c-3c37-8023-99bf-ee797e4470e7" class="numbered-list" start="1"><li><strong>謝罪</strong><ul id="2a35898c-3c37-80d5-9d85-dc55f20149dd" class="bulleted-list"><li style="list-style-type:disc">「申し訳ございません」</li></ul><ul id="2a35898c-3c37-80d5-aa80-eadadb94a68c" class="bulleted-list"><li style="list-style-type:disc">まず謝る（理由は後で）</li></ul></li></ol><ol type="1" id="2a35898c-3c37-807c-842c-c2406704761a" class="numbered-list" start="2"><li><strong>傾聴</strong><ul id="2a35898c-3c37-80f4-92e7-f442829a8351" class="bulleted-list"><li style="list-style-type:disc">お客様の話を最後まで聞く</li></ul><ul id="2a35898c-3c37-80ce-85ff-ed6a18faa1cb" class="bulleted-list"><li style="list-style-type:disc">途中で遮らない</li></ul><ul id="2a35898c-3c37-80d9-81a9-ebf4b3078ebb" class="bulleted-list"><li style="list-style-type:disc">メモを取る</li></ul></li></ol><ol type="1" id="2a35898c-3c37-80db-b232-cfc9dabaa39c" class="numbered-list" start="3"><li><strong>共感</strong><ul id="2a35898c-3c37-8092-8928-c17eaf0a3db4" class="bulleted-list"><li style="list-style-type:disc">「ご不快な思いをさせてしまい、申し訳ございません」</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8010-b015-c722084e9014" class="numbered-list" start="4"><li><strong>状況確認</strong><ul id="2a35898c-3c37-80b2-b8e7-ff976b181a4c" class="bulleted-list"><li style="list-style-type:disc">何が起きたのか正確に把握</li></ul></li></ol><ol type="1" id="2a35898c-3c37-808d-b828-c1f49606186b" class="numbered-list" start="5"><li><strong>報告</strong><ul id="2a35898c-3c37-8030-9990-ffaaa3ca97d9" class="bulleted-list"><li style="list-style-type:disc">責任者にすぐに報告</li></ul><ul id="2a35898c-3c37-80f8-9ac9-ee2d0081c01d" class="bulleted-list"><li style="list-style-type:disc">自分だけで判断しない</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8044-b708-dfe13f63fe53" class="numbered-list" start="6"><li><strong>対応</strong><ul id="2a35898c-3c37-8027-9142-c04605fe0e5d" class="bulleted-list"><li style="list-style-type:disc">責任者の指示に従う</li></ul><ul id="2a35898c-3c37-8066-84bd-fe4a6e8c9d13" class="bulleted-list"><li style="list-style-type:disc">作り直し、返金など</li></ul></li></ol><ol type="1" id="2a35898c-3c37-8073-9097-ccb4100d9fd6" class="numbered-list" start="7"><li><strong>再謝罪</strong><ul id="2a35898c-3c37-808a-bf56-f7e68e13a29b" class="bulleted-list"><li style="list-style-type:disc">「この度は誠に申し訳ございませんでした」</li></ul></li></ol><h3 id="2a35898c-3c37-8004-9362-e683ca34dc18" class="">よくあるクレーム例</h3><p id="2a35898c-3c37-8040-aaeb-f13f63705983" class=""><strong>料理が来るのが遅い</strong></p><ul id="2a35898c-3c37-8088-9b24-fcc2dbf7435b" class="bulleted-list"><li style="list-style-type:disc">「大変お待たせして申し訳ございません」</li></ul><ul id="2a35898c-3c37-80d8-b626-cc2957a9b4a2" class="bulleted-list"><li style="list-style-type:disc">厨房に確認し、あと何分か伝える</li></ul><ul id="2a35898c-3c37-800c-86e1-fce318e1adbf" class="bulleted-list"><li style="list-style-type:disc">ドリンクサービスなど（責任者判断）</li></ul><p id="2a35898c-3c37-80bb-bdcc-f8df202a1de4" class=""><strong>注文と違う料理が来た</strong></p><ul id="2a35898c-3c37-809f-b6ca-cd514b1789ae" class="bulleted-list"><li style="list-style-type:disc">「申し訳ございません。すぐにお作り直しいたします」</li></ul><ul id="2a35898c-3c37-803a-adbc-f8d277af7bbf" class="bulleted-list"><li style="list-style-type:disc">間違った料理は下げる</li></ul><ul id="2a35898c-3c37-80db-8dc6-c7eba0c271a2" class="bulleted-list"><li style="list-style-type:disc">正しい料理を最優先で作ってもらう</li></ul><p id="2a35898c-3c37-80e3-862b-d2aecbedae16" class=""><strong>髪の毛などの異物混入</strong></p><ul id="2a35898c-3c37-805c-9410-e71e388ca4ce" class="bulleted-list"><li style="list-style-type:disc">「大変申し訳ございません」</li></ul><ul id="2a35898c-3c37-80e3-8846-e983357a55cf" class="bulleted-list"><li style="list-style-type:disc">すぐに責任者に報告</li></ul><ul id="2a35898c-3c37-80ef-a8a0-d2de7df1c33e" class="bulleted-list"><li style="list-style-type:disc">作り直し、代金免除など（責任者判断）</li></ul><hr id="2a35898c-3c37-802a-a084-d27cae02908c"/><h2 id="2a35898c-3c37-80ac-ae97-ea01f11ae1ff" class="">9. スタッフ間の連携</h2><h3 id="2a35898c-3c37-80f0-ab21-dcb2ae72b963" class="">ホール内での連携</h3><ul id="2a35898c-3c37-80bb-b77a-eee831a575d3" class="bulleted-list"><li style="list-style-type:disc">「○番テーブル、お水おかわり」</li></ul><ul id="2a35898c-3c37-8090-a937-f1da1e7c65d3" class="bulleted-list"><li style="list-style-type:disc">「△番テーブル、お会計お願いします」</li></ul><ul id="2a35898c-3c37-80cf-a88e-fce6d3263e25" class="bulleted-list"><li style="list-style-type:disc">忙しい時こそ声を掛け合う</li></ul><h3 id="2a35898c-3c37-804a-8ff7-c66ace66269b" class="">厨房との連携</h3><ul id="2a35898c-3c37-8031-8fa7-eb918c3faf3f" class="bulleted-list"><li style="list-style-type:disc">オーダーは正確に、はっきりと</li></ul></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span></body></html>
