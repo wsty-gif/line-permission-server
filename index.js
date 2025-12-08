@@ -56,6 +56,20 @@ const STORES = {
       default: process.env.STORE_B_MANUAL_TITLE_DEFAULT,
     },
   },
+  torisei_sakura: {
+    channelAccessToken: process.env.STORE_C_CHANNEL_ACCESS_TOKEN,
+    channelSecret: process.env.STORE_C_CHANNEL_SECRET,
+    liffId: process.env.STORE_C_LIFF_ID,
+    richmenuBefore: process.env.STORE_C_RICHMENU_BEFORE,
+    richmenuAfter: process.env.STORE_C_RICHMENU_AFTER,
+    manualTitles: {
+      line: process.env.STORE_C_MANUAL_TITLE_LINE,
+      todo: process.env.STORE_C_MANUAL_TITLE_TODO,
+      reji: process.env.STORE_C_MANUAL_TITLE_REJI,
+      hole: process.env.STORE_C_MANUAL_TITLE_HOLE,
+      default: process.env.STORE_C_MANUAL_TITLE_DEFAULT,
+    },
+  },
 };
 
 // ==============================
