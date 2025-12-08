@@ -26,11 +26,11 @@ const STORES = {
     manualUrl: process.env.STORE_A_MANUAL_URL,
     richmenuBefore: process.env.STORE_A_RICHMENU_BEFORE,
     richmenuAfter: process.env.STORE_A_RICHMENU_AFTER,
-    manualUrls: {
-      line: process.env.STORE_A_MANUAL_URL_LINE,
-      todo: process.env.STORE_A_MANUAL_URL_TODO,
-      default: process.env.STORE_A_MANUAL_URL_DEFAULT,
-    },
+    // manualUrls: {
+    //   line: process.env.STORE_A_MANUAL_URL_LINE,
+    //   todo: process.env.STORE_A_MANUAL_URL_TODO,
+    //   default: process.env.STORE_A_MANUAL_URL_DEFAULT,
+    // },
     manualTitles: {
       line: process.env.STORE_A_MANUAL_TITLE_LINE,
       todo: process.env.STORE_A_MANUAL_TITLE_TODO,
