@@ -848,174 +848,38 @@
 			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
 		}
 
-/* ============================
-   スマホ用 レシピマニュアル共通デザイン
-   （今までのカード型デザイン風）
-   ============================ */
+		/* 文字サイズを全体的に大きくする（Notion書き出しHTML用） */
+		body {
+		font-size: 18px !important;   /* 基準文字サイズをUP */
+		line-height: 1.8 !important;  /* 行間も整えて読みやすく */
+		}
 
-/* ベース文字と背景 */
-body {
-  font-family: "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  font-size: 15px;
-  line-height: 1.7;
-  background: #f3f4f6;
-}
+		h1, h2, h3, h4 {
+		font-size: 1.25em !important; /* 見出しは少し控えめに拡大 */
+		line-height: 1.4 !important;
+		}
+		/* ▼ 通常文字を h1 のタイトル文字サイズに合わせる ▼ */
+		summary,
+		summary strong,
+		li,
+		li strong,
+		p,
+		p strong {
+			font-size: 2.5rem !important;   /* ← h1 と同じくらいに調整 */
+			line-height: 1.6 !important;
+		}
 
-/* 全体の余白 */
-.page-body {
-  padding: 0 8px 24px;
-}
+		/* トグル(summary)の矢印がタイトルに合わせて大きく表示 */
+		summary::marker {
+			font-size: 2.5rem !important;
+		}
 
-/* 見出し */
-.page-title {
-  font-size: 20px;
-  margin: 8px 0 16px;
-}
-
-h1 {
-  font-size: 18px;
-}
-
-h2 {
-  font-size: 16px;
-}
-
-h3,
-h4 {
-  font-size: 15px;
-}
-
-/* Notionのカラーブロック（外側の余白調整） */
-.block-color-blue_background.toggle,
-.block-color-orange_background.toggle,
-.block-color-brown_background.toggle,
-.block-color-teal_background.toggle {
-  background: transparent;
-  padding: 4px 0 12px;
-  margin: 0;
-  border-radius: 0;
-}
-
-/* トグル全般のリセット */
-ul.toggle {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-/* 一番外側のカード（カテゴリ単位：アイス / クロッフル など） */
-ul.toggle > li > details {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-  border: 1px solid #e5e7eb;
-}
-
-/* 中のレシピカード（「いちごアイスの作り方」など） */
-ul.toggle ul.toggle > li > details {
-  background: #f9fafb;
-  border-radius: 12px;
-  box-shadow: none;
-  border: 1px solid #e5e7eb;
-  margin-top: 8px;
-  padding: 10px 12px;
-}
-
-/* summary 共通デザイン（タイトル行） */
-summary {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  list-style: none;
-  font-size: 15px;
-  font-weight: 600;
-  padding-right: 4px;
-}
-
-summary strong {
-  font-weight: 600;
-}
-
-/* デフォルトの三角マーカーを消す */
-summary::-webkit-details-marker {
-  display: none;
-}
-
-/* 右側の▶アイコン */
-summary::after {
-  content: "▶";
-  font-size: 11px;
-  margin-left: 12px;
-  transition: transform 0.2s ease;
-}
-
-/* 開いているときは▶を90度回転 */
-details[open] > summary::after {
-  transform: rotate(90deg);
-}
-
-/* カテゴリの小さな説明文（「各種¥800」など） */
-.block-color-blue_background p,
-.block-color-orange_background p,
-.block-color-brown_background p,
-.block-color-teal_background p {
-  font-size: 13px;
-  margin: 4px 0 0;
-}
-
-/* 手順リスト（番号付き） */
-.numbered-list {
-  margin-top: 8px;
-  padding-left: 1.4em;
-}
-
-.numbered-list li {
-  font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 4px;
-}
-
-/* 手順の中の太字は少し強調 */
-.numbered-list li strong {
-  font-weight: 600;
-}
-
-/* 注意書き（赤マーカー）を見やすく */
-mark.highlight-red {
-  background: #fee2e2;
-  padding: 0 2px;
-  border-radius: 3px;
-}
-
-/* 黄色系のマーカーも少し淡く */
-mark.highlight-yellow {
-  background: #fef9c3;
-  padding: 0 2px;
-  border-radius: 3px;
-}
-
-/* 画像まわりの余白調整 */
-.image {
-  margin: 8px 0 4px;
-}
-
-.image img {
-  border-radius: 12px;
-  max-width: 100%;
-  height: auto;
-}
-
-/* セクションの区切り線をやわらかく */
-hr {
-  border: none;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.4);
-  margin: 16px 0;
-}
-
+		/* 作り方の手順（番号付きリスト）の文字サイズを1.4emに統一 */
+		.numbered-list li strong,
+		.numbered-list li {
+			font-size: 1em !important;
+			line-height: 1.5em !important;
+		}
 
 	</style>
 </head>
