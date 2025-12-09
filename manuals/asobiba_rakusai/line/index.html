@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>あそびば フード＆ドリンク レシピマニュアル</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --accent: #2563eb;
+      --accent-soft: #e0edff;
+      --text-main: #111827;
+      --text-sub: #6b7280;
+      --danger: #dc2626;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --shadow-card: 0 4px 10px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans JP",
+        sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      padding: 12px;
+    }
+
+    .page {
+      max-width: 520px;
+      margin: 0 auto 40px;
+    }
+
+    header {
+      text-align: center;
+      padding: 16px 12px 8px;
+    }
+
+    header h1 {
+      font-size: 1.3rem;
+      margin: 0 0 6px;
+      color: var(--accent);
+    }
+
+    header p {
+      margin: 2px 0;
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+
+    .tag {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.7rem;
+    }
+
+    .section-title {
+      margin: 18px 4px 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #111827;
+    }
+
+    .section-title span {
+      display: inline-block;
+      width: 4px;
+      height: 14px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    /* ------- レシピカード（アコーディオン） ------- */
+    details.recipe {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    details.recipe + details.recipe {
+      margin-top: 12px;
+    }
+
+    details.recipe[open] {
+      border: 1px solid var(--accent-soft);
+    }
+
+    .summary-row {
+      list-style: none;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .recipe-main {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .recipe-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .recipe-note {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+    }
+
+    .summary-icon {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    .summary-icon::before {
+      content: "▶";
+      transform: translateX(1px);
+    }
+
+    details[open] .summary-icon::before {
+      content: "▼";
+      transform: translateX(0);
+    }
+
+    details.recipe summary {
+      cursor: pointer;
+    }
+
+    details.recipe summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .recipe-body {
+      border-top: 1px solid #e5e7eb;
+      padding: 12px 14px 14px;
+      font-size: 0.8rem;
+      background: #f9fafb;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .meta-chip {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .meta-chip--time {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .meta-chip--alert {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .image-box {
+      margin: 4px 0 10px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: #e5e7eb;
+    }
+
+    .image-box img {
+      width: 100%;
+      display: block;
+    }
+
+    .image-caption {
+      padding: 6px 8px;
+      font-size: 0.7rem;
+      color: #4b5563;
+      background: #f3f4f6;
+    }
+
+    .sub-heading {
+      font-weight: 700;
+      margin: 8px 0 4px;
+      font-size: 0.8rem;
+    }
+
+    ul, ol {
+      margin: 4px 0 6px 18px;
+      padding: 0;
+    }
+
+    li {
+      margin-bottom: 2px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 4px 0 8px;
+      background: #ffffff;
+      font-size: 0.75rem;
+    }
+
+    th, td {
+      padding: 4px 6px;
+      border: 1px solid #e5e7eb;
+    }
+
+    th {
+      background: #f9fafb;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .tips {
+      margin-top: 4px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: #ecfeff;
+      border: 1px solid #a5f3fc;
+      font-size: 0.75rem;
+      color: #0f172a;
+    }
+
+    .tips strong {
+      color: #0369a1;
+    }
+
+    .footer-note {
+      margin: 18px 4px 10px;
+      font-size: 0.7rem;
+      color: var(--text-sub);
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <header>
+      <h1>あそびば フード＆ドリンク<br>レシピマニュアル</h1>
+      <p>スマホでサッと確認できる、店舗スタッフ向けのレシピ集です。</p>
+      <p>提供前に必ず「分量・盛り付け・アレルギー表示」を確認してください。</p>
+      <div class="tag">現場用マニュアル｜更新日：2025/12/09</div>
+    </header>
+
+    <!-- ================== フードメニュー ================== -->
+    <div class="section-title">
+      <span></span> フードメニュー
+    </div>
+
+    <!-- ポテトフライ -->
+    <details class="recipe" open>
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">ポテトフライ</div>
+          <div class="recipe-note">一番人気の定番スナック</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：7分</div>
+          <div class="meta-chip">1皿：120g</div>
+          <div class="meta-chip">油温：170〜180℃</div>
+        </div>
+
+        <div class="image-box">
+          <!-- 任意の写真に差し替えてください -->
+          <img src="https://via.placeholder.com/640x360?text=%E3%83%9D%E3%83%86%E3%83%88%E3%83%95%E3%83%A9%E3%82%A4" alt="ポテトフライの完成イメージ">
+          <div class="image-caption">脂がきつね色になり、表面がカリッとした状態がベスト。</div>
+        </div>
+
+        <div class="sub-heading">材料（1皿）</div>
+        <table>
+          <tr><th>冷凍ポテト</th><td>120g（器に軽く山盛り）</td></tr>
+          <tr><th>塩</th><td>ひとつまみ（0.5〜1g）</td></tr>
+          <tr><th>ケチャップ</th><td>小さじ2（別皿）</td></tr>
+        </table>
+
+        <div class="sub-heading">手順</div>
+        <ol>
+          <li>フライヤーの油温を170〜180℃に安定させる。</li>
+          <li>冷凍ポテトを冷凍庫から出し、霜が多い場合は軽く振り落とす。</li>
+          <li>バスケットにポテトを入れ、油に静かに入れる。</li>
+          <li>3〜4分揚げ、全体がきつね色になったらバスケットを上げる。</li>
+          <li>よく油を切り、ステンバットの上で軽く塩をふる。</li>
+          <li>温めた器に盛り、ケチャップを別皿に入れて提供する。</li>
+        </ol>
+
+        <div class="tips">
+          <strong>チェックポイント</strong><br>
+          ・一度に揚げる量が多いと油温が下がり、ベタつきの原因になります。<br>
+          ・揚げ置きは最大10分まで。時間が経ったものは必ず廃棄し、揚げ直しはしない。
+        </div>
+      </div>
+    </details>
+
+    <!-- 鶏の唐揚げ -->
+    <details class="recipe">
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">鶏の唐揚げ</div>
+          <div class="recipe-note">ジューシーで冷めても美味しい定番</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：8分</div>
+          <div class="meta-chip">1皿：5個（約100g）</div>
+          <div class="meta-chip">油温：170℃ → 180℃</div>
+        </div>
+
+        <div class="image-box">
+          <img src="https://via.placeholder.com/640x360?text=%E9%B6%8F%E3%81%AE%E5%94%90%E6%8F%9A%E3%81%92" alt="唐揚げの完成イメージ">
+          <div class="image-caption">衣がカリッとし、中心までしっかり火が通っている状態。</div>
+        </div>
+
+        <div class="sub-heading">材料（1皿）※仕込み済み唐揚げを使用</div>
+        <table>
+          <tr><th>唐揚げ用鶏モモ（味付き）</th><td>5個（約100g）</td></tr>
+          <tr><th>レモンカット</th><td>1個</td></tr>
+          <tr><th>千切りキャベツ</th><td>ひとつかみ（約20g）</td></tr>
+          <tr><th>マヨネーズ</th><td>小さじ1（お好みで）</td></tr>
+        </table>
+
+        <div class="sub-heading">手順</div>
+        <ol>
+          <li>仕込み済み唐揚げを冷蔵庫から出し、軽くほぐす。</li>
+          <li>170℃の油で4分揚げる。</li>
+          <li>一度バスケットを上げて30秒休ませ、油温を180℃に上げる。</li>
+          <li>再度1分30秒ほど二度揚げし、衣をカリッとさせる。</li>
+          <li>キッチンペーパーの上で軽く油を切る。</li>
+          <li>あらかじめキャベツを盛り付けた器に唐揚げを高く盛り、レモンとマヨネーズを添える。</li>
+        </ol>
+
+        <div class="tips">
+          <strong>中心温度の確認</strong><br>
+          ・温度計がある場合は、中心温度75℃以上を確認。<br>
+          ・ない場合は、一つをカットし、赤みが完全になくなっているか確認する。
+        </div>
+      </div>
+    </details>
+
+    <!-- たこ焼き -->
+    <details class="recipe">
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">たこ焼き（冷凍）</div>
+          <div class="recipe-note">おつまみに人気の定番メニュー</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：6分</div>
+          <div class="meta-chip">1皿：8個</div>
+        </div>
+
+        <div class="image-box">
+          <img src="https://via.placeholder.com/640x360?text=%E3%81%9F%E3%81%93%E7%84%BC%E3%81%8D" alt="たこ焼きの完成イメージ">
+          <div class="image-caption">表面に軽く焼き色が付き、中までしっかり温まっている状態。</div>
+        </div>
+
+        <div class="sub-heading">材料（1皿）</div>
+        <table>
+          <tr><th>冷凍たこ焼き</th><td>8個</td></tr>
+          <tr><th>たこ焼きソース</th><td>大さじ1.5</td></tr>
+          <tr><th>マヨネーズ</th><td>大さじ1</td></tr>
+          <tr><th>青のり</th><td>ひとつまみ</td></tr>
+          <tr><th>かつお節</th><td>ひとつまみ</td></tr>
+        </table>
+
+        <div class="sub-heading">手順（揚げ調理の場合）</div>
+        <ol>
+          <li>冷凍たこ焼きを170℃の油で約3分揚げる。</li>
+          <li>表面が薄くきつね色になったらバスケットを上げ、油を切る。</li>
+          <li>温めた舟皿または丸皿にたこ焼きを並べる。</li>
+          <li>ソース→マヨネーズ→青のり→かつお節の順にトッピングする。</li>
+        </ol>
+
+        <div class="tips">
+          <strong>レンジ調理バージョン</strong><br>
+          ・店のオペレーションで電子レンジ指定がある場合は、そのワット数と秒数に合わせて温める。<br>
+          ・温め後、鉄板やオーブンで軽く焼き目を付けると食感が良くなる。
+        </div>
+      </div>
+    </details>
+
+    <!-- ソーセージ盛り -->
+    <details class="recipe">
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">ソーセージ盛り合わせ</div>
+          <div class="recipe-note">シェアしやすいおつまみ</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：5分</div>
+          <div class="meta-chip">1皿：4〜5本</div>
+        </div>
+
+        <div class="image-box">
+          <img src="https://via.placeholder.com/640x360?text=%E3%82%BD%E3%83%BC%E3%82%BB%E3%83%BC%E3%82%B8%E7%9B%9B%E3%82%8A" alt="ソーセージ盛りの完成イメージ">
+          <div class="image-caption">焼き目が付き、表面がパリッとした状態。</div>
+        </div>
+
+        <div class="sub-heading">材料（1皿）</div>
+        <table>
+          <tr><th>ソーセージ（ミックス）</th><td>4〜5本</td></tr>
+          <tr><th>ケチャップ</th><td>小さじ2</td></tr>
+          <tr><th>粒マスタード</th><td>小さじ1</td></tr>
+        </table>
+
+        <div class="sub-heading">手順</div>
+        <ol>
+          <li>冷凍または冷蔵のソーセージを鉄板またはフライパンで中火加熱する。</li>
+          <li>転がしながら3〜4分焼き、全体に焼き色を付ける。</li>
+          <li>一口サイズの斜め切りにして器に盛る。</li>
+          <li>ケチャップと粒マスタードを別添え、または器のふちに盛り付けて提供。</li>
+        </ol>
+      </div>
+    </details>
+
+    <!-- 枝豆 -->
+    <details class="recipe">
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">枝豆</div>
+          <div class="recipe-note">スピード提供用おつまみ</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：3分</div>
+          <div class="meta-chip">1皿：100g</div>
+        </div>
+
+        <div class="sub-heading">材料（1皿）</div>
+        <table>
+          <tr><th>冷凍枝豆（塩味）</th><td>100g</td></tr>
+        </table>
+
+        <div class="sub-heading">手順</div>
+        <ol>
+          <li>指定があれば、袋の表示通りにレンジまたはボイルで解凍する。</li>
+          <li>水分が多い場合はキッチンペーパーで軽く拭き取る。</li>
+          <li>小鉢にこんもりと盛り付けて提供する。</li>
+        </ol>
+
+        <div class="tips">
+          <strong>ポイント</strong><br>
+          ・解凍しすぎて熱くなりすぎないよう注意。<br>
+          ・提供前に塩味が薄い場合は、軽く塩をふる（入れすぎ注意）。
+        </div>
+      </div>
+    </details>
+
+    <!-- ================== ドリンクメニュー ================== -->
+    <div class="section-title">
+      <span></span> ドリンクメニュー（一例）
+    </div>
+
+    <!-- ソフトドリンク（グラス） -->
+    <details class="recipe">
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">ソフトドリンク（グラス提供）</div>
+          <div class="recipe-note">コーラ・オレンジ・ウーロンなど</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：2分</div>
+          <div class="meta-chip">1杯：250ml</div>
+        </div>
+
+        <div class="image-box">
+          <img src="https://via.placeholder.com/640x360?text=%E3%82%BD%E3%83%95%E3%83%88%E3%83%89%E3%83%AA%E3%83%B3%E3%82%AF" alt="ソフトドリンクのイメージ">
+          <div class="image-caption">グラスの外側を拭き、水滴を残さずきれいな状態で提供。</div>
+        </div>
+
+        <div class="sub-heading">材料（1杯）</div>
+        <table>
+          <tr><th>氷</th><td>グラスの7分目</td></tr>
+          <tr><th>ドリンクベース</th><td>200ml</td></tr>
+          <tr><th>ストロー</th><td>1本</td></tr>
+        </table>
+
+        <div class="sub-heading">手順</div>
+        <ol>
+          <li>グラスに氷を7分目まで入れる。</li>
+          <li>指定のソフトドリンクを200ml注ぐ。</li>
+          <li>グラスの外側を布巾で一周拭いて水滴を取る。</li>
+          <li>ストローをさしてドリンクトレーに載せて提供する。</li>
+        </ol>
+      </div>
+    </details>
+
+    <!-- ハイボール -->
+    <details class="recipe">
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">ハイボール</div>
+          <div class="recipe-note">アルコールの定番メニュー</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：3分</div>
+          <div class="meta-chip">アルコール提供：年齢確認必須</div>
+          <div class="meta-chip meta-chip--alert">飲酒運転・未成年飲酒禁止</div>
+        </div>
+
+        <div class="image-box">
+          <img src="https://via.placeholder.com/640x360?text=%E3%83%8F%E3%82%A4%E3%83%9C%E3%83%BC%E3%83%AB" alt="ハイボールのイメージ">
+          <div class="image-caption">氷たっぷり、グラスの外側は水滴を拭き取って提供。</div>
+        </div>
+
+        <div class="sub-heading">材料（1杯）</div>
+        <table>
+          <tr><th>ウイスキー</th><td>30ml</td></tr>
+          <tr><th>炭酸水</th><td>120ml</td></tr>
+          <tr><th>レモン（スライス）</th><td>1枚（任意）</td></tr>
+          <tr><th>氷</th><td>グラス9分目</td></tr>
+        </table>
+
+        <div class="sub-heading">手順</div>
+        <ol>
+          <li>ジョッキまたはグラスに氷をたっぷり入れる。</li>
+          <li>ウイスキーを30ml注ぐ。</li>
+          <li>炭酸水を静かに注ぎ、マドラーで一度だけ軽く混ぜる。</li>
+          <li>レモンを添え、外側を拭いて提供する。</li>
+        </ol>
+
+        <div class="tips">
+          <strong>注意事項</strong><br>
+          ・必ず年齢確認を行う（身分証明書の確認）。<br>
+          ・泥酔状態のお客様には追加提供を控え、社員・責任者に報告する。
+        </div>
+      </div>
+    </details>
+
+    <!-- チューハイ -->
+    <details class="recipe">
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">チューハイ各種</div>
+          <div class="recipe-note">レモン・グレープフルーツなど</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：3分</div>
+          <div class="meta-chip">ベース：焼酎またはウォッカ</div>
+        </div>
+
+        <div class="sub-heading">共通レシピ（1杯）</div>
+        <table>
+          <tr><th>焼酎またはウォッカ</th><td>30ml</td></tr>
+          <tr><th>割り材シロップ</th><td>15ml</td></tr>
+          <tr><th>炭酸水</th><td>120ml</td></tr>
+          <tr><th>氷</th><td>グラス9分目</td></tr>
+        </table>
+
+        <div class="sub-heading">手順</div>
+        <ol>
+          <li>グラスに氷を入れ、焼酎（またはウォッカ）30mlを注ぐ。</li>
+          <li>フレーバー用シロップを15ml入れる。</li>
+          <li>炭酸水を静かに注ぎ、下から一度だけ混ぜる。</li>
+          <li>グラスの外側を拭き、コースターにのせて提供する。</li>
+        </ol>
+      </div>
+    </details>
+
+    <!-- フロート -->
+    <details class="recipe">
+      <summary class="summary-row">
+        <div class="recipe-main">
+          <div class="recipe-name">クリームソーダ／コーラフロート</div>
+          <div class="recipe-note">写真映えするデザートドリンク</div>
+        </div>
+        <div class="summary-icon"></div>
+      </summary>
+      <div class="recipe-body">
+        <div class="meta-row">
+          <div class="meta-chip meta-chip--time">提供目安：4分</div>
+          <div class="meta-chip">アイスは溶けやすいので手早く</div>
+        </div>
+
+        <div class="image-box">
+          <img src="https://via.placeholder.com/640x360?text=%E3%83%95%E3%83%AD%E3%83%BC%E3%83%88%E3%83%89%E3%83%AA%E3%83%B3%E3%82%AF" alt="フロートドリンクのイメージ">
+          <div class="image-caption">アイスが沈まないよう、氷を入れすぎない。</div>
+        </div>
+
+        <div class="sub-heading">材料（1杯）</div>
+        <table>
+          <tr><th>メロンソーダまたはコーラ</th><td>200ml</td></tr>
+          <tr><th>バニラアイス</th><td>1スクープ（約40g）</td></tr>
+          <tr><th>チェリー</th><td>1個（あれば）</td></tr>
+        </table>
+
+        <div class="sub-heading">手順</div>
+        <ol>
+          <li>グラスに氷を半分ほど入れる。</li>
+          <li>メロンソーダまたはコーラをグラスの8分目まで注ぐ。</li>
+          <li>ディッシャーで丸く抜いたアイスをそっと上に乗せる。</li>
+          <li>チェリーを添え、ストローとスプーンを付けて提供する。</li>
+        </ol>
+      </div>
+    </details>
+
+    <p class="footer-note">
+      ※各店舗の実際の商材・分量・アレルギー情報は、必ず社内規定に合わせて調整してください。<br>
+      ※このマニュアルはサンプルです。あそびば様の正式レシピに沿って随時更新してください。
+    </p>
+  </div>
+</body>
+</html>

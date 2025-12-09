@@ -70,6 +70,20 @@ const STORES = {
       default: process.env.STORE_C_MANUAL_TITLE_DEFAULT,
     },
   },
+  asobiba_rakusai: {
+    channelAccessToken: process.env.STORE_D_CHANNEL_ACCESS_TOKEN,
+    channelSecret: process.env.STORE_D_CHANNEL_SECRET,
+    liffId: process.env.STORE_D_LIFF_ID,
+    richmenuBefore: process.env.STORE_D_RICHMENU_BEFORE,
+    richmenuAfter: process.env.STORE_D_RICHMENU_AFTER,
+    manualTitles: {
+      line: process.env.STORE_D_MANUAL_TITLE_LINE,
+      todo: process.env.STORE_D_MANUAL_TITLE_TODO,
+      reji: process.env.STORE_D_MANUAL_TITLE_REJI,
+      hole: process.env.STORE_D_MANUAL_TITLE_HOLE,
+      default: process.env.STORE_D_MANUAL_TITLE_DEFAULT,
+    },
+  },
 };
 
 // ==============================
