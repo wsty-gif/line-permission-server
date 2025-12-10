@@ -3110,71 +3110,80 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
     .get();
 
   if (!permDoc.exists || !permDoc.data().approved) {
-    return res.status(403).send("権限がありません。");
+    return res.status(403).send(`
+      <h3>承認待ちです。管理者の承認をお待ちください。</h3>
+    `);
   }
 
-  // ユーザー名
   const userName = permDoc.data().name || "名前未登録";
+  const safeUserName = userName.replace(/"/g, '\\"'); // JS安全化
 
-  // 対象 HTML のパス
   const manualType = type || "default";
   const htmlPath = path.join(__dirname, "manuals", store, manualType, "index.html");
 
-  // HTML 読み込み
   fs.readFile(htmlPath, "utf8", (err, html) => {
     if (err) {
       console.error(err);
       return res.status(500).send("マニュアルの読み込みに失敗しました。");
     }
 
-    // 透かしレイヤーをHTMLへ挿入
-    const injected = `
-      ${html}
-      <style>
-        .watermark-layer {
-          position: fixed;
-          inset: 0;
-          pointer-events:none;
-          z-index:9999;
-          opacity:0.06;
-          display:flex;
-          flex-wrap:wrap;
-          justify-content:center;
-          align-content:center;
-          user-select:none;
-        }
-        .watermark-text {
-          font-size:20px;
-          color:#000;
-          margin:40px;
-          transform:rotate(-25deg);
-          white-space:nowrap;
-        }
-      </style>
-
-      <script>
-        document.addEventListener("DOMContentLoaded", () => {
-          const layer = document.createElement("div");
-          layer.className = "watermark-layer";
-
-          const now = new Date();
-          const time = now.toLocaleString("ja-JP");
-
-          for (let i = 0; i < 50; i++) {
-            const div = document.createElement("div");
-            div.className = "watermark-text";
-            div.textContent = "${userName} / " + time;
-            layer.appendChild(div);
+    // HTML に透かしを埋め込む
+    const output = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+          .watermark-layer {
+            position: fixed;
+            inset: 0;
+            display:flex;
+            flex-wrap:wrap;
+            justify-content:center;
+            align-content:center;
+            pointer-events:none;
+            opacity:0.06;
+            z-index:9999;
+            user-select:none;
           }
+          .watermark-text {
+            font-size:18px;
+            margin:40px;
+            white-space:nowrap;
+            transform:rotate(-25deg);
+            color:#000;
+          }
+        </style>
+      </head>
+      <body>
+        ${html}
 
-          document.body.appendChild(layer);
-        });
-      </script>
+        <script>
+          document.addEventListener("DOMContentLoaded", () => {
+            const layer = document.createElement("div");
+            layer.className = "watermark-layer";
+            const now = new Date();
+            const time = now.toLocaleString("ja-JP");
+
+            for (let i = 0; i < 50; i++) {
+              const div = document.createElement("div");
+              div.className = "watermark-text";
+              div.textContent = "${safeUserName} / " + time;
+              layer.appendChild(div);
+            }
+            document.body.appendChild(layer);
+          });
+        </script>
+
+      </body>
+      </html>
     `;
 
-    res.send(injected);
+    res.send(output);
   });
 });
+
 
 
 
