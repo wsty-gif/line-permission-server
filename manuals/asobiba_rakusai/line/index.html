@@ -1,6 +1,29 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <script src="../common/watermark.js"></script>
+<!-- ウォーターマークレイヤー -->
+<style>
+.watermark-tile {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  opacity: 0.10;
+  pointer-events: none;
+  background-size: 260px 160px;
+}
+</style>
+<div id="wmTile" class="watermark-tile"></div>
+
+<!-- 店舗ごとの値をセット（Node 側で置換） -->
+<script>
+  window.LIFF_ID = "{{LIFF_ID}}";
+  window.STORE   = "{{STORE}}";
+</script>
+
+<!-- 共通ウォーターマークJS -->
+<script type="module" src="/common/watermark.js"></script>
+
   <meta charset="UTF-8" />
   <title>あそびば フード＆ドリンク レシピマニュアル</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -255,10 +278,26 @@
       color: var(--text-sub);
       text-align: center;
     }
+
+    /* ===== タイル状ウォーターマーク（最強版） ===== */
+
+    .watermark-tile {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      opacity: 0.10;
+      background-repeat: repeat;
+      background-size: 260px 160px; /* 文字の間隔 */
+      user-select: none;
+    }
+
   </style>
 </head>
 
 <body>
+  <div id="wmTile" class="watermark-tile"></div>
+
   <div class="page">
     <header>
       <h1>あそびば フード＆ドリンク<br>レシピマニュアル</h1>
@@ -647,3 +686,66 @@
   </div>
 </body>
 </html>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-firestore.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+async function initLiff() {
+  await liff.init({ liffId: "YOUR_LIFF_ID" });
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
+
+  const profile = await liff.getProfile();
+  const userId = profile.userId;
+
+  // Firestore → 権限申請した名前を取得
+  const docRef = db.collection("companies")
+                   .doc("nice_sweets")
+                   .collection("permissions")
+                   .doc(userId);
+
+  const snap = await docRef.get();
+  const userName = snap.exists ? (snap.data().name || profile.displayName) : profile.displayName;
+
+  generateWatermarkTile(`社外秘 ${userName} / ${new Date().toLocaleString()}`);
+}
+
+// 📌 透かしタイルを生成する
+function generateWatermarkTile(text) {
+  const canvas = document.createElement("canvas");
+  const sizeX = 260;
+  const sizeY = 160;
+
+  canvas.width = sizeX;
+  canvas.height = sizeY;
+
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, sizeX, sizeY);
+
+  ctx.font = "bold 20px 'Noto Sans JP', sans-serif";
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.textAlign = "center";
+
+  ctx.translate(sizeX / 2, sizeY / 2);
+  ctx.rotate(-25 * Math.PI / 180);
+  ctx.fillText(text, 0, 0);
+
+  const dataURL = canvas.toDataURL("image/png");
+  const wm = document.getElementById("wmTile");
+  wm.style.backgroundImage = `url('${dataURL}')`;
+}
+
+document.addEventListener("DOMContentLoaded", initLiff);
+</script>
