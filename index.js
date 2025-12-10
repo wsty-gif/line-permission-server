@@ -126,9 +126,6 @@ app.use("/:store/manuals", (req, res, next) => {
 // apply は権限チェックを通さずアクセス許可
 app.get("/:store/apply", (req, res, next) => next());
 app.post("/:store/apply/submit", (req, res, next) => next());
-app.use("/common", express.static(path.join(process.cwd(), "manuals/common")));
-// 共通スクリプト（ウォーターマークなど）
-app.use("/common", express.static(path.join(process.cwd(), "common")));
 
 // ==============================
 // 🚀 LINEクライアント初期化
@@ -1317,61 +1314,12 @@ app.get("/:store/manual-render", ensureStore, async (req, res) => {
     <head>
     <meta charset="UTF-8">
     <style>
-      /* 透かしレイヤー */
-      .watermark-layer {
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: 9999;
-        opacity: 0.08; /* ←普段はかなり薄く */
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        align-content: center;
-        user-select: none;
-      }
-
-      .watermark-text {
-        font-size: 22px;
-        color: #000;
-        margin: 40px;
-        transform: rotate(-25deg);
-        white-space: nowrap;
-      }
+    body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
     </style>
-
     </head>
     <body>
     ${content}
-    <div id="watermark-root"></div>
-    <script type="module">
-      import { applyWatermark } from "/common/watermark.js";
-      applyWatermark("{{USER_NAME}}");
-    </script>
-    <script>
-      const userName = "${userName}";
-      const userName = "<%= userName %>";   // サーバー側で埋め込む
-      function generateWatermark() {
-        const layer = document.createElement("div");
-        layer.className = "watermark-layer";
-
-        const now = new Date();
-        const time = now.getFullYear() + "/" + (now.getMonth()+1) + "/" + now.getDate()
-                  + " " + now.getHours() + ":" + String(now.getMinutes()).padStart(2, "0");
-
-        // 画面全体を埋め尽くす 7×7 の透かし
-        for (let i = 0; i < 49; i++) {
-          const span = document.createElement("div");
-          span.className = "watermark-text";
-          span.textContent = `${userName} / ${time}`;
-          layer.appendChild(span);
-        }
-        document.body.appendChild(layer);
-      }
-
-      document.addEventListener("DOMContentLoaded", generateWatermark);
-    </script>
-
     </body>
     </html>
     `);
@@ -3099,61 +3047,61 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   const { store } = req;
   const { userId, type } = req.query;
 
+  // 1️⃣ userId がない → エラー
   if (!userId) {
-    return res.status(400).send("userId がありません");
+    return res
+      .status(400)
+      .send("userId がありません（LIFFを経由してください）");
   }
 
-  // Firestore 権限チェック
-  const permRef = db.collection("companies").doc(store)
-    .collection("permissions").doc(userId);
+  // 2️⃣ Firestore で権限チェック
+  const permDoc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
 
-  const permSnap = await permRef.get();
-  if (!permSnap.exists) {
-    return res.status(404).send("権限がありません");
+  if (!permDoc.exists) {
+    return res
+      .status(404)
+      .send("権限申請が未登録です。");
   }
-  const permData = permSnap.data();
-  if (!permData.approved) {
+
+  if (!permDoc.data().approved) {
+    // ✅ 承認されていない → マニュアルは見せない
     return res.status(403).send(`
-      <h3>承認待ちです。管理者の承認をお待ちください。</h3>
+      <!DOCTYPE html>
+      <html lang="ja">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>マニュアル閲覧権限なし</title>
+      </head>
+      <body>
+        <h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>
+      </body>
+      </html>
     `);
   }
 
-  const userName = permData.name || "不明ユーザー";
-
-  const manualType = type || "default";
+  // 3️⃣ 権限 OK → サーバー内の HTML を返す
+  const manualType = type || "default"; // todo / line / default
   const htmlPath = path.join(
-    process.cwd(),
+    __dirname,
     "manuals",
     store,
     manualType,
     "index.html"
   );
 
-  fs.readFile(htmlPath, "utf8", (err, html) => {
+  res.sendFile(htmlPath, (err) => {
     if (err) {
-      console.error("manual-view read error:", err);
-      return res.status(500).send("マニュアル読み込み失敗");
+      console.error("manual-view sendFile error:", err);
+      res.status(500).send("マニュアルの読み込みに失敗しました。");
     }
-
-    // ← ここが重要！ バッククォートを使わない！！！
-    const injectScript =
-      '<script src="/common/watermark.js"></script>\n' +
-      '<script>\n' +
-      '  window.onload = function() {\n' +
-      '    addWatermark(' + JSON.stringify(userName) + ', new Date().toLocaleString());\n' +
-      '  };\n' +
-      '</script>\n';
-
-    // </body> の直前に確実に挿入
-    const outputHtml = html.replace("</body>", injectScript + "</body>");
-
-    res.send(outputHtml);
   });
 });
-
-
-
-
 
 
 // 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
