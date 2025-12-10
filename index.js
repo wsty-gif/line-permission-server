@@ -3113,7 +3113,7 @@ const watermarkScript = `
     }
 
     .wm-item {
-      font-size: 32px;      /* ★ 通常閲覧でも読めるサイズ */
+      font-size: 7px;      /* ★ 通常閲覧でも読めるサイズ */
       color: rgba(50, 50, 50, 0.5);  /* ★ 少し濃いグレー（存在が分かる） */
       font-weight: 600;
       text-align: center;
