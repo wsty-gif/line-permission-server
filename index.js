@@ -127,6 +127,8 @@ app.use("/:store/manuals", (req, res, next) => {
 app.get("/:store/apply", (req, res, next) => next());
 app.post("/:store/apply/submit", (req, res, next) => next());
 app.use("/common", express.static(path.join(process.cwd(), "manuals/common")));
+// 共通スクリプト（ウォーターマークなど）
+app.use("/common", express.static(path.join(process.cwd(), "common")));
 
 // ==============================
 // 🚀 LINEクライアント初期化
@@ -3097,92 +3099,44 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   const { store } = req;
   const { userId, type } = req.query;
 
-  if (!userId) {
-    return res.status(400).send("userId がありません（LIFFを経由してください）");
-  }
+  if (!userId) return res.status(400).send("userId がありません");
 
-  // Firestore 権限チェック
-  const permDoc = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .doc(userId)
-    .get();
+  // Firestore で権限チェック
+  const permRef = db.collection("companies").doc(store)
+    .collection("permissions").doc(userId);
+  const permDoc = await permRef.get();
 
-  if (!permDoc.exists || !permDoc.data().approved) {
+  if (!permDoc.exists) return res.status(404).send("権限未登録です");
+  if (!permDoc.data().approved) {
     return res.status(403).send(`
       <h3>承認待ちです。管理者の承認をお待ちください。</h3>
     `);
   }
 
-  const userName = permDoc.data().name || "名前未登録";
-  const safeUserName = userName.replace(/"/g, '\\"'); // JS安全化
+  const userName = permDoc.data().name || "不明ユーザー";
 
   const manualType = type || "default";
   const htmlPath = path.join(__dirname, "manuals", store, manualType, "index.html");
 
-  fs.readFile(htmlPath, "utf8", (err, html) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send("マニュアルの読み込みに失敗しました。");
-    }
+  fs.readFile(htmlPath, "utf8", (err, content) => {
+    if (err) return res.status(500).send("読み込みエラー");
 
-    // HTML に透かしを埋め込む
-    const output = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style>
-          .watermark-layer {
-            position: fixed;
-            inset: 0;
-            display:flex;
-            flex-wrap:wrap;
-            justify-content:center;
-            align-content:center;
-            pointer-events:none;
-            opacity:0.06;
-            z-index:9999;
-            user-select:none;
-          }
-          .watermark-text {
-            font-size:18px;
-            margin:40px;
-            white-space:nowrap;
-            transform:rotate(-25deg);
-            color:#000;
-          }
-        </style>
-      </head>
-      <body>
-        ${html}
-
-        <script>
-          document.addEventListener("DOMContentLoaded", () => {
-            const layer = document.createElement("div");
-            layer.className = "watermark-layer";
-            const now = new Date();
-            const time = now.toLocaleString("ja-JP");
-
-            for (let i = 0; i < 50; i++) {
-              const div = document.createElement("div");
-              div.className = "watermark-text";
-              div.textContent = "${safeUserName} / " + time;
-              layer.appendChild(div);
-            }
-            document.body.appendChild(layer);
-          });
-        </script>
-
-      </body>
-      </html>
+    // ここでウォーターマーク用スクリプトを注入
+    const injectScript = `
+      <script src="/common/watermark.js"></script>
+      <script>
+        window.onload = function() {
+          addWatermark("${userName}", new Date().toLocaleString());
+        };
+      </script>
     `;
 
-    res.send(output);
+    const finalHtml = content.replace("</body>", injectScript + "\n</body>");
+
+    res.send(finalHtml);
   });
 });
+
 
 
 

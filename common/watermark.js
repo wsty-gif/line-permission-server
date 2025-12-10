@@ -1,35 +1,30 @@
-// ウォーターマーク生成処理
-export function applyWatermark(name) {
-  const tile = document.getElementById("wmTile");
-  if (!tile) return;
+function addWatermark(userName, dateTime) {
+  const text = `${userName} ／ ${dateTime}`;
 
-  function generate() {
-    const now = new Date();
-    const time =
-      now.getFullYear() +
-      "/" + (now.getMonth() + 1) +
-      "/" + now.getDate() +
-      " " + now.getHours() +
-      ":" + String(now.getMinutes()).padStart(2, "0");
+  const watermark = document.createElement("div");
+  watermark.innerText = text;
 
-    const text = `${name}  ${time}`;
+  Object.assign(watermark.style, {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100vw",
+    height: "100vh",
+    pointerEvents: "none",
+    zIndex: 9999,
+    opacity: 0.12,
+    color: "#000",
+    fontSize: "18px",
+    transform: "rotate(-30deg)",
+    whiteSpace: "nowrap",
+    backgroundImage: `
+      linear-gradient(
+        rgba(0,0,0,0.08) 1px, 
+        transparent 1px
+      )
+    `,
+    backgroundSize: "200px 150px",
+  });
 
-    // 文字を描画したキャンバスを生成
-    const canvas = document.createElement("canvas");
-    canvas.width = 260;
-    canvas.height = 160;
-    const ctx = canvas.getContext("2d");
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = 0.15; // かなり薄く
-    ctx.font = "16px sans-serif";
-    ctx.fillStyle = "#000";
-    ctx.rotate(-25 * Math.PI / 180);
-    ctx.fillText(text, -50, 120);
-
-    // 背景に敷き詰め
-    tile.style.backgroundImage = `url(${canvas.toDataURL()})`;
-  }
-
-  generate();
+  document.body.appendChild(watermark);
 }
