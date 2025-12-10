@@ -1314,12 +1314,58 @@ app.get("/:store/manual-render", ensureStore, async (req, res) => {
     <head>
     <meta charset="UTF-8">
     <style>
-    body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
-    img { max-width: 100%; height: auto; }
+      /* 透かしレイヤー */
+      .watermark-layer {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.08; /* ←普段はかなり薄く */
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-content: center;
+        user-select: none;
+      }
+
+      .watermark-text {
+        font-size: 22px;
+        color: #000;
+        margin: 40px;
+        transform: rotate(-25deg);
+        white-space: nowrap;
+      }
     </style>
+
     </head>
     <body>
     ${content}
+    <div id="watermark-root"></div>
+
+    <script>
+      const userName = "${userName}";
+      const userName = "<%= userName %>";   // サーバー側で埋め込む
+      function generateWatermark() {
+        const layer = document.createElement("div");
+        layer.className = "watermark-layer";
+
+        const now = new Date();
+        const time = now.getFullYear() + "/" + (now.getMonth()+1) + "/" + now.getDate()
+                  + " " + now.getHours() + ":" + String(now.getMinutes()).padStart(2, "0");
+
+        // 画面全体を埋め尽くす 7×7 の透かし
+        for (let i = 0; i < 49; i++) {
+          const span = document.createElement("div");
+          span.className = "watermark-text";
+          span.textContent = `${userName} / ${time}`;
+          layer.appendChild(span);
+        }
+        document.body.appendChild(layer);
+      }
+
+      document.addEventListener("DOMContentLoaded", generateWatermark);
+    </script>
+
     </body>
     </html>
     `);
