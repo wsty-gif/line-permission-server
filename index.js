@@ -3047,61 +3047,86 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   const { store } = req;
   const { userId, type } = req.query;
 
-  // 1️⃣ userId がない → エラー
-  if (!userId) {
-    return res
-      .status(400)
-      .send("userId がありません（LIFFを経由してください）");
-  }
+  if (!userId) return res.status(400).send("userId missing");
 
-  // 2️⃣ Firestore で権限チェック
-  const permDoc = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .doc(userId)
+  // 権限確認
+  const perm = await db
+    .collection("companies").doc(store)
+    .collection("permissions").doc(userId)
     .get();
 
-  if (!permDoc.exists) {
-    return res
-      .status(404)
-      .send("権限申請が未登録です。");
-  }
+  if (!perm.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!perm.data().approved) return res.status(403).send("承認待ちです。");
 
-  if (!permDoc.data().approved) {
-    // ✅ 承認されていない → マニュアルは見せない
-    return res.status(403).send(`
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>マニュアル閲覧権限なし</title>
-      </head>
-      <body>
-        <h3>承認待ちです。<br>管理者の承認をお待ちください。</h3>
-      </body>
-      </html>
-    `);
-  }
+  // 名前取得
+  const userName = perm.data().name || "名前未登録";
 
-  // 3️⃣ 権限 OK → サーバー内の HTML を返す
-  const manualType = type || "default"; // todo / line / default
-  const htmlPath = path.join(
+  // HTML パス
+  const manualPath = path.join(
     __dirname,
     "manuals",
     store,
-    manualType,
+    type || "default",
     "index.html"
   );
 
-  res.sendFile(htmlPath, (err) => {
-    if (err) {
-      console.error("manual-view sendFile error:", err);
-      res.status(500).send("マニュアルの読み込みに失敗しました。");
+  let html = fs.readFileSync(manualPath, "utf8");
+
+  // ★★★ ここで body 内にウォーターマークスクリプトを自動注入 ★★★
+  const watermarkScript = `
+  <script>
+    const wmUser = "${userName}";
+    function createWatermark() {
+      const now = new Date();
+      const stamp = now.toLocaleString("ja-JP");
+      const text = wmUser + " / " + stamp;
+
+      const wm = document.createElement("div");
+      wm.className = "watermark-layer";
+      wm.textContent = text;
+
+      document.body.appendChild(wm);
     }
-  });
+    window.onload = createWatermark;
+  </script>
+
+  <style>
+    .watermark-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 200vw;
+      height: 200vh;
+      pointer-events: none;
+      opacity: 0.08;             /* 通常は気にならない薄さ */
+      color: #000;
+      font-size: 22px;
+      transform: rotate(-25deg);
+      white-space: nowrap;
+      z-index: 99999;
+      background-image: repeating-linear-gradient(
+          -45deg,
+          rgba(0,0,0,0.12) 0,
+          rgba(0,0,0,0.12) 1px,
+          transparent 1px,
+          transparent 60px
+      );
+      mix-blend-mode: multiply;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align:center;
+      padding-top: 30vh;
+    }
+  </style>
+  `;
+
+  // </body> の直前にウォーターマークを自動挿入
+  html = html.replace("</body>", watermarkScript + "\n</body>");
+
+  res.send(html);
 });
+
 
 
 // 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
