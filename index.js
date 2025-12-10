@@ -3072,8 +3072,7 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
 
   let html = fs.readFileSync(manualPath, "utf8");
 
-  // ★★★ ここで body 内にウォーターマークスクリプトを自動注入 ★★★
-  const watermarkScript = `
+const watermarkScript = `
   <script>
     const wmUser = "${userName}";
     function createWatermark() {
@@ -3081,45 +3080,49 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
       const stamp = now.toLocaleString("ja-JP");
       const text = wmUser + " / " + stamp;
 
-      const wm = document.createElement("div");
-      wm.className = "watermark-layer";
-      wm.textContent = text;
+      // 大量のテキストを敷き詰める
+      const layer = document.createElement("div");
+      layer.className = "watermark-grid";
 
-      document.body.appendChild(wm);
+      // グリッドとして繰り返して配置
+      let html = "";
+      for (let i = 0; i < 50; i++) {
+        html += "<div class='wm-item'>" + text + "</div>";
+      }
+      layer.innerHTML = html;
+
+      document.body.appendChild(layer);
     }
-    window.onload = createWatermark;
+    window.addEventListener("load", createWatermark);
   </script>
 
   <style>
-    .watermark-layer {
+    .watermark-grid {
       position: fixed;
       top: 0;
       left: 0;
       width: 200vw;
       height: 200vh;
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-auto-rows: 120px;
       pointer-events: none;
-      opacity: 0.08;             /* 通常は気にならない薄さ */
-      color: #000;
-      font-size: 22px;
-      transform: rotate(-25deg);
-      white-space: nowrap;
       z-index: 99999;
-      background-image: repeating-linear-gradient(
-          -45deg,
-          rgba(0,0,0,0.12) 0,
-          rgba(0,0,0,0.12) 1px,
-          transparent 1px,
-          transparent 60px
-      );
-      mix-blend-mode: multiply;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align:center;
-      padding-top: 30vh;
+      opacity: 0.20;  /* ★ ここを上げて読みやすく */
+      transform: rotate(-25deg);
+    }
+
+    .wm-item {
+      font-size: 32px;      /* ★ 通常閲覧でも読めるサイズ */
+      color: rgba(50, 50, 50, 0.5);  /* ★ 少し濃いグレー（存在が分かる） */
+      font-weight: 600;
+      text-align: center;
+      user-select: none;
+      white-space: nowrap;
     }
   </style>
-  `;
+`;
+
 
   // </body> の直前にウォーターマークを自動挿入
   html = html.replace("</body>", watermarkScript + "\n</body>");
