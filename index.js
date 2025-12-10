@@ -3099,43 +3099,58 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   const { store } = req;
   const { userId, type } = req.query;
 
-  if (!userId) return res.status(400).send("userId がありません");
+  if (!userId) {
+    return res.status(400).send("userId がありません");
+  }
 
-  // Firestore で権限チェック
+  // Firestore 権限チェック
   const permRef = db.collection("companies").doc(store)
     .collection("permissions").doc(userId);
-  const permDoc = await permRef.get();
 
-  if (!permDoc.exists) return res.status(404).send("権限未登録です");
-  if (!permDoc.data().approved) {
+  const permSnap = await permRef.get();
+  if (!permSnap.exists) {
+    return res.status(404).send("権限がありません");
+  }
+  const permData = permSnap.data();
+  if (!permData.approved) {
     return res.status(403).send(`
       <h3>承認待ちです。管理者の承認をお待ちください。</h3>
     `);
   }
 
-  const userName = permDoc.data().name || "不明ユーザー";
+  const userName = permData.name || "不明ユーザー";
 
   const manualType = type || "default";
-  const htmlPath = path.join(__dirname, "manuals", store, manualType, "index.html");
+  const htmlPath = path.join(
+    process.cwd(),
+    "manuals",
+    store,
+    manualType,
+    "index.html"
+  );
 
-  fs.readFile(htmlPath, "utf8", (err, content) => {
-    if (err) return res.status(500).send("読み込みエラー");
+  fs.readFile(htmlPath, "utf8", (err, html) => {
+    if (err) {
+      console.error("manual-view read error:", err);
+      return res.status(500).send("マニュアル読み込み失敗");
+    }
 
-    // ここでウォーターマーク用スクリプトを注入
-    const injectScript = `
-      <script src="/common/watermark.js"></script>
-      <script>
-        window.onload = function() {
-          addWatermark("${userName}", new Date().toLocaleString());
-        };
-      </script>
-    `;
+    // ← ここが重要！ バッククォートを使わない！！！
+    const injectScript =
+      '<script src="/common/watermark.js"></script>\n' +
+      '<script>\n' +
+      '  window.onload = function() {\n' +
+      '    addWatermark(' + JSON.stringify(userName) + ', new Date().toLocaleString());\n' +
+      '  };\n' +
+      '</script>\n';
 
-    const finalHtml = content.replace("</body>", injectScript + "\n</body>");
+    // </body> の直前に確実に挿入
+    const outputHtml = html.replace("</body>", injectScript + "</body>");
 
-    res.send(finalHtml);
+    res.send(outputHtml);
   });
 });
+
 
 
 
