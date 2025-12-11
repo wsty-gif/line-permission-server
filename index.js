@@ -3101,26 +3101,27 @@ const watermarkScript = `
       position: fixed;
       top: 0;
       left: 0;
-      width: 200vw;
-      height: 200vh;
+      width: 300vw;      /* ★ さらに広範囲に敷き詰める */
+      height: 300vh;
       display: grid;
-      grid-template-columns: repeat(10, 1fr);
-      grid-auto-rows: 120px;
+      grid-template-columns: repeat(20, 1fr); /* ★ 列数を増やして密度UP */
+      grid-auto-rows: 60px;  /* ★ 行間も短くして敷き詰め感UP */
       pointer-events: none;
       z-index: 99999;
-      opacity: 0.20;  /* ★ ここを上げて読みやすく */
+      opacity: 0.12;   /* ★ 通常閲覧でも読める濃さ（でも邪魔しない） */
       transform: rotate(-25deg);
     }
 
     .wm-item {
-      font-size: 7px;      /* ★ 通常閲覧でも読めるサイズ */
-      color: rgba(50, 50, 50, 0.5);  /* ★ 少し濃いグレー（存在が分かる） */
-      font-weight: 600;
+      font-size: 9px;   /* ★ 小さすぎず読める最適値 */
+      color: rgba(60, 60, 60, 0.35); /* ★ ほどよい濃さ。スクショで浮かび上がる */
+      font-weight: 700;
       text-align: center;
       user-select: none;
       white-space: nowrap;
     }
   </style>
+
 `;
 
 
