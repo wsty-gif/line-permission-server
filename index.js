@@ -3108,7 +3108,7 @@ const watermarkScript = `
       grid-auto-rows: 60px;  /* ★ 行間も短くして敷き詰め感UP */
       pointer-events: none;
       z-index: 99999;
-      opacity: 0.12;   /* ★ 通常閲覧でも読める濃さ（でも邪魔しない） */
+      opacity: 0.08;   /* ★ 通常閲覧でも読める濃さ（でも邪魔しない） */
       transform: rotate(-25deg);
     }
 
