@@ -3100,12 +3100,12 @@ const watermarkScript = `
     .watermark-grid {
       position: fixed;
       top: 0;
-      left: 0;
-      width: 300vw;      /* ★ さらに広範囲に敷き詰める */
+      left: 282px;
+      width: 173vw;      /* ★ さらに広範囲に敷き詰める */
       height: 300vh;
       display: grid;
-      grid-template-columns: repeat(20, 1fr); /* ★ 列数を増やして密度UP */
-      grid-auto-rows: 60px;  /* ★ 行間も短くして敷き詰め感UP */
+      grid-template-columns: repeat(4, 1fr); /* ★ 列数を増やして密度UP */
+      grid-auto-rows: 46px;  /* ★ 行間も短くして敷き詰め感UP */
       pointer-events: none;
       z-index: 99999;
       opacity: 0.08;   /* ★ 通常閲覧でも読める濃さ（でも邪魔しない） */
