@@ -7129,8 +7129,9 @@ function extractRecipeItemsFromHTML(html) {
 // ======== 修正版：チェック状況ページ ==========
 app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   const { store, userId } = req.params;
+  const storeConf = STORES[store];
 
-  // 1. 権限チェック
+  // 1. 従業員情報
   const permDoc = await db
     .collection("companies").doc(store)
     .collection("permissions").doc(userId)
@@ -7142,133 +7143,126 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 
   const userName = permDoc.data().name || "名前未登録";
 
-  // 2. 解析対象のマニュアル種類
+  // 2. 店舗の全マニュアルを HTML 解析して recipeId 抽出
   const manualTypes = ["line", "todo", "reji", "hole"];
+  let allItems = []; // ← これが最終的に全 recipeId を入れる配列
 
-  let allItems = []; 
-  for (const type of manualTypes) {
-    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
-    if (!fs.existsSync(htmlPath)) continue;
+  for (const t of manualTypes) {
+    const htmlPath = path.join(__dirname, "manuals", store, t, "index.html");
 
-    const html = fs.readFileSync(htmlPath, "utf8");
-    const recipeList = extractRecipeItemsFromHTML(html); // {recipeId,label}
+    if (fs.existsSync(htmlPath)) {
+      const html = fs.readFileSync(htmlPath, "utf8");
+      const ids = extractRecipeItemsFromHTML(html); // ← recipeId だけ抽出
 
-    const manualTitle = STORES[store].manualTitles[type] ?? type;
-
-    recipeList.forEach(item => {
-      allItems.push({
-        manualType: manualTitle,
-        recipeId: item.recipeId,
-        label: item.label
+      ids.forEach(id => {
+        allItems.push({
+          manualType: t,
+          recipeId: id,
+          manualTitle: storeConf.manualTitles[t] || t
+        });
       });
-    });
+    }
   }
 
   // 重複除去
-  allItems = allItems.filter(
-    (v, i, a) => a.findIndex(t => t.recipeId === v.recipeId) === i
+  allItems = allItems.filter((v, i, self) =>
+    self.findIndex(x => x.recipeId === v.recipeId) === i
   );
 
-  // 3. DB のチェック状況
-  const checkDoc = await db
+  // 3. チェック状況取得
+  const checksDoc = await db
     .collection("companies").doc(store)
-    .collection("manualCheck").doc(userId)
+    .collection("manualCheck")
+    .doc(userId)
     .get();
 
-  const checkData = checkDoc.exists ? checkDoc.data() : {};
+  const checks = checksDoc.exists ? checksDoc.data() : {};
 
-  // 4. HTML用の表データ構築
-  let total = allItems.length;
+  // 4. 判定
   let checkedCount = 0;
-
-  const tableRows = allItems.map((item) => {
-    const isChecked = checkData[item.recipeId] === true;
+  const rows = allItems.map(item => {
+    const isChecked = !!checks[item.recipeId];
     if (isChecked) checkedCount++;
 
-    return `
-      <tr>
-        <td>${item.manualType}</td>
-        <td>${item.label}</td>
-        <td style="text-align:center;">${isChecked ? "✔" : ""}</td>
-      </tr>`;
-  }).join("");
+    return {
+      manualTitle: item.manualTitle,
+      recipeId: item.recipeId,
+      checked: isChecked
+    };
+  });
 
-  // 5. % 計算
+  const total = rows.length;
   const percent = total === 0 ? 0 : Math.round((checkedCount / total) * 100);
 
+  // 色分け
   let color = "red";
   if (percent >= 80) color = "green";
-  else if (percent >= 60) color = "orange";
+  else if (percent >= 60) color = "gold";
 
-  // 6. HTML 出力（スマホ向け UI に調整済み）
+  // 5. HTML 出力
   res.send(`
-  <html>
-  <head>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <style>
-      body { font-family: sans-serif; background:#f8f8f8; padding:20px; }
-      h2 { font-size:20px; margin-bottom:6px; }
-      .percent {
-        display:inline-block;
-        padding:10px 18px;
-        border-radius:50px;
-        background:${color};
-        color:white;
-        font-size:20px;
-        font-weight:bold;
-        margin:10px 0;
-      }
-      table {
-        width:100%;
-        border-collapse: collapse;
-        background:white;
-        margin-top:12px;
-      }
-      th, td {
-        padding:10px;
-        border-bottom:1px solid #ddd;
-      }
-      th {
-        background:#2563eb;
-        color:white;
-        font-size:14px;
-      }
-      .back-btn {
-        margin-top:20px;
-        display:inline-block;
-        padding:10px 20px;
-        background:#2563eb;
-        color:white;
-        border-radius:6px;
-        text-decoration:none;
-      }
-    </style>
-  </head>
-  <body>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${userName} さんの理解度</title>
 
-    <h2>${userName} さんの理解度</h2>
-    <div style="color:#444;">(${store} 全マニュアル)</div>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  .percent {
+    font-size: 32px; font-weight: bold;
+    color: ${color};
+    margin-bottom: 20px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+  }
+  th, td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+  }
+  th { background: #2563eb; color: white; }
+  .checked { color: green; font-weight: bold; }
+</style>
+</head>
 
-    <div>総項目数：${total} 件</div>
-    <div>チェック済み：${checkedCount} 件</div>
+<body>
+  <h2>${userName} さんの理解度（${store} 全マニュアル）</h2>
 
-    <div class="percent">${percent}%</div>
+  <p>総項目数：${total} 件</p>
+  <p>チェック済み：${checkedCount} 件</p>
 
-    <table>
+  <div class="percent">${percent}%</div>
+
+  <table>
+    <tr>
+      <th>マニュアル種類</th>
+      <th>項目名</th>
+      <th>理解済み</th>
+    </tr>
+
+    ${rows.map(r => `
       <tr>
-        <th>マニュアル種別</th>
-        <th>項目名</th>
-        <th>理解</th>
+        <td>${r.manualTitle}</td>
+        <td>${r.recipeId}</td>
+        <td class="${r.checked ? "checked" : ""}">
+          ${r.checked ? "✔" : ""}
+        </td>
       </tr>
-      ${tableRows}
-    </table>
+    `).join("")}
+  </table>
 
-    <a class="back-btn" href="/${store}/admin/check-status">← 一覧へ戻る</a>
-
-  </body>
-  </html>
+  <br>
+  <a href="/${store}/admin/check-status">← 一覧へ戻る</a>
+</body>
+</html>
   `);
 });
+
 
 
 
