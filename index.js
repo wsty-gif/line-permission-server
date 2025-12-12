@@ -3049,19 +3049,19 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
 
   if (!userId) return res.status(400).send("userId missing");
 
-  // 権限確認
-  const perm = await db
+  // ▼ 権限チェック
+  const permSnap = await db
     .collection("companies").doc(store)
     .collection("permissions").doc(userId)
     .get();
 
-  if (!perm.exists) return res.status(404).send("権限申請が未登録です。");
-  if (!perm.data().approved) return res.status(403).send("承認待ちです。");
+  if (!permSnap.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!permSnap.data().approved) return res.status(403).send("承認待ちです。");
 
-  // 名前取得
-  const userName = perm.data().name || "名前未登録";
+  // ▼ 利用者名
+  const userName = permSnap.data().name || "名前未登録";
 
-  // HTML パス
+  // ▼ 店舗ごとの index.html を読み込む
   const manualPath = path.join(
     __dirname,
     "manuals",
@@ -3071,73 +3071,73 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   );
 
   let html = fs.readFileSync(manualPath, "utf8");
-  // ★ manual-view 用に store と userId を HTML 内へ埋め込む
-  html = html.replace("</head>", `
+
+  // ▼ チェック記録に必要な値を index.html 内へ埋め込み
+  const embedVars = `
     <script>
-      window.MANUAL_STORE = "${store}";
       window.MANUAL_USER_ID = "${userId}";
+      window.MANUAL_STORE = "${store}";
     </script>
-  </head>
-  `);
+  `;
+  html = html.replace("</head>", embedVars + "\n</head>");
 
-const watermarkScript = `
-  <script>
-    const wmUser = "${userName}";
-    function createWatermark() {
-      const now = new Date();
-      const stamp = now.toLocaleString("ja-JP");
-      const text = wmUser + " / " + stamp;
-
-      // 大量のテキストを敷き詰める
-      const layer = document.createElement("div");
-      layer.className = "watermark-grid";
-
-      // グリッドとして繰り返して配置
-      let html = "";
-      for (let i = 0; i < 50; i++) {
-        html += "<div class='wm-item'>" + text + "</div>";
+  // ▼ ウォーターマーク挿入スクリプト
+  const watermarkScript = `
+    <style>
+      .watermark-grid {
+        position: fixed;
+        top: 0;
+        left: 282px;
+        width: 173vw;
+        height: 300vh;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-auto-rows: 46px;
+        pointer-events: none;
+        z-index: 99999;
+        opacity: 0.08;
+        transform: rotate(-25deg);
       }
-      layer.innerHTML = html;
 
-      document.body.appendChild(layer);
-    }
-    window.addEventListener("load", createWatermark);
-  </script>
+      .wm-item {
+        font-size: 9px;
+        color: rgba(60, 60, 60, 0.35);
+        font-weight: 700;
+        text-align: center;
+        user-select: none;
+        white-space: nowrap;
+      }
+    </style>
 
-  <style>
-    .watermark-grid {
-      position: fixed;
-      top: 0;
-      left: 282px;
-      width: 173vw;      /* ★ さらに広範囲に敷き詰める */
-      height: 300vh;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr); /* ★ 列数を増やして密度UP */
-      grid-auto-rows: 46px;  /* ★ 行間も短くして敷き詰め感UP */
-      pointer-events: none;
-      z-index: 99999;
-      opacity: 0.08;   /* ★ 通常閲覧でも読める濃さ（でも邪魔しない） */
-      transform: rotate(-25deg);
-    }
+    <script>
+      const wmUser = "${userName}";
+      function createWatermark() {
+        const now = new Date();
+        const stamp = now.toLocaleString("ja-JP");
+        const text = wmUser + " / " + stamp;
 
-    .wm-item {
-      font-size: 9px;   /* ★ 小さすぎず読める最適値 */
-      color: rgba(60, 60, 60, 0.35); /* ★ ほどよい濃さ。スクショで浮かび上がる */
-      font-weight: 700;
-      text-align: center;
-      user-select: none;
-      white-space: nowrap;
-    }
-  </style>
+        const layer = document.createElement("div");
+        layer.className = "watermark-grid";
 
-`;
+        let html = "";
+        for (let i = 0; i < 200; i++) {
+          html += "<div class='wm-item'>" + text + "</div>";
+        }
+        layer.innerHTML = html;
 
+        document.body.appendChild(layer);
+      }
 
-  // </body> の直前にウォーターマークを自動挿入
+      window.addEventListener("load", createWatermark);
+    </script>
+  `;
+
+  // ▼ </body> の直前に完全挿入
   html = html.replace("</body>", watermarkScript + "\n</body>");
 
   res.send(html);
 });
+
 
 app.post("/:store/manual-check/save", ensureStore, async (req, res) => {
   const { store } = req;
@@ -3165,6 +3165,63 @@ app.get("/:store/admin/manual-check", ensureStore, async (req, res) => {
   }));
 
   // HTML で一覧をレンダリング（省略）
+});
+
+// ===============================
+// ① チェック保存（従業員がチェックを付けた）
+// ===============================
+app.post("/:store/manual-check", ensureStore, async (req, res) => {
+  try {
+    const { store } = req.params;
+    const { userId, recipeId } = req.body;
+
+    if (!userId || !recipeId) {
+      return res.status(400).json({ error: "userId と recipeId が必要です。" });
+    }
+
+    await db
+      .collection("companies")
+      .doc(store)
+      .collection("manualCheck")
+      .doc(userId)
+      .set(
+        {
+          [recipeId]: true, // 1つの項目だけ更新
+        },
+        { merge: true }
+      );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("manual-check POST error:", err);
+    res.status(500).json({ error: "保存に失敗しました。" });
+  }
+});
+
+// ===============================
+// ② チェック読み込み（従業員が何を理解済みか）
+// ===============================
+app.get("/:store/manual-check", ensureStore, async (req, res) => {
+  try {
+    const { store } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId が必要です。" });
+    }
+
+    const snap = await db
+      .collection("companies")
+      .doc(store)
+      .collection("manualCheck")
+      .doc(userId)
+      .get();
+
+    res.json(snap.exists ? snap.data() : {});
+  } catch (err) {
+    console.error("manual-check GET error:", err);
+    res.status(500).json({ error: "読み込みに失敗しました。" });
+  }
 });
 
 // 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
