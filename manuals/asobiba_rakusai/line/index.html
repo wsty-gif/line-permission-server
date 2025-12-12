@@ -5,6 +5,47 @@
   <title>あそびば フード＆ドリンク レシピマニュアル</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    .check-wrap{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin-bottom:4px;
+    }
+    .check-wrap input{
+      transform:scale(1.2);
+    }
+  </style>
+  <script>
+    // ★ Firestore 保存（既存 firebase 読み込みがある前提）
+    async function saveCheck(recipeId){
+      const userId = window.MANUAL_USER_ID; // manual-view で付与する
+      const store = window.MANUAL_STORE;
+
+      await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, recipeId })
+      });
+    }
+
+    // ★ チェック状態の取得
+    async function loadChecks(){
+      const userId = window.MANUAL_USER_ID;
+      const store = window.MANUAL_STORE;
+
+      const res = await fetch(`/${store}/manual-check?userId=${userId}`);
+      const data = await res.json();
+
+      Object.keys(data).forEach(id=>{
+        const box = document.getElementById("chk-" + id);
+        if(box){ box.checked = true; }
+      });
+    }
+
+    window.addEventListener("load", loadChecks);
+  </script>
+
+  <style>
     :root {
       --bg: #f3f4f6;
       --card-bg: #ffffff;
@@ -273,7 +314,12 @@
     </div>
 
     <!-- ポテトフライ -->
-    <details class="recipe" open>
+    <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-potato" onclick="saveCheck('potato')">
+        <label for="chk-potato">この項目を理解しました</label>
+      </div>
+
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">ポテトフライ</div>
@@ -321,6 +367,11 @@
 
     <!-- 鶏の唐揚げ -->
     <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-karage" onclick="saveCheck('karage')">
+        <label for="chk-karage">この項目を理解しました</label>
+      </div>
+
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">鶏の唐揚げ</div>
@@ -368,6 +419,10 @@
 
     <!-- たこ焼き -->
     <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-takoyaki" onclick="saveCheck('takoyaki')">
+        <label for="chk-takoyaki">この項目を理解しました</label>
+      </div>
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">たこ焼き（冷凍）</div>
@@ -413,6 +468,10 @@
 
     <!-- ソーセージ盛り -->
     <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-sosage" onclick="saveCheck('sosage')">
+        <label for="chk-sosage">この項目を理解しました</label>
+      </div>
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">ソーセージ盛り合わせ</div>
@@ -450,6 +509,10 @@
 
     <!-- 枝豆 -->
     <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-edamame" onclick="saveCheck('edamame')">
+        <label for="chk-edamame">この項目を理解しました</label>
+      </div>
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">枝豆</div>
@@ -490,6 +553,10 @@
 
     <!-- ソフトドリンク（グラス） -->
     <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-drink" onclick="saveCheck('drink')">
+        <label for="chk-drink">この項目を理解しました</label>
+      </div>
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">ソフトドリンク（グラス提供）</div>
@@ -527,6 +594,10 @@
 
     <!-- ハイボール -->
     <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-hiball" onclick="saveCheck('hiball')">
+        <label for="chk-hiball">この項目を理解しました</label>
+      </div>
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">ハイボール</div>
@@ -572,6 +643,10 @@
 
     <!-- チューハイ -->
     <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-chuhi" onclick="saveCheck('chuhi')">
+        <label for="chk-chuhi">この項目を理解しました</label>
+      </div>
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">チューハイ各種</div>
@@ -605,6 +680,10 @@
 
     <!-- フロート -->
     <details class="recipe">
+      <div class="check-wrap">
+        <input type="checkbox" id="chk-desertdrink" onclick="saveCheck('desertdrink')">
+        <label for="chk-desertdrink">この項目を理解しました</label>
+      </div>
       <summary class="summary-row">
         <div class="recipe-main">
           <div class="recipe-name">クリームソーダ／コーラフロート</div>

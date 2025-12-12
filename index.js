@@ -3071,6 +3071,14 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
   );
 
   let html = fs.readFileSync(manualPath, "utf8");
+  // ★ manual-view 用に store と userId を HTML 内へ埋め込む
+  html = html.replace("</head>", `
+    <script>
+      window.MANUAL_STORE = "${store}";
+      window.MANUAL_USER_ID = "${userId}";
+    </script>
+  </head>
+  `);
 
 const watermarkScript = `
   <script>
@@ -3131,7 +3139,33 @@ const watermarkScript = `
   res.send(html);
 });
 
+app.post("/:store/manual-check/save", ensureStore, async (req, res) => {
+  const { store } = req;
+  const { userId, items } = req.body;
 
+  await db
+    .collection("companies").doc(store)
+    .collection("manualCheck").doc(userId)
+    .set({ items, updatedAt: new Date() }, { merge: true });
+
+  res.json({ success: true });
+});
+
+app.get("/:store/admin/manual-check", ensureStore, async (req, res) => {
+  const { store } = req;
+
+  const snap = await db
+    .collection("companies").doc(store)
+    .collection("manualCheck")
+    .get();
+
+  const data = snap.docs.map(doc => ({
+    userId: doc.id,
+    ...doc.data()
+  }));
+
+  // HTML で一覧をレンダリング（省略）
+});
 
 // 🛠 打刻修正申請ページ// 🛠 打刻修正申請ページ
 // 🛠 打刻修正申請ページ
