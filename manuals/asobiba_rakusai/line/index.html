@@ -16,34 +16,53 @@
     }
   </style>
   <script>
-    // ★ Firestore 保存（既存 firebase 読み込みがある前提）
-    async function saveCheck(recipeId){
-      const userId = window.MANUAL_USER_ID; // manual-view で付与する
-      const store = window.MANUAL_STORE;
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;   // ← これが重要（undefined の原因だった）
 
-      await fetch(`/${store}/manual-check`, {
+      if (!userId || !store || !type) {
+        console.warn("チェックロード不可: userId/store/type が不足");
+        return;
+      }
+
+      const res = await fetch(`/${store}/manual-check?userId=${userId}&type=${type}`);
+      if (!res.ok) return;
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error("JSON parse error:", e);
+        return;
+      }
+
+      // 反映
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        if (data[key] === true) el.checked = true;
+      });
+    }
+
+    // チェック変更イベント
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
+
+      const res = await fetch(`/${store}/manual-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, recipeId })
+        body: JSON.stringify({ userId, type, key })
       });
+
+      const out = await res.json();
+      console.log("CHECK UPDATED:", out);
     }
 
-    // ★ チェック状態の取得
-    async function loadChecks(){
-      const userId = window.MANUAL_USER_ID;
-      const store = window.MANUAL_STORE;
-
-      const res = await fetch(`/${store}/manual-check?userId=${userId}`);
-      const data = await res.json();
-
-      Object.keys(data).forEach(id=>{
-        const box = document.getElementById("chk-" + id);
-        if(box){ box.checked = true; }
-      });
-    }
-
-    window.addEventListener("load", loadChecks);
+    window.addEventListener("DOMContentLoaded", loadChecks);
   </script>
+
 
   <style>
     :root {
