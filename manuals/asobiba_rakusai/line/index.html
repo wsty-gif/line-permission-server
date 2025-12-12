@@ -53,7 +53,7 @@
       const res = await fetch(`/${store}/manual-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, type, key })
+        body: JSON.stringify({ userId, type, recipeId: key })
       });
 
       const out = await res.json();
