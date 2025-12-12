@@ -15,14 +15,15 @@
   "main": "index.js",
   "dependencies": {
     "@line/bot-sdk": "^10.3.0",
+    "cheerio": "^1.0.0-rc.12",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^6.6.0",
-    "json2csv": "^6.0.0-alpha.2",
-    "cheerio": "^1.0.0-rc.12"
+    "jsdom": "^27.3.0",
+    "json2csv": "^6.0.0-alpha.2"
   },
   "devDependencies": {
     "eslint": "^8.15.0",
