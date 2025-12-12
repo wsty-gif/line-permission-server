@@ -4,6 +4,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>オペレーションマニュアル</title>
+  <style>
+    .check-wrap{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin-bottom:4px;
+    }
+    .check-wrap input{
+      transform:scale(1.2);
+    }
+  </style>
+  <script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;   // ← これが重要（undefined の原因だった）
+
+      if (!userId || !store || !type) {
+        console.warn("チェックロード不可: userId/store/type が不足");
+        return;
+      }
+
+      const res = await fetch(`/${store}/manual-check?userId=${userId}&type=${type}`);
+      if (!res.ok) return;
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error("JSON parse error:", e);
+        return;
+      }
+
+      // 反映
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        if (data[key] === true) el.checked = true;
+      });
+    }
+
+    // チェック変更イベント
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
+
+      const res = await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, type, recipeId: key })
+      });
+
+      const out = await res.json();
+      console.log("CHECK UPDATED:", out);
+    }
+
+    window.addEventListener("DOMContentLoaded", loadChecks);
+  </script>
+
+  <script>
+    function saveCheck(key) {
+      toggleCheck(key);
+    }
+  </script>
 
 <style>
 body{
@@ -61,7 +125,7 @@ h1{text-align:center;font-size:20px;color:#16a34a;margin-bottom:10px;}
 <div class="section">
   <div class="header">
     <div>
-      <div class="header-title">1. 接客の基本</div>
+      <div class="header-title" data-recipe-id="sekkyaku">1. 接客の基本</div>
       <div class="sub-title">挨拶・案内・注文・提供の流れ</div>
     </div>
     <div class="arrow">▶</div>
@@ -98,6 +162,11 @@ h1{text-align:center;font-size:20px;color:#16a34a;margin-bottom:10px;}
     <div class="point">
       ✔ 声のトーン・笑顔・スピードが店の印象を決定  
       ✔ ハンディ入力ミスが最もクレームにつながりやすい
+    </div>
+    
+    <div class="check-wrap">
+      <input type="checkbox" class="check-item" data-key="sekkyaku" onclick="toggleCheck('sekkyaku')">
+      <label for="chk-sekkyaku">この項目を理解しました</label>
     </div>
   </div>
 </div>
