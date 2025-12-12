@@ -5855,6 +5855,193 @@ app.get("/:store/admin/manual-logs", ensureStore, async (req, res) => {
   `);
 });
 
+// ===============================
+// ⭐ 理解度チェック管理画面（一覧）
+// ===============================
+app.get("/:store/admin/check-status", ensureStore, async (req, res) => {
+  const { store } = req;
+  const { type } = req.query;   // line / todo / reji / hole など
+
+  // 権限データを取得（全従業員）
+  const staffSnap = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .where("approved", "==", true)
+    .get();
+
+  const staff = staffSnap.docs.map(doc => ({
+    userId: doc.id,
+    ...doc.data()
+  }));
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>理解度チェック管理</title>
+      <style>
+        body { font-family: sans-serif; padding: 20px; }
+        h1 { margin-bottom: 20px; }
+
+        table { width:100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+
+        .btn {
+          background:#2563eb; color:white; text-decoration:none;
+          padding:8px 14px; border-radius:6px;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>理解度チェック管理（${store}）</h1>
+      <a class="btn" href="/${store}/admin">← 管理TOPへ戻る</a>
+
+      <table>
+        <thead>
+          <tr><th>従業員名</th><th>理解度を確認</th></tr>
+        </thead>
+        <tbody>
+          ${staff
+            .map(
+              s => `
+            <tr>
+              <td>${s.name}</td>
+              <td><a class="btn" href="/${store}/admin/check-status/detail?userId=${s.userId}&type=${type || "line"}">確認する</a></td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `);
+});
+
+// =================================================
+// ⭐ 理解度チェック管理（従業員ごとの詳細画面）
+// =================================================
+app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
+  const { store } = req;
+  const { userId, type } = req.query;
+
+  if (!userId) return res.status(400).send("userId が必要です");
+
+  // 従業員情報取得
+  const userDoc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
+
+  if (!userDoc.exists) return res.status(404).send("従業員が見つかりません");
+
+  const user = userDoc.data();
+
+  // ================================
+  // 全マニュアルの index.html を解析
+  // ================================
+  const manualTypes = ["line", "todo", "reji", "hole"];
+  let allItems = [];
+
+  for (const mt of manualTypes) {
+    const htmlPath = path.join(__dirname, "manuals", store, mt, "index.html");
+
+    if (fs.existsSync(htmlPath)) {
+      const html = fs.readFileSync(htmlPath, "utf8");
+
+      // ★ HTML 内の「recipeId」を正規表現で抽出
+      const matches = [...html.matchAll(/data-recipe-id="([^"]+)"/g)];
+      matches.forEach(m => {
+        allItems.push({
+          manualType: mt,
+          recipeId: m[1]
+        });
+      });
+    }
+  }
+
+  // DBからチェック状況を取得
+  const checkDoc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("manualCheck")
+    .doc(userId)
+    .get();
+
+  const checks = checkDoc.exists ? checkDoc.data() : {};
+
+  // チェック数
+  const checkedCount = Object.values(checks).filter(v => v === true).length;
+  const totalCount   = allItems.length;
+  const percent = totalCount === 0 ? 0 : Math.round((checkedCount / totalCount) * 100);
+
+  // 色分け
+  let color = "red";
+  if (percent >= 80) color = "green";
+  else if (percent >= 60) color = "orange";
+
+  // HTML 表示
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>理解度状況</title>
+
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+
+      .percent {
+        font-size: 22px;
+        font-weight: bold;
+        padding: 8px 16px;
+        border-radius: 50px;
+        background:${color};
+        color:white;
+        display:inline-block;
+      }
+
+      table { width:100%; border-collapse: collapse; margin-top: 20px; }
+      th, td { padding: 10px; border-bottom: 1px solid #ddd; }
+    </style>
+  </head>
+  <body>
+    <h2>${user.name} さんの理解度（${store} 全マニュアル）</h2>
+
+    <p>総項目数：${totalCount} 件</p>
+    <p>チェック済み：${checkedCount} 件</p>
+    <div class="percent">${percent}%</div>
+
+    <table>
+      <thead>
+        <tr><th>マニュアル種別</th><th>項目ID</th><th>理解済み</th></tr>
+      </thead>
+      <tbody>
+        ${allItems
+          .map(
+            i => `
+          <tr>
+            <td>${i.manualType}</td>
+            <td>${i.recipeId}</td>
+            <td>${checks[i.recipeId] ? "✔" : ""}</td>
+          </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>
+
+    <br>
+    <a href="/${store}/admin/check-status?type=${type}" style="padding:8px 12px; background:#2563eb; color:white; border-radius:6px; text-decoration:none;">← 一覧へ戻る</a>
+  </body>
+  </html>
+  `);
+});
+
 function calculateWorkTimes(works, storeSettings, staffSettings) {
 
   let totalMinutes = 0;
