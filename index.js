@@ -3049,19 +3049,19 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
 
   if (!userId) return res.status(400).send("userId missing");
 
-  // ▼ 権限チェック
-  const permSnap = await db
+  // 権限確認
+  const perm = await db
     .collection("companies").doc(store)
     .collection("permissions").doc(userId)
     .get();
 
-  if (!permSnap.exists) return res.status(404).send("権限申請が未登録です。");
-  if (!permSnap.data().approved) return res.status(403).send("承認待ちです。");
+  if (!perm.exists) return res.status(404).send("権限申請が未登録です。");
+  if (!perm.data().approved) return res.status(403).send("承認待ちです。");
 
-  // ▼ 利用者名
-  const userName = permSnap.data().name || "名前未登録";
+  // 名前取得
+  const userName = perm.data().name || "名前未登録";
 
-  // ▼ 店舗ごとの index.html を読み込む
+  // HTML パス
   const manualPath = path.join(
     __dirname,
     "manuals",
@@ -3072,100 +3072,71 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
 
   let html = fs.readFileSync(manualPath, "utf8");
 
-  // ▼ チェック記録に必要な値を index.html 内へ埋め込み
+  // ⭐⭐⭐ ここが重要!!! manual-view に userId / store / type を埋め込む
   const embedVars = `
     <script>
       window.MANUAL_USER_ID = "${userId}";
       window.MANUAL_STORE = "${store}";
       window.MANUAL_TYPE = "${type || "default"}";
     </script>
-
-    <script>
-      async function loadChecks() {
-        try {
-          const userId = window.MANUAL_USER_ID;
-          const store = window.MANUAL_STORE;
-
-          const res = await fetch(\`/${store}/manual-check?userId=\${userId}\`);
-          if (!res.ok) return;
-
-          const checks = await res.json();
-
-          // チェック済み項目を反映
-          Object.keys(checks).forEach(key => {
-            const box = document.querySelector(\`input[type="checkbox"][data-key="\${key}"]\`);
-            if (box && checks[key] === true) {
-              box.checked = true;
-            }
-          });
-
-        } catch (err) {
-          console.error("loadChecks error:", err);
-        }
-      }
-
-      window.addEventListener("load", loadChecks);
-    </script>
   `;
+  html = html.replace("</head>", embedVars + "</head>");
 
-  html = html.replace("</head>", embedVars + "\n</head>");
-
-  // ▼ ウォーターマーク挿入スクリプト
+  // ===== ウォーターマーク =====
   const watermarkScript = `
-    <style>
-      .watermark-grid {
-        position: fixed;
-        top: 0;
-        left: 282px;
-        width: 173vw;
-        height: 300vh;
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        grid-auto-rows: 46px;
-        pointer-events: none;
-        z-index: 99999;
-        opacity: 0.08;
-        transform: rotate(-25deg);
+  <script>
+    const wmUser = "${userName}";
+    function createWatermark() {
+      const now = new Date();
+      const stamp = now.toLocaleString("ja-JP");
+      const text = wmUser + " / " + stamp;
+
+      const layer = document.createElement("div");
+      layer.className = "watermark-grid";
+
+      let html = "";
+      for (let i = 0; i < 120; i++) {
+        html += "<div class='wm-item'>" + text + "</div>";
       }
+      layer.innerHTML = html;
 
-      .wm-item {
-        font-size: 9px;
-        color: rgba(60, 60, 60, 0.35);
-        font-weight: 700;
-        text-align: center;
-        user-select: none;
-        white-space: nowrap;
-      }
-    </style>
+      document.body.appendChild(layer);
+    }
+    window.addEventListener("load", createWatermark);
+  </script>
 
-    <script>
-      const wmUser = "${userName}";
-      function createWatermark() {
-        const now = new Date();
-        const stamp = now.toLocaleString("ja-JP");
-        const text = wmUser + " / " + stamp;
+  <style>
+    .watermark-grid {
+      position: fixed;
+      top: 0;
+      left: 250px;
+      width: 180vw;
+      height: 300vh;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-auto-rows: 38px;
+      pointer-events: none;
+      z-index: 99999;
+      opacity: 0.08;
+      transform: rotate(-25deg);
+    }
 
-        const layer = document.createElement("div");
-        layer.className = "watermark-grid";
-
-        let html = "";
-        for (let i = 0; i < 200; i++) {
-          html += "<div class='wm-item'>" + text + "</div>";
-        }
-        layer.innerHTML = html;
-
-        document.body.appendChild(layer);
-      }
-
-      window.addEventListener("load", createWatermark);
-    </script>
+    .wm-item {
+      font-size: 9px;
+      color: rgba(60,60,60,0.35);
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+      user-select: none;
+    }
+  </style>
   `;
 
-  // ▼ </body> の直前に完全挿入
   html = html.replace("</body>", watermarkScript + "\n</body>");
 
   res.send(html);
 });
+
 
 
 app.post("/:store/manual-check/save", ensureStore, async (req, res) => {
