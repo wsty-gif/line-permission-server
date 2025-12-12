@@ -143,6 +143,14 @@ const STORES = {
   },
 };
 
+// ★ recipeId → 日本語名称
+const RECIPE_LABELS = {
+  potato: "ポテトフライ",
+  chicken_karaage: "鶏の唐揚げ",
+  takoyaki: "たこ焼き（冷凍）",
+  softdrink: "ソフトドリンク"
+};
+
 // ==============================
 // 🔥 Firebase 初期化
 // ==============================
@@ -6916,229 +6924,299 @@ app.get("/:store/admin/tasks/user", ensureStore, async (req, res) => {
 });
 
 
-app.get("/:store/admin/check-status", ensureStore, async (req, res) => {
-  const { store } = req;
+// ======== 追加：HTML 解析ヘルパー ==========
+function extractRecipeItemsFromHTML(html) {
+  const regex = /data-recipe-id="([^"]+)"/g;
+  const results = [];
+  let m;
 
-  // 種別（line/todo）などの手動指定も可能
-  const type = req.query.type || "line";
+  while ((m = regex.exec(html)) !== null) {
+    results.push(m[1]);
+  }
+  return results;
+}
 
-  // ① HTML から項目一覧を取得
-  const items = await extractRecipeItems(store, type);
-  const totalCount = items.length;
+// ======== 修正版：チェック状況ページ ==========
+app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
+  const { store, userId } = req.params;
 
-  // ② 全従業員のデータ取得
-  const permsSnapshot = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .where("approved", "==", true)
+  // 1. 権限チェック
+  const permDoc = await db
+    .collection("companies").doc(store)
+    .collection("permissions").doc(userId)
     .get();
 
-  let users = [];
-  for (const doc of permsSnapshot.docs) {
-    const user = doc.data();
-    const userId = doc.id;
-
-    // ユーザーのチェック状況取得
-    const checksDoc = await db
-      .collection("companies").doc(store)
-      .collection("manualCheck")
-      .doc(userId)
-      .get();
-
-    const checks = checksDoc.exists ? checksDoc.data() : {};
-
-    // 完了数
-    const doneCount = items.filter(i => checks[i.id] === true).length;
-
-    const rate = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
-
-    // 色決定
-    let color = "#ff7f7f"; // 赤
-    if (rate >= 80) color = "#4caf50";
-    else if (rate >= 60) color = "#ffd54f";
-
-    users.push({
-      userId,
-      name: user.name,
-      checks,
-      rate,
-      color,
-    });
+  if (!permDoc.exists) {
+    return res.status(404).send("従業員が見つかりません");
   }
 
-  // ③ 画面 HTML 生成
-  const rows = users
-    .map(u => {
-      return `
-      <tr style="background:${u.color}">
-         <td><a href="/${store}/admin/check-detail?user=${u.userId}&type=${type}">${u.name}</a></td>
-         <td>${u.rate}%</td>
-      </tr>`;
-    })
-    .join("");
+  const userName = permDoc.data().name || "名前未登録";
 
+  // 2. ------ すべてのマニュアル HTML を読み込み → recipeId を抽出 ------
+  const manualTypes = ["line", "todo", "reji", "hole"];
+  let allRecipeIds = [];
+
+  for (const t of manualTypes) {
+    const htmlPath = path.join(__dirname, "manuals", store, t, "index.html");
+    if (fs.existsSync(htmlPath)) {
+      const html = fs.readFileSync(htmlPath, "utf8");
+      const ids = extractRecipeItemsFromHTML(html);
+      allRecipeIds.push(...ids);
+    }
+  }
+
+  // 重複削除
+  allRecipeIds = [...new Set(allRecipeIds)];
+
+  // 3. ----------- チェック状況（DB）を取得 -------------
+  const checksDoc = await db
+    .collection("companies").doc(store)
+    .collection("manualCheck")
+    .doc(userId)
+    .get();
+
+  const checkData = checksDoc.exists ? checksDoc.data() : {};
+
+  // 4. ----------- 各項目の判定を構築 -------------
+  const rows = allRecipeIds.map(id => {
+    return {
+      id,
+      label: RECIPE_LABELS[id] || id,   // ★ ラベル化
+      checked: checkData[id] === true
+    };
+  });
+
+
+  const total = rows.length;
+  const checked = rows.filter(r => r.checked).length;
+  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+
+  // 5. 色判定
+  let color = "red";
+  if (percent >= 80) color = "green";
+  else if (percent >= 60) color = "gold";
+
+  // 6. （ここは簡易）HTML 出力
   res.send(`
-    <html>
-      <body style="font-family:sans-serif; padding:20px;">
-        <h2>理解度一覧（${type}）</h2>
+    <h2>${userName} さんの理解度（${store} 全マニュアル）</h2>
+    <p>総項目数：${total} 件</p>
+    <p>チェック済み：${checked} 件</p>
+    <p style="font-size:24px; font-weight:bold; color:${color};">${percent}%</p>
 
-        <table border="1" cellpadding="8" style="width:100%; border-collapse:collapse;">
-          <tr style="background:#eee;">
-            <th>名前</th>
-            <th>理解度</th>
-          </tr>
-          ${rows}
-        </table>
+    <table border="1" cellspacing="0" cellpadding="6">
+      <tr><th>項目名</th><th>理解済み</th></tr>
 
-        <br>
-        <a href="/${store}/admin">← 管理者トップへ戻る</a>
-      </body>
-    </html>
+      ${rows.map(r => `
+        <tr>
+          <td>${r.label}</td>
+          <td>${r.checked ? "✔" : ""}</td>
+        </tr>
+      `).join("")}
+
+    </table>
+
+    <br>
+    <a href="/${store}/admin/check-status">← 理解度一覧へ戻る</a>
   `);
 });
 
-app.get("/:store/admin/check-detail", ensureStore, async (req, res) => {
+
+// ===============================
+// 管理者：従業員ごとの理解度詳細
+// /:store/admin/check-detail/:userId
+// ===============================
+app.get("/:store/admin/check-detail/:userId", ensureStore, async (req, res) => {
   const { store } = req;
-  const userId = req.query.user;
+  const { userId } = req.params;
 
-  if (!userId) {
-    return res.status(400).send("user クエリが必要です");
-  }
-
-  // スタッフ情報
-  const permDoc = await db
+  // ① 対象スタッフ情報を取得
+  const permSnap = await db
     .collection("companies")
     .doc(store)
     .collection("permissions")
     .doc(userId)
     .get();
 
-  if (!permDoc.exists) {
-    return res.status(404).send("スタッフが見つかりません");
+  if (!permSnap.exists) {
+    return res.status(404).send("該当ユーザーが見つかりません。");
   }
+  const staff = permSnap.data();
+  const staffName = staff.name || "名前未登録";
 
-  const staff = permDoc.data();
-  const userName = staff.name || "名前未登録";
-
-  // ★ STORE 内の全マニュアル(hole/line/reji/todo)から項目を取得
-  const items = await extractAllRecipeItems(store); // [{id,title,type},...]
-
-  // チェック状況
-  const checksSnap = await db
+  // ② 従業員のチェック状況と照合 ーーーーーーーーーーーーーーー
+  // Firestore に保存されているチェック状況
+  const checkSnap = await db
     .collection("companies")
     .doc(store)
     .collection("manualCheck")
     .doc(userId)
     .get();
 
-  const checks = checksSnap.exists ? checksSnap.data() : {};
+  const checks = checkSnap.exists ? checkSnap.data() : {};
 
-  const total = items.length;
-  const checkedCount = items.filter((i) => checks[i.id] === true).length;
-  const percent = total === 0 ? 0 : Math.round((checkedCount / total) * 100);
+  // 事前に実装済みのヘルパーを想定
+  // （修正ポイント1で作った）店舗内すべてのマニュアル項目を取得
+  //  hole / line / reji / todo の全 index.html から data-recipe-id を抽出
+  const allItems = await getAllManualItemsForStore(store);
+  // allItems の形：[{ id, label, type, typeLabel }, ... ]
 
-  // ★ 色分け（緑 80%以上 / 黄 60%以上 / 赤 それ未満）
-  let rateColor = "#ef4444"; // 赤
-  if (percent >= 80) rateColor = "#16a34a"; // 緑
-  else if (percent >= 60) rateColor = "#f59e0b"; // 黄
+  const totalItems = allItems.length;
+  const checkedItems = allItems.filter(it => checks[it.id]).length;
+  const rate = totalItems ? Math.round((checkedItems / totalItems) * 100) : 0;
 
-  const rowsHtml = items
-    .map((item) => {
-      const checked = checks[item.id] === true;
-      return `
-        <tr>
-          <td>${item.type || "-"}</td>
-          <td>${item.title || item.id}</td>
-          <td style="text-align:center;">${checked ? "✅" : ""}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  // 進捗率によって色分け
+  let rateColor = "#f97373";       // デフォルト：赤
+  if (rate >= 80) {
+    rateColor = "#22c55e";         // 80%以上：緑
+  } else if (rate >= 60) {
+    rateColor = "#fbbf24";         // 60%以上：黄
+  }
 
+  // 各行の HTML
+  const rowsHtml =
+    allItems.length === 0
+      ? `<tr><td colspan="3">まだ項目がありません</td></tr>`
+      : allItems
+          .map(item => {
+            const isChecked = !!checks[item.id];
+            const mark = isChecked ? "✔︎" : "";
+            return `
+              <tr>
+                <td>${item.typeLabel}</td>
+                <td>${item.label}</td>
+                <td>${mark}</td>
+              </tr>
+            `;
+          })
+          .join("");
+
+  // ③ 画面 HTML を組み立て ーーーーーーーーーーーーーーー
   res.send(`
     <!DOCTYPE html>
     <html lang="ja">
     <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>${userName} さんの理解度（全マニュアル）</title>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>${staffName} さんの理解度</title>
       <style>
-        body { font-family: 'Noto Sans JP', sans-serif; background:#f9fafb; padding:16px; }
-        h1 { font-size:18px; margin-bottom:8px; }
-        .summary {
-          margin-bottom:12px;
-          padding:10px;
-          background:white;
-          border-radius:8px;
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          background:#f3f4f6;
+          margin:0;
+          padding:16px;
+        }
+        .header {
           display:flex;
           justify-content:space-between;
           align-items:center;
+          margin-bottom:16px;
         }
-        .rate-badge {
-          padding:6px 10px;
-          border-radius:999px;
-          color:white;
+        .title {
+          font-size:18px;
           font-weight:600;
+        }
+        .badge-rate {
+          min-width:48px;
+          padding:4px 10px;
+          border-radius:999px;
+          color:#fff;
+          font-size:14px;
+          font-weight:600;
+          text-align:center;
+          background:${rateColor};
+        }
+        .summary-box {
+          background:#fff;
+          border-radius:12px;
+          padding:12px 16px;
+          margin-bottom:12px;
+          box-shadow:0 1px 3px rgba(0,0,0,0.05);
+          font-size:14px;
+        }
+        .summary-box span {
+          display:inline-block;
+          margin-right:16px;
+        }
+        .btn-back {
+          display:inline-block;
+          padding:8px 14px;
+          border-radius:999px;
+          background:#e5e7eb;
+          color:#111827;
+          text-decoration:none;
+          font-size:13px;
+        }
+        .btn-back:hover { background:#d1d5db; }
+
+        .table-wrap {
+          background:#fff;
+          border-radius:12px;
+          box-shadow:0 1px 3px rgba(0,0,0,0.05);
+          overflow-x:auto;
         }
         table {
           width:100%;
           border-collapse:collapse;
-          background:white;
-          border-radius:8px;
-          overflow:hidden;
-          font-size:13px;
+          min-width:480px;
         }
         th, td {
-          padding:6px 8px;
-          border-bottom:1px solid #eee;
+          padding:8px 10px;
+          border-bottom:1px solid #e5e7eb;
+          font-size:13px;
+          text-align:left;
         }
         th {
           background:#2563eb;
-          color:white;
+          color:#fff;
+          position:sticky;
+          top:0;
         }
-        tr:nth-child(even) { background:#f9fafb; }
-        a.back {
-          display:inline-block;
-          margin-top:12px;
-          padding:8px 12px;
-          border-radius:6px;
-          background:#e5e7eb;
-          text-decoration:none;
-          color:#374151;
+        tr:nth-child(even) td {
+          background:#f9fafb;
+        }
+        td:last-child {
+          text-align:center;
         }
       </style>
     </head>
     <body>
-      <h1>${userName} さんの理解度（${store} 全マニュアル）</h1>
-      <div class="summary">
-        <div>
-          <div>総項目数：${total} 件</div>
-          <div>チェック済み：${checkedCount} 件</div>
+      <div class="header">
+        <div class="title">
+          ${staffName} さんの理解度（${store} 全マニュアル）
         </div>
-        <div class="rate-badge" style="background:${rateColor}">
-          ${percent}%
-        </div>
+        <div class="badge-rate">${rate}%</div>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>マニュアル種別</th>
-            <th>項目名</th>
-            <th>理解済み</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml || "<tr><td colspan='3'>まだ項目がありません</td></tr>"}
-        </tbody>
-      </table>
+      <div class="summary-box">
+        <span>総項目数：${totalItems}件</span>
+        <span>チェック済み：${checkedItems}件</span>
+      </div>
 
-      <a href="/${store}/admin/check-status?type=line" class="back">← 理解度一覧に戻る</a>
+      <p>
+        <a href="/${store}/admin/check-status?type=line" class="btn-back">
+          ← 理解度一覧に戻る
+        </a>
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:120px;">マニュアル種別</th>
+              <th>項目名</th>
+              <th style="width:80px;">理解済み</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
     </body>
     </html>
   `);
 });
+
 
 
 // ==============================
