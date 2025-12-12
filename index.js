@@ -3183,7 +3183,7 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
       height: 300vh;
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      grid-auto-rows: 38px;
+      grid-auto-rows: 80px;
       pointer-events: none;
       z-index: 99999;
       opacity: 0.08;
