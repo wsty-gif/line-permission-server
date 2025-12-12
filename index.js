@@ -34,14 +34,19 @@ async function extractRecipeItems(store, type) {
     const document = dom.window.document;
 
     const nodes = Array.from(document.querySelectorAll("[data-recipe-id]"));
-    return nodes
-      .map((el) => {
-        const id = el.getAttribute("data-recipe-id");
-        if (!id) return null;
-        const title = (el.textContent || "").trim();
-        return { id, title, type };   // ← typeも持たせておく
-      })
-      .filter(Boolean);
+    return nodes.map(el => {
+      const recipeId = el.getAttribute("data-recipe-id");
+      if (!recipeId) return null;
+
+      const label = (el.textContent || "").trim();
+
+      return {
+        recipeId,
+        label,
+        manualType: type
+      };
+    }).filter(Boolean);
+
   } catch (e) {
     console.error("extractRecipeItems error:", store, type, e);
     return [];
@@ -64,7 +69,16 @@ async function extractAllRecipeItems(store) {
   for (const item of all) {
     if (!item.id || seen.has(item.id)) continue;
     seen.add(item.id);
-    result.push(item);
+    const storeConf = STORES[store];
+
+    result.push({
+      ...item,
+      manualTitle:
+        storeConf.manualTitles[item.manualType] ||
+        storeConf.manualTitles.default ||
+        item.manualType
+    });
+
   }
 
   return result; // [{id, title, type}, ...]
@@ -5991,7 +6005,7 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
 
       return `
         <tr>
-          <td>${item.label}</td>
+          <td>${item.label || item.recipeId}</td>
           <td style="text-align:center;">${checked ? "✔" : ""}</td>
         </tr>
       `;
@@ -7121,16 +7135,23 @@ app.get("/:store/admin/tasks/user", ensureStore, async (req, res) => {
 
 
 // ======== 追加：HTML 解析ヘルパー ==========
-function extractRecipeItemsFromHTML(html) {
-  const regex = /data-recipe-id="([^"]+)"/g;
+function extractRecipeItemsFromHTML(html, manualType) {
   const results = [];
-  let m;
 
-  while ((m = regex.exec(html)) !== null) {
-    results.push(m[1]);
+  const regex = /data-recipe-id="([^"]+)"[^>]*>([^<]+)/g;
+  let match;
+
+  while ((match = regex.exec(html)) !== null) {
+    results.push({
+      manualType,           // ← 重要
+      recipeId: match[1],
+      label: match[2].trim()
+    });
   }
+
   return results;
 }
+
 
 // ======== 修正版：チェック状況ページ ==========
 app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
@@ -7158,7 +7179,8 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 
     if (fs.existsSync(htmlPath)) {
       const html = fs.readFileSync(htmlPath, "utf8");
-      const ids = extractRecipeItemsFromHTML(html); // ← recipeId だけ抽出
+      const items = extractRecipeItemsFromHTML(html, t);
+      allItems.push(...items);
 
       ids.forEach(id => {
         allItems.push({
