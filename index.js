@@ -784,6 +784,8 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
                 text-align:center;text-decoration:none;">
         マニュアル閲覧ログ
       </a>
+      <a class="btn" href="/${store}/admin/manual-check-status">理解度チェック一覧</a>
+
     </div>
 
     <!-- ✅ 検索・フィルタ -->
@@ -6618,6 +6620,110 @@ app.get("/:store/shift", ensureStore, (req, res) => {
     </script>
   </body>
   </html>
+  `);
+});
+
+// ■ 従業員の理解度一覧画面
+app.get("/:store/admin/manual-check-status", ensureStore, async (req, res) => {
+  const { store } = req;
+
+  // ① 従業員リスト取得（permissions）
+  const permSnap = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .where("approved", "==", true)
+    .get();
+
+  let staff = permSnap.docs.map(doc => ({
+    userId: doc.id,
+    name: doc.data().name || "名前不明"
+  }));
+
+  // ② 各従業員のチェック状況を取得
+  for (let s of staff) {
+    const checkDoc = await db
+      .collection("companies")
+      .doc(store)
+      .collection("manualCheck")
+      .doc(s.userId)
+      .get();
+
+    s.checks = checkDoc.exists ? checkDoc.data() : {};
+  }
+
+  // ③ HTML 描画
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>理解度チェック一覧</title>
+      <style>
+        body { font-family:sans-serif; padding:20px; background:#f9fafb; }
+        h1 { font-size:18px; margin-bottom:10px; }
+        table { width:100%; border-collapse:collapse; background:white; }
+        th, td { 
+          border-bottom:1px solid #ddd; 
+          padding:8px; 
+          text-align:center; 
+          white-space:nowrap;
+        }
+        th { background:#2563eb; color:white; }
+        .btn {
+          display:inline-block;
+          padding:8px 12px;
+          background:#2563eb;
+          color:white;
+          text-decoration:none;
+          border-radius:6px;
+          margin-bottom:12px;
+        }
+        .check-yes { color:green; font-weight:bold; }
+        .check-no { color:#aaa; }
+      </style>
+    </head>
+    <body>
+
+      <h1>従業員の理解度チェック一覧</h1>
+
+      <a class="btn" href="/${store}/admin">← 管理TOPへ戻る</a>
+
+      <table>
+        <thead>
+          <tr>
+            <th>名前</th>
+            <th>チェック項目</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${staff
+            .map(s => {
+              const keys = Object.keys(s.checks);
+              const items = keys.length
+                ? keys
+                    .map(k =>
+                      s.checks[k]
+                        ? `<div class="check-yes">✔ ${k}</div>`
+                        : `<div class="check-no">✖ ${k}</div>`
+                    )
+                    .join("")
+                : "<span class='check-no'>未チェック</span>";
+
+              return `
+                <tr>
+                  <td>${s.name}</td>
+                  <td>${items}</td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+
+    </body>
+    </html>
   `);
 });
 
