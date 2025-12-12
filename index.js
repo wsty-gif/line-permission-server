@@ -3077,8 +3077,37 @@ app.get("/:store/manual-view", ensureStore, async (req, res) => {
     <script>
       window.MANUAL_USER_ID = "${userId}";
       window.MANUAL_STORE = "${store}";
+      window.MANUAL_TYPE = "${type || "default"}";
+    </script>
+
+    <script>
+      async function loadChecks() {
+        try {
+          const userId = window.MANUAL_USER_ID;
+          const store = window.MANUAL_STORE;
+
+          const res = await fetch(\`/${store}/manual-check?userId=\${userId}\`);
+          if (!res.ok) return;
+
+          const checks = await res.json();
+
+          // チェック済み項目を反映
+          Object.keys(checks).forEach(key => {
+            const box = document.querySelector(\`input[type="checkbox"][data-key="\${key}"]\`);
+            if (box && checks[key] === true) {
+              box.checked = true;
+            }
+          });
+
+        } catch (err) {
+          console.error("loadChecks error:", err);
+        }
+      }
+
+      window.addEventListener("load", loadChecks);
     </script>
   `;
+
   html = html.replace("</head>", embedVars + "\n</head>");
 
   // ▼ ウォーターマーク挿入スクリプト
