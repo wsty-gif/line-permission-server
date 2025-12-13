@@ -7294,59 +7294,56 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 // ==============================
 // 従業員用：自分の理解度確認画面
 // ==============================
+// ★ 従業員用：自分の進捗だけ
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
-  const { store } = req.params;
+  const { store } = req;
+  const { userId } = req.query;
 
-  // 🔹 LIFF から userId を取得
-  const userId = req.query.userId;
   if (!userId) {
     return res.status(400).send("userId が取得できません");
   }
 
-  // 🔹 管理者画面と同じ詳細ロジックへ内部リダイレクト
-  // type は指定しない（＝全マニュアル対象）
-  return res.redirect(
-    `/${store}/admin/check-status/detail?userId=${userId}`
+  // 管理画面 detail をそのまま流用
+  req.params.userId = userId;
+  return app._router.handle(
+    { ...req, url: `/${store}/admin/check-status/detail?userId=${userId}` },
+    res
   );
 });
 
 
-app.get("/:store/progress", ensureStore, async (req, res) => {
-  const { store } = req.params;
 
-  // LIFFで userId を取得するための中継HTML
+// ★ 追加：LIFF 入口
+app.get("/:store/progress", ensureStore, (req, res) => {
+  const { store, storeConf } = req;
+
   res.send(`
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>理解度確認</title>
+  <meta charset="utf-8" />
+  <title>進捗確認</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
-  <p>読み込み中...</p>
+<script>
+(async () => {
+  await liff.init({ liffId: "${storeConf.liffId}" });
 
-  <script>
-    liff.init({ liffId: "あなたのLIFF_ID" }).then(() => {
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
-      }
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
 
-      liff.getProfile().then(profile => {
-        const userId = profile.userId;
-        const url = new URL(window.location.href);
-        url.searchParams.set("userId", userId);
-        window.location.replace(url.toString());
-      });
-    });
-  </script>
-
+  const profile = await liff.getProfile();
+  location.href = "/${store}/my-progress?userId=" + profile.userId;
+})();
+</script>
 </body>
 </html>
   `);
 });
+
 
 app.get("/:store/progress/view", ensureStore, async (req, res) => {
   const { store } = req.params;
