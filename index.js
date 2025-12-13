@@ -7291,25 +7291,82 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   `);
 });
 
-// ==============================
-// 従業員用：自分の理解度確認画面
-// ==============================
-// ★ 従業員用：自分の進捗だけ
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
-  const { userId } = req.query;
 
-  if (!userId) {
-    return res.status(400).send("userId が取得できません");
+  res.send(`
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>理解度チェック</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background:#f9fafb;
+      margin:0;
+      padding:16px;
+    }
+    h1 {
+      font-size:18px;
+      margin-bottom:12px;
+    }
+    .card {
+      background:#fff;
+      border-radius:10px;
+      padding:12px;
+      margin-bottom:12px;
+      box-shadow:0 2px 6px rgba(0,0,0,.08);
+    }
+    .rate {
+      font-size:28px;
+      font-weight:bold;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+    td {
+      padding:6px 4px;
+      border-bottom:1px solid #eee;
+    }
+    .ok { color:green; font-weight:bold; }
+  </style>
+</head>
+<body>
+
+<h1>あなたの理解度</h1>
+<div id="content">読み込み中...</div>
+
+<script>
+(async () => {
+  await liff.init({ liffId: "${req.storeConf.liffId}" });
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
   }
 
-  // 管理画面 detail をそのまま流用
-  req.params.userId = userId;
-  return app._router.handle(
-    { ...req, url: `/${store}/admin/check-status/detail?userId=${userId}` },
-    res
+  const profile = await liff.getProfile();
+  const userId = profile.userId;
+
+  const res = await fetch(
+    "/${store}/admin/check-status/detail?userId=" + userId
   );
+  const html = await res.text();
+
+  document.getElementById("content").innerHTML = html;
+})();
+</script>
+
+</body>
+</html>
+  `);
 });
+
 
 
 
