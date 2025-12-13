@@ -6030,6 +6030,12 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
   let color = "#dc2626";
   if (percent >= 80) color = "#16a34a";
   else if (percent >= 60) color = "#ca8a04";
+  const mode = req.query.mode || "admin";
+
+  const backUrl =
+    mode === "my"
+      ? `/${store}/my-progress`
+      : `/${store}/admin/check-status`;
 
   /* =========================
    * 6. 出力
@@ -6057,7 +6063,7 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
 
       ${blocks}
 
-      <a href="/${store}/admin/check-status">← 一覧へ戻る</a>
+    <a href="${backUrl}">← 一覧へ戻る</a>
     </body>
     </html>
   `);
@@ -7226,6 +7232,12 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   let color = "red";
   if (percent >= 80) color = "green";
   else if (percent >= 60) color = "gold";
+  const mode = req.query.mode || "admin";
+
+  const backUrl =
+    mode === "my"
+      ? `/${store}/my-progress`
+      : `/${store}/admin/check-status`;
 
   // 5. HTML 出力
   res.send(`
@@ -7285,7 +7297,7 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   </table>
 
   <br>
-  <a href="/${store}/admin/check-status">← 一覧へ戻る</a>
+  <a href="${backUrl}">← 一覧へ戻る</a>
 </body>
 </html>
   `);
