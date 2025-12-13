@@ -6037,6 +6037,13 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
       ? `/${store}/my-progress`
       : `/${store}/admin/check-status`;
 
+  // ✅ 追加：mode=my のときは「一覧へ戻る」を出さない
+  const backLinkHtml =
+    mode === "my"
+      ? ""
+      : `<a href="${backUrl}" style="display:inline-block;margin:16px 0;text-decoration:none;color:#2563eb;">← 一覧へ戻る</a>`;
+
+
   /* =========================
    * 6. 出力
    * ========================= */
@@ -6063,7 +6070,7 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
 
       ${blocks}
 
-    <a href="${backUrl}">← 一覧へ戻る</a>
+    <a href="${backLinkHtml}">← 一覧へ戻る</a>
     </body>
     </html>
   `);
@@ -7239,6 +7246,13 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
       ? `/${store}/my-progress`
       : `/${store}/admin/check-status`;
 
+  // ✅ 追加：mode=my のときは「一覧へ戻る」を出さない
+  const backLinkHtml =
+    mode === "my"
+      ? ""
+      : `<a href="${backUrl}" style="display:inline-block;margin:16px 0;text-decoration:none;color:#2563eb;">← 一覧へ戻る</a>`;
+
+
   // 5. HTML 出力
   res.send(`
 <!DOCTYPE html>
@@ -7297,7 +7311,7 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   </table>
 
   <br>
-  <a href="${backUrl}">← 一覧へ戻る</a>
+  <a href="${backLinkHtml}">← 一覧へ戻る</a>
 </body>
 </html>
   `);
