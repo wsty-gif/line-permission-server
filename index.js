@@ -7291,116 +7291,25 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   `);
 });
 
+// ==============================
+// 従業員用：自分の理解度確認画面
+// ==============================
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req.params;
-  const { userId } = req.query;
 
+  // 🔹 LIFF から userId を取得
+  const userId = req.query.userId;
   if (!userId) {
-    return res.status(400).send("userId がありません");
+    return res.status(400).send("userId が取得できません");
   }
 
-  // ① 権限確認（本人チェック）
-  const permDoc = await db
-    .collection("companies").doc(store)
-    .collection("permissions").doc(userId)
-    .get();
-
-  if (!permDoc.exists || !permDoc.data().approved) {
-    return res.status(403).send("権限がありません");
-  }
-
-  const userName = permDoc.data().name || "名前未登録";
-
-  // ② 全マニュアル項目を HTML から抽出
-  const manualTypes = ["line", "todo", "reji", "hole"];
-  let allItems = [];
-
-  for (const type of manualTypes) {
-    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
-    if (!fs.existsSync(htmlPath)) continue;
-
-    const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html);
-
-    allItems.push(
-      ...items.map(i => ({
-        manualType: type,
-        recipeId: i.recipeId,
-        label: i.label || i.recipeId
-      }))
-    );
-  }
-
-  // ③ チェック状況取得
-  const checkDoc = await db
-    .collection("companies").doc(store)
-    .collection("manualCheck")
-    .doc(userId)
-    .get();
-
-  const checks = checkDoc.exists ? checkDoc.data() : {};
-
-  // ④ 集計
-  const total = allItems.length;
-  const checkedCount = allItems.filter(i => checks[i.recipeId]).length;
-  const percent = total === 0 ? 0 : Math.round((checkedCount / total) * 100);
-
-  let color = "red";
-  if (percent >= 80) color = "green";
-  else if (percent >= 60) color = "orange";
-
-  // ⑤ 表示（管理者詳細と同じUI）
-  res.send(`
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>理解度確認</title>
-<style>
-  body { font-family:sans-serif; padding:16px; background:#f9fafb; }
-  h2 { margin-bottom:8px; }
-  .rate {
-    font-size:20px;
-    font-weight:bold;
-    color:${color};
-    margin-bottom:12px;
-  }
-  table {
-    width:100%;
-    border-collapse:collapse;
-    background:white;
-  }
-  th, td {
-    padding:10px;
-    border-bottom:1px solid #eee;
-    text-align:left;
-    font-size:14px;
-  }
-  th { background:#f1f5f9; }
-  .ok { color:green; font-weight:bold; }
-</style>
-</head>
-<body>
-
-<h2>${userName} さんの理解度</h2>
-<div class="rate">${percent}%（${checkedCount}/${total}）</div>
-
-<table>
-<tr><th>マニュアル</th><th>項目</th><th>理解</th></tr>
-${allItems.map(i => `
-<tr>
-  <td>${stores[store]?.manualTitles?.[i.manualType] || i.manualType}</td>
-  <td>${i.label}</td>
-  <td class="ok">${checks[i.recipeId] ? "✔" : ""}</td>
-</tr>
-`).join("")}
-</table>
-
-</body>
-</html>
-  `);
+  // 🔹 管理者画面と同じ詳細ロジックへ内部リダイレクト
+  // type は指定しない（＝全マニュアル対象）
+  return res.redirect(
+    `/${store}/admin/check-status/detail?userId=${userId}`
+  );
 });
+
 
 app.get("/:store/progress", ensureStore, async (req, res) => {
   const { store } = req.params;
@@ -7419,26 +7328,21 @@ app.get("/:store/progress", ensureStore, async (req, res) => {
   <p>読み込み中...</p>
 
   <script>
-    const LIFF_ID = "${stores[store].liffId}";
+    liff.init({ liffId: "あなたのLIFF_ID" }).then(() => {
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
 
-    liff.init({ liffId: LIFF_ID })
-      .then(() => {
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-
-        const userId = liff.getDecodedIDToken().sub;
-
-        // 🔽 本人用詳細画面へリダイレクト
-        location.href =
-          "/${store}/progress/view?userId=" + encodeURIComponent(userId);
-      })
-      .catch(err => {
-        document.body.innerHTML = "LIFF初期化エラー";
-        console.error(err);
+      liff.getProfile().then(profile => {
+        const userId = profile.userId;
+        const url = new URL(window.location.href);
+        url.searchParams.set("userId", userId);
+        window.location.replace(url.toString());
       });
+    });
   </script>
+
 </body>
 </html>
   `);
