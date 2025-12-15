@@ -7317,122 +7317,119 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   `);
 });
 
-// ===============================
-// 従業員用：自分の理解度確認画面
-// URL: /:store/my-progress
-// ===============================
+
+/**
+ * 従業員本人用：理解度チェック画面
+ * URL: /:store/my-progress
+ * ・LIFF で userId を取得
+ * ・自分の理解度のみ表示
+ * ・管理者用UIは一切含めない
+ */
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // 🔽 LIFF で userId を取得するための HTML を返す
-  res.send(`
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>理解度チェック</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      background:#f9fafb;
-      padding:16px;
-    }
-    .card {
-      background:white;
-      border-radius:12px;
-      padding:16px;
-      margin-bottom:12px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.1);
-    }
-    .percent {
-      font-size:32px;
-      font-weight:bold;
-      text-align:center;
-      margin:12px 0;
-    }
-    table {
-      width:100%;
-      border-collapse:collapse;
-    }
-    th, td {
-      padding:8px;
-      border-bottom:1px solid #eee;
-      text-align:left;
-    }
-  </style>
-</head>
-<body>
+  // 🔹 LIFF から userId を受け取る想定
+  const userId = req.query.userId;
+  if (!userId) {
+    return res.send(`
+      <h3>ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。</h3>
+    `);
+  }
 
-<h2>あなたの理解度</h2>
+  // 1️⃣ 権限情報（名前取得）
+  const permDoc = await db
+    .collection("companies").doc(store)
+    .collection("permissions").doc(userId)
+    .get();
 
-<div id="content">読み込み中...</div>
+  if (!permDoc.exists) {
+    return res.send("<h3>ユーザー情報が見つかりません</h3>");
+  }
 
-<script>
-(async () => {
-  try {
-    await liff.init({
-      liffId: "${req.storeConf.liffId}"
+  const userName = permDoc.data().name || "名前未登録";
+
+  // 2️⃣ マニュアルHTMLをすべて解析（line / todo / reji / hole）
+  const manualTypes = ["line", "todo", "reji", "hole"];
+  let allItems = [];
+
+  for (const type of manualTypes) {
+    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
+    if (!fs.existsSync(htmlPath)) continue;
+
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const items = extractRecipeItemsFromHTML(html); // 既存関数
+    items.forEach(i => {
+      allItems.push({
+        manualType: type,
+        recipeId: i.recipeId,
+        label: i.label,
+      });
+    });
+  }
+
+  // 3️⃣ チェック状況取得
+  const checkDoc = await db
+    .collection("companies").doc(store)
+    .collection("manualCheck").doc(userId)
+    .get();
+
+  const checks = checkDoc.exists ? checkDoc.data() : {};
+
+  // 4️⃣ マニュアル種別ごとにグルーピング
+  const grouped = {};
+  for (const item of allItems) {
+    if (!grouped[item.manualType]) grouped[item.manualType] = [];
+    grouped[item.manualType].push(item);
+  }
+
+  // 5️⃣ HTML生成（管理者と同じ構造だが「戻るリンクなし」）
+  let bodyHtml = "";
+
+  Object.keys(grouped).forEach(type => {
+    const title =
+      STORES[store]?.manualTitles?.[type] || type;
+
+    bodyHtml += `<h3 style="margin-top:24px;">${title}</h3>`;
+    bodyHtml += `<table style="width:100%; border-collapse:collapse;">`;
+
+    grouped[type].forEach(item => {
+      const checked = checks[item.recipeId];
+      bodyHtml += `
+        <tr style="border-bottom:1px solid #eee;">
+          <td style="padding:8px;">${item.label}</td>
+          <td style="padding:8px; text-align:center;">
+            ${checked ? "✅" : ""}
+          </td>
+        </tr>
+      `;
     });
 
-    if (!liff.isLoggedIn()) {
-      liff.login();
-      return;
-    }
-
-    const profile = await liff.getProfile();
-    const userId = profile.userId;
-
-    const res = await fetch("/${store}/api/my-progress-data?userId=" + userId);
-    const data = await res.json();
-
-    render(data);
-
-  } catch (e) {
-    document.getElementById("content").innerHTML =
-      "ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。";
-  }
-})();
-
-function render(data) {
-  const color =
-    data.percent >= 80 ? "green" :
-    data.percent >= 60 ? "orange" : "red";
-
-  let html = \`
-    <div class="card">
-      <div class="percent" style="color:\${color}">
-        \${data.percent}%
-      </div>
-      <p style="text-align:center">
-        \${data.checked} / \${data.total} 項目
-      </p>
-    </div>
-
-    <div class="card">
-      <table>
-        <tr><th>項目</th><th>理解</th></tr>
-  \`;
-
-  data.items.forEach(i => {
-    html += \`
-      <tr>
-        <td>\${i.label}</td>
-        <td>\${i.checked ? "✔" : ""}</td>
-      </tr>
-    \`;
+    bodyHtml += `</table>`;
   });
 
-  html += "</table></div>";
-  document.getElementById("content").innerHTML = html;
-}
-</script>
-
-</body>
-</html>
-`);
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>理解度チェック</title>
+      <style>
+        body { font-family:sans-serif; padding:16px; background:#f9fafb; }
+        h2 { font-size:18px; margin-bottom:8px; }
+        h3 { font-size:16px; margin-top:20px; }
+        table { background:#fff; }
+      </style>
+    </head>
+    <body>
+      <h2>${userName} さんの理解度</h2>
+      ${bodyHtml}
+    </body>
+    </html>
+  `);
 });
+
+
 
 // 従業員用：自分の理解度データ
 app.get("/:store/api/my-progress-data", ensureStore, async (req, res) => {
