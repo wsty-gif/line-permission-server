@@ -7320,10 +7320,15 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // 🔑 LIFF or セッションから userId を取得
-  const userId = req.query.userId || req.session?.userId;
+  // 🔴 ここでは userId を URL から取らない
+  // → LIFF 側で取得してクエリに付与する
+  const { userId } = req.query;
+
   if (!userId) {
-    return res.status(400).send("userId が取得できません");
+    return res.send(`
+      <h3>ユーザー情報を取得できませんでした。</h3>
+      <p>LINEアプリ内から開いてください。</p>
+    `);
   }
 
   // 権限チェック
@@ -7333,78 +7338,23 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
     .get();
 
   if (!permDoc.exists || !permDoc.data().approved) {
-    return res.status(403).send("権限がありません");
+    return res.send("<h3>権限がありません</h3>");
   }
 
   const userName = permDoc.data().name || "名前未登録";
 
-  // --- 進捗データ取得（管理者と同じロジックを流用） ---
-  const manuals = ["line", "todo", "reji", "hole"];
-  let allItems = [];
+  // ✅ 管理者画面と同じ「理解度算出ロジック」を流用
+  // （HTMLだけ変える）
+  const progressHTML = await buildProgressHTML({
+    store,
+    userId,
+    userName,
+    isAdmin: false, // ← ★ここが重要
+  });
 
-  for (const type of manuals) {
-    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
-    if (!fs.existsSync(htmlPath)) continue;
-
-    const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html).map(i => ({
-      ...i,
-      manualType: type
-    }));
-    allItems.push(...items);
-  }
-
-  const checkDoc = await db
-    .collection("companies").doc(store)
-    .collection("manualCheck").doc(userId)
-    .get();
-
-  const checkedMap = checkDoc.exists ? checkDoc.data() : {};
-
-  const total = allItems.length;
-  const checked = allItems.filter(i => checkedMap[i.recipeId]).length;
-  const percent = total ? Math.round((checked / total) * 100) : 0;
-
-  let color = "#dc2626";
-  if (percent >= 80) color = "#16a34a";
-  else if (percent >= 60) color = "#f59e0b";
-
-  // ⭐ 従業員専用 HTML（一覧へ戻るは存在しない）
-  res.send(`
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>理解度チェック</title>
-<style>
-  body { font-family: sans-serif; background:#f9fafb; padding:16px; }
-  h1 { font-size:18px; margin-bottom:8px; }
-  .rate { font-size:28px; font-weight:bold; color:${color}; }
-  table { width:100%; border-collapse:collapse; background:#fff; }
-  th, td { padding:8px; border-bottom:1px solid #e5e7eb; font-size:14px; }
-  th { background:#f1f5f9; }
-</style>
-</head>
-<body>
-
-<h1>${userName} さんの理解度</h1>
-<div class="rate">${percent}%</div>
-
-<table>
-<tr><th>項目</th><th>理解</th></tr>
-${allItems.map(i => `
-<tr>
-  <td>${i.label}</td>
-  <td style="text-align:center">${checkedMap[i.recipeId] ? "✔" : ""}</td>
-</tr>
-`).join("")}
-</table>
-
-</body>
-</html>
-  `);
+  res.send(progressHTML);
 });
+
 
 
 
@@ -7657,6 +7607,93 @@ app.get("/:store/admin/check-detail/:userId", ensureStore, async (req, res) => {
   `);
 });
 
+async function buildProgressHTML({ store, userId, userName, isAdmin }) {
+
+  // ① 全マニュアルの項目を抽出
+  const manualTypes = ["line", "todo", "reji", "hole"];
+  let allItems = [];
+
+  for (const type of manualTypes) {
+    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
+    if (!fs.existsSync(htmlPath)) continue;
+
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const items = extractRecipeItemsFromHTML(html).map(i => ({
+      ...i,
+      manualType: type,
+    }));
+
+    allItems.push(...items);
+  }
+
+  // 重複排除
+  allItems = allItems.filter(
+    (v, i, a) => a.findIndex(t => t.recipeId === v.recipeId) === i
+  );
+
+  // ② チェック状況取得
+  const checkDoc = await db
+    .collection("companies").doc(store)
+    .collection("manualCheck").doc(userId)
+    .get();
+
+  const checks = checkDoc.exists ? checkDoc.data() : {};
+
+  // ③ 進捗計算
+  let checkedCount = 0;
+  const rows = allItems.map(item => {
+    const checked = !!checks[item.recipeId];
+    if (checked) checkedCount++;
+
+    return `
+      <tr>
+        <td>${item.label}</td>
+        <td style="text-align:center">${checked ? "✔" : ""}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const percent = allItems.length === 0
+    ? 0
+    : Math.round((checkedCount / allItems.length) * 100);
+
+  let color = "red";
+  if (percent >= 80) color = "green";
+  else if (percent >= 60) color = "orange";
+
+  // ④ HTML生成（★管理者UIを分岐）
+  return `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>理解度チェック</title>
+  <style>
+    body { font-family:sans-serif; padding:16px; background:#f9fafb; }
+    table { width:100%; border-collapse:collapse; background:#fff; }
+    th,td { padding:8px; border-bottom:1px solid #ddd; }
+  </style>
+</head>
+<body>
+
+<h2>${userName} さんの理解度</h2>
+<p style="font-size:24px;color:${color};font-weight:bold">${percent}%</p>
+
+<table>
+  <tr><th>項目</th><th>理解</th></tr>
+  ${rows}
+</table>
+
+${isAdmin ? `
+  <br>
+  <a href="/${store}/admin/check-status">← 一覧へ戻る</a>
+` : ``}
+
+</body>
+</html>
+`;
+}
 
 
 // ==============================
