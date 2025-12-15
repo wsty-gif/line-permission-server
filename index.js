@@ -6060,17 +6060,40 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
         table { background:white; margin-bottom:16px; }
         th, td { padding:8px; border-bottom:1px solid #eee; }
         th { background:#f1f5f9; }
+        .top-bar {
+          display: flex;
+          justify-content: flex-start;
+          margin-bottom: 16px;
+        }
+
+        .back-btn {
+          display: inline-block;
+          padding: 10px 14px;
+          background: #2563eb;
+          color: #fff;
+          text-decoration: none;
+          border-radius: 8px;
+          font-size: 14px;
+        }
+
+        .back-btn:active {
+          opacity: 0.8;
+        }
       </style>
     </head>
     <body>
+      <div class="top-bar">
+        <a href="/${store}/admin/check-status" class="back-btn">
+          ← 一覧へ戻る
+        </a>
+      </div>
+
       <h2>${userName} さんの理解度</h2>
       <p style="font-size:18px; font-weight:bold; color:${color};">
         ${percent}%（${checkedCount}/${total}）
       </p>
 
       ${blocks}
-
-    <a href="${backLinkHtml}">← 一覧へ戻る</a>
     </body>
     </html>
   `);
@@ -7393,7 +7416,7 @@ h2 {
   font-size:16px;
 }
 </style>
-    
+
 </head>
 
 <body>
