@@ -7319,86 +7319,87 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
-  const userId = req.query.userId || null;
 
-  let notice = "";
-  let targetUserId = userId;
-
-  // userId が取れない場合でも「画面は出す」
-  if (!targetUserId) {
-    notice = `
-      <div style="padding:12px; background:#fff3cd; border-radius:8px; margin-bottom:12px;">
-        この画面は本来 LINEアプリ内から開くことで、あなた自身の理解度が表示されます。<br>
-        現在はデモ表示です。
-      </div>
-    `;
-  }
-
-  // 以降は「userIdがあれば実データ／なければ空データ」
-  let checkData = {};
-  let userName = "あなた";
-  const totalCount = allItems.length;
-  const checkedCount = allItems.filter(i => i.checked).length;
-
-  const percent = totalCount === 0
-    ? 0
-    : Math.round((checkedCount / totalCount) * 100);
-
-  let color = "red";
-  if (percent >= 80) color = "green";
-  else if (percent >= 60) color = "gold";
-
-
-  if (targetUserId) {
-    const permDoc = await db
-      .collection("companies").doc(store)
-      .collection("permissions").doc(targetUserId)
-      .get();
-
-    if (permDoc.exists) {
-      userName = permDoc.data().name || userName;
-    }
-
-    const checksDoc = await db
-      .collection("companies").doc(store)
-      .collection("manualCheck").doc(targetUserId)
-      .get();
-
-    if (checksDoc.exists) {
-      checkData = checksDoc.data();
-    }
-  }
-
+  // ---------- LIFF 用 HTML ----------
   res.send(`
-  <!DOCTYPE html>
-  <html lang="ja">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>理解度チェック</title>
-  </head>
-  <body style="font-family:sans-serif; background:#f9fafb; padding:12px;">
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>理解度チェック</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background:#f9fafb;
+      margin:0;
+      padding:16px;
+    }
+    h1 {
+      font-size:18px;
+      margin-bottom:12px;
+    }
+    .rate {
+      font-size:28px;
+      font-weight:bold;
+      margin:12px 0;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      background:#fff;
+      font-size:14px;
+    }
+    th, td {
+      border-bottom:1px solid #eee;
+      padding:8px;
+      text-align:left;
+    }
+    th {
+      background:#f1f5f9;
+    }
+  </style>
+</head>
+<body>
 
-    ${notice}
+<h1>あなたの理解度</h1>
+<div id="content">読み込み中...</div>
 
-    <h2 style="margin-bottom:8px;">${userName} さんの理解度</h2>
+<script>
+(async () => {
+  try {
+    await liff.init({ liffId: "${stores[store].liffId}" });
 
-    <div style="font-size:24px; font-weight:bold; color:${color};">
-      ${percent}%
-    </div>
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return;
+    }
 
-    <table style="width:100%; border-collapse:collapse; background:#fff; margin-top:12px;">
-      <tr style="background:#eee;">
-        <th style="padding:8px;">項目</th>
-        <th style="padding:8px;">理解済</th>
-      </tr>
-      ${rows}
-    </table>
+    const profile = await liff.getProfile();
+    const userId = profile.userId;
 
-  </body>
-  </html>
-  `);
+    // 管理者画面と同じHTMLを取得（本人分だけ）
+    const res = await fetch(
+      "/${store}/admin/check-status/detail?userId=" + userId + "&mode=my"
+    );
+
+    const html = await res.text();
+    document.getElementById("content").innerHTML = html;
+
+  } catch (e) {
+    document.getElementById("content").innerHTML =
+      "ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。";
+  }
+})();
+</script>
+
+</body>
+</html>
+`);
 });
+
+
 
 
 
