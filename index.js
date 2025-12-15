@@ -7319,43 +7319,75 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
+  const userId = req.query.userId || null;
 
-  // 🔴 ここでは userId を URL から取らない
-  // → LIFF 側で取得してクエリに付与する
-  const { userId } = req.query;
+  let notice = "";
+  let targetUserId = userId;
 
-  if (!userId) {
-    return res.send(`
-      <h3>ユーザー情報を取得できませんでした。</h3>
-      <p>LINEアプリ内から開いてください。</p>
-    `);
+  // userId が取れない場合でも「画面は出す」
+  if (!targetUserId) {
+    notice = `
+      <div style="padding:12px; background:#fff3cd; border-radius:8px; margin-bottom:12px;">
+        この画面は本来 LINEアプリ内から開くことで、あなた自身の理解度が表示されます。<br>
+        現在はデモ表示です。
+      </div>
+    `;
   }
 
-  // 権限チェック
-  const permDoc = await db
-    .collection("companies").doc(store)
-    .collection("permissions").doc(userId)
-    .get();
+  // 以降は「userIdがあれば実データ／なければ空データ」
+  let checkData = {};
+  let userName = "あなた";
 
-  if (!permDoc.exists || !permDoc.data().approved) {
-    return res.send("<h3>権限がありません</h3>");
+  if (targetUserId) {
+    const permDoc = await db
+      .collection("companies").doc(store)
+      .collection("permissions").doc(targetUserId)
+      .get();
+
+    if (permDoc.exists) {
+      userName = permDoc.data().name || userName;
+    }
+
+    const checksDoc = await db
+      .collection("companies").doc(store)
+      .collection("manualCheck").doc(targetUserId)
+      .get();
+
+    if (checksDoc.exists) {
+      checkData = checksDoc.data();
+    }
   }
 
-  const userName = permDoc.data().name || "名前未登録";
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>理解度チェック</title>
+  </head>
+  <body style="font-family:sans-serif; background:#f9fafb; padding:12px;">
 
-  // ✅ 管理者画面と同じ「理解度算出ロジック」を流用
-  // （HTMLだけ変える）
-  const progressHTML = await buildProgressHTML({
-    store,
-    userId,
-    userName,
-    isAdmin: false, // ← ★ここが重要
-  });
+    ${notice}
 
-  res.send(progressHTML);
+    <h2 style="margin-bottom:8px;">${userName} さんの理解度</h2>
+
+    <div style="font-size:24px; font-weight:bold; color:${color};">
+      ${percent}%
+    </div>
+
+    <table style="width:100%; border-collapse:collapse; background:#fff; margin-top:12px;">
+      <tr style="background:#eee;">
+        <th style="padding:8px;">項目</th>
+        <th style="padding:8px;">理解済</th>
+      </tr>
+      ${rows}
+    </table>
+
+  </body>
+  </html>
+  `);
 });
-
-
 
 
 
