@@ -403,74 +403,6 @@ async function calcPayroll(db, store, userId, period) {
   };
 }
 
-// ===== 共通：理解度データを組み立てる =====
-async function buildProgressData({ store, userId }) {
-  // 1. 権限情報
-  const permDoc = await db
-    .collection("companies").doc(store)
-    .collection("permissions").doc(userId)
-    .get();
-
-  if (!permDoc.exists) {
-    throw new Error("USER_NOT_FOUND");
-  }
-
-  const userName = permDoc.data().name || "名前未登録";
-
-  // 2. マニュアル種別
-  const manualTypes = ["line", "todo", "reji", "hole"];
-
-  // 3. HTML から項目抽出
-  let itemsByType = {};
-
-  for (const type of manualTypes) {
-    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
-    if (!fs.existsSync(htmlPath)) continue;
-
-    const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html); 
-    // [{ recipeId, label }]
-
-    itemsByType[type] = items;
-  }
-
-  // 4. チェック状況
-  const checkDoc = await db
-    .collection("companies").doc(store)
-    .collection("manualCheck")
-    .doc(userId)
-    .get();
-
-  const checkedData = checkDoc.exists ? checkDoc.data() : {};
-
-  // 5. 集計
-  let total = 0;
-  let checked = 0;
-
-  for (const type in itemsByType) {
-    for (const item of itemsByType[type]) {
-      total++;
-      if (checkedData[item.recipeId]) checked++;
-    }
-  }
-
-  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
-
-  let color = "red";
-  if (percent >= 80) color = "green";
-  else if (percent >= 60) color = "gold";
-
-  return {
-    userName,
-    itemsByType,
-    checkedData,
-    total,
-    checked,
-    percent,
-    color,
-  };
-}
-
 app.get("/:store/login", ensureStore, (req, res) => {
   res.send(`
   <!DOCTYPE html><html lang="ja"><head>
@@ -7216,20 +7148,22 @@ app.get("/:store/admin/tasks/user", ensureStore, async (req, res) => {
 
 
 // ======== 追加：HTML 解析ヘルパー ==========
-function extractRecipeItemsFromHTML(html) {
-  const $ = cheerio.load(html);
-  const items = [];
+function extractRecipeItemsFromHTML(html, manualType) {
+  const results = [];
 
-  $('[data-recipe-id]').each((_, el) => {
-    items.push({
-      recipeId: $(el).attr("data-recipe-id"),
-      label: $(el).text().trim()
+  const regex = /data-recipe-id="([^"]+)"[^>]*>([^<]+)/g;
+  let match;
+
+  while ((match = regex.exec(html)) !== null) {
+    results.push({
+      manualType,           // ← 重要
+      recipeId: match[1],
+      label: match[2].trim()
     });
-  });
+  }
 
-  return items;
+  return results;
 }
-
 
 
 // ======== 修正版：チェック状況ページ ==========
@@ -7383,111 +7317,122 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   `);
 });
 
+// ===============================
+// 従業員用：自分の理解度確認画面
+// URL: /:store/my-progress
+// ===============================
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
-  const { store } = req.params;
+  const { store } = req;
 
-  // 🔴 LIFF 以外でも動くよう fallback
-  const userId =
-    req.query.userId ||
-    req.headers["x-user-id"];
-
-  if (!userId) {
-    return res.send(`
-      <h3>ユーザー情報を取得できませんでした。</h3>
-      <p>LINEアプリ内から開いてください。</p>
-    `);
-  }
-
-  let data;
-  try {
-    data = await buildProgressData({ store, userId });
-  } catch (e) {
-    return res.status(404).send("ユーザーが見つかりません");
-  }
-
-  const {
-    userName,
-    itemsByType,
-    checkedData,
-    total,
-    checked,
-    percent,
-    color,
-  } = data;
-
-  const storeConfig = STORE_CONFIGS[store];
-  const manualTitles = storeConfig.manualTitles;
-
-  let sectionsHtml = "";
-
-  for (const type in itemsByType) {
-    const title = manualTitles[type] || "マニュアル";
-    const rows = itemsByType[type]
-      .map(item => `
-        <tr>
-          <td>${item.label}</td>
-          <td style="text-align:center;">
-            ${checkedData[item.recipeId] ? "✓" : ""}
-          </td>
-        </tr>
-      `)
-      .join("");
-
-    if (!rows) continue;
-
-    sectionsHtml += `
-      <h3>${title}</h3>
-      <table class="tbl">
-        <thead>
-          <tr><th>項目</th><th>理解</th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    `;
-  }
-
+  // 🔽 LIFF で userId を取得するための HTML を返す
   res.send(`
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>理解度チェック</title>
-<style>
-body { font-family:sans-serif; padding:16px; background:#f9fafb; }
-h2 { font-size:20px; }
-h3 { margin-top:28px; }
-.rate {
-  font-size:22px;
-  font-weight:bold;
-  color:${color};
-  margin:12px 0;
-}
-.tbl {
-  width:100%;
-  border-collapse:collapse;
-  background:#fff;
-  margin-bottom:24px;
-}
-.tbl th, .tbl td {
-  border-bottom:1px solid #eee;
-  padding:10px;
-}
-.tbl th { background:#f1f5f9; text-align:left; }
-</style>
+  <meta charset="UTF-8">
+  <title>理解度チェック</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background:#f9fafb;
+      padding:16px;
+    }
+    .card {
+      background:white;
+      border-radius:12px;
+      padding:16px;
+      margin-bottom:12px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    }
+    .percent {
+      font-size:32px;
+      font-weight:bold;
+      text-align:center;
+      margin:12px 0;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+    }
+    th, td {
+      padding:8px;
+      border-bottom:1px solid #eee;
+      text-align:left;
+    }
+  </style>
 </head>
 <body>
 
-<h2>${userName} さんの理解度</h2>
-<div class="rate">${percent}%（${checked}/${total}）</div>
+<h2>あなたの理解度</h2>
 
-${sectionsHtml}
+<div id="content">読み込み中...</div>
+
+<script>
+(async () => {
+  try {
+    await liff.init({
+      liffId: "${req.storeConf.liffId}"
+    });
+
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    const userId = profile.userId;
+
+    const res = await fetch("/${store}/api/my-progress-data?userId=" + userId);
+    const data = await res.json();
+
+    render(data);
+
+  } catch (e) {
+    document.getElementById("content").innerHTML =
+      "ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。";
+  }
+})();
+
+function render(data) {
+  const color =
+    data.percent >= 80 ? "green" :
+    data.percent >= 60 ? "orange" : "red";
+
+  let html = \`
+    <div class="card">
+      <div class="percent" style="color:\${color}">
+        \${data.percent}%
+      </div>
+      <p style="text-align:center">
+        \${data.checked} / \${data.total} 項目
+      </p>
+    </div>
+
+    <div class="card">
+      <table>
+        <tr><th>項目</th><th>理解</th></tr>
+  \`;
+
+  data.items.forEach(i => {
+    html += \`
+      <tr>
+        <td>\${i.label}</td>
+        <td>\${i.checked ? "✔" : ""}</td>
+      </tr>
+    \`;
+  });
+
+  html += "</table></div>";
+  document.getElementById("content").innerHTML = html;
+}
+</script>
 
 </body>
 </html>
-  `);
+`);
 });
-
 
 // 従業員用：自分の理解度データ
 app.get("/:store/api/my-progress-data", ensureStore, async (req, res) => {
@@ -7500,33 +7445,19 @@ app.get("/:store/api/my-progress-data", ensureStore, async (req, res) => {
 
   // ① マニュアル項目を HTML から抽出
   const manualTypes = ["line", "todo", "reji", "hole"];
-  const allItems = []; // ★ 必須
+  let allItems = [];
 
-  for (const type of manualTypes) {
-    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
-    if (!fs.existsSync(htmlPath)) continue;
+  for (const t of manualTypes) {
+    const p = path.join(__dirname, "manuals", store, t, "index.html");
+    if (!fs.existsSync(p)) continue;
 
-    const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html);
-
-    items.forEach(item => {
-      allItems.push({
-        manualType: type,
-        recipeId: item.recipeId,
-        label: item.label,
-      });
-    });
+    const html = fs.readFileSync(p, "utf8");
+    const items = extractRecipeItemsFromHTML(html).map(i => ({
+      ...i,
+      manualType: t
+    }));
+    allItems.push(...items);
   }
-
-  const grouped = {};
-
-  allItems.forEach(item => {
-    if (!grouped[item.manualType]) {
-      grouped[item.manualType] = [];
-    }
-    grouped[item.manualType].push(item);
-  });
-
 
   // ② チェックデータ取得
   const checkDoc = await db
@@ -7548,6 +7479,12 @@ app.get("/:store/api/my-progress-data", ensureStore, async (req, res) => {
 
   res.json({ total, checked, percent, items });
 });
+
+
+
+
+
+
 
 // ★ 追加：LIFF 入口
 app.get("/:store/progress", ensureStore, (req, res) => {
