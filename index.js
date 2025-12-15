@@ -7343,6 +7343,8 @@ h2 { font-size:18px; margin-bottom:12px; }
 .item { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; }
 .item:last-child { border-bottom:none; }
 .checked { color:#16a34a; font-weight:bold; }
+.item.head { font-weight:bold; background:#f1f5f9; padding:8px 0; border-radius:8px; }
+
 </style>
 </head>
 
@@ -7376,26 +7378,28 @@ function render(data) {
     const sec = document.createElement("div");
     sec.className = "section";
 
-    sec.innerHTML = "<h3>" + data.manuals[type].title + "</h3>
-      <div class="item" style="font-weight:bold; background:#f1f5f9;">
-        <span>項目</span>
-        <span>理解</span>
-      </div>";
+    // ✅ 見出し行（項目 / 理解）を追加（バッククォート不使用）
+    sec.innerHTML =
+      "<h3>" + (data.manuals[type].title || "") + "</h3>" +
+      "<div class='item head'>" +
+        "<span>項目</span>" +
+        "<span>理解</span>" +
+      "</div>";
 
-    data.manuals[type].items.forEach(i => {
-      sec.innerHTML += \`
-        <div class="item">
-          <span>\${i.label}</span>
-          <span class="\${i.checked ? "checked" : ""}">
-            \${i.checked ? "✔" : ""}
-          </span>
-        </div>
-      \`;
+    (data.manuals[type].items || []).forEach(i => {
+      sec.innerHTML +=
+        "<div class='item'>" +
+          "<span>" + (i.label || "") + "</span>" +
+          "<span class='" + (i.checked ? "checked" : "") + "'>" +
+            (i.checked ? "✔" : "") +
+          "</span>" +
+        "</div>";
     });
 
     root.appendChild(sec);
   });
 }
+
 </script>
 </body>
 </html>
