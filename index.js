@@ -7320,78 +7320,92 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
 
+  // 🔑 LIFF or セッションから userId を取得
+  const userId = req.query.userId || req.session?.userId;
+  if (!userId) {
+    return res.status(400).send("userId が取得できません");
+  }
+
+  // 権限チェック
+  const permDoc = await db
+    .collection("companies").doc(store)
+    .collection("permissions").doc(userId)
+    .get();
+
+  if (!permDoc.exists || !permDoc.data().approved) {
+    return res.status(403).send("権限がありません");
+  }
+
+  const userName = permDoc.data().name || "名前未登録";
+
+  // --- 進捗データ取得（管理者と同じロジックを流用） ---
+  const manuals = ["line", "todo", "reji", "hole"];
+  let allItems = [];
+
+  for (const type of manuals) {
+    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
+    if (!fs.existsSync(htmlPath)) continue;
+
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const items = extractRecipeItemsFromHTML(html).map(i => ({
+      ...i,
+      manualType: type
+    }));
+    allItems.push(...items);
+  }
+
+  const checkDoc = await db
+    .collection("companies").doc(store)
+    .collection("manualCheck").doc(userId)
+    .get();
+
+  const checkedMap = checkDoc.exists ? checkDoc.data() : {};
+
+  const total = allItems.length;
+  const checked = allItems.filter(i => checkedMap[i.recipeId]).length;
+  const percent = total ? Math.round((checked / total) * 100) : 0;
+
+  let color = "#dc2626";
+  if (percent >= 80) color = "#16a34a";
+  else if (percent >= 60) color = "#f59e0b";
+
+  // ⭐ 従業員専用 HTML（一覧へ戻るは存在しない）
   res.send(`
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>理解度チェック</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      background:#f9fafb;
-      margin:0;
-      padding:16px;
-    }
-    h1 {
-      font-size:18px;
-      margin-bottom:12px;
-    }
-    .card {
-      background:#fff;
-      border-radius:10px;
-      padding:12px;
-      margin-bottom:12px;
-      box-shadow:0 2px 6px rgba(0,0,0,.08);
-    }
-    .rate {
-      font-size:28px;
-      font-weight:bold;
-    }
-    table {
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
-    }
-    td {
-      padding:6px 4px;
-      border-bottom:1px solid #eee;
-    }
-    .ok { color:green; font-weight:bold; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>理解度チェック</title>
+<style>
+  body { font-family: sans-serif; background:#f9fafb; padding:16px; }
+  h1 { font-size:18px; margin-bottom:8px; }
+  .rate { font-size:28px; font-weight:bold; color:${color}; }
+  table { width:100%; border-collapse:collapse; background:#fff; }
+  th, td { padding:8px; border-bottom:1px solid #e5e7eb; font-size:14px; }
+  th { background:#f1f5f9; }
+</style>
 </head>
 <body>
 
-<h1>あなたの理解度</h1>
-<div id="content">読み込み中...</div>
+<h1>${userName} さんの理解度</h1>
+<div class="rate">${percent}%</div>
 
-<script>
-(async () => {
-  await liff.init({ liffId: "${req.storeConf.liffId}" });
-
-  if (!liff.isLoggedIn()) {
-    liff.login();
-    return;
-  }
-
-  const profile = await liff.getProfile();
-  const userId = profile.userId;
-
-  const res = await fetch(
-    "/${store}/admin/check-status/detail?userId=" + userId
-  );
-  const html = await res.text();
-
-  document.getElementById("content").innerHTML = html;
-})();
-</script>
+<table>
+<tr><th>項目</th><th>理解</th></tr>
+${allItems.map(i => `
+<tr>
+  <td>${i.label}</td>
+  <td style="text-align:center">${checkedMap[i.recipeId] ? "✔" : ""}</td>
+</tr>
+`).join("")}
+</table>
 
 </body>
 </html>
   `);
 });
+
 
 
 
