@@ -24,6 +24,59 @@
 
   .point{margin-top:10px;padding:10px;background:#fff7ed;border-left:4px solid #fb923c;border-radius:6px;font-size:14px;color:#b45309;}
 </style>
+  <script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;   // ← これが重要（undefined の原因だった）
+
+      if (!userId || !store || !type) {
+        console.warn("チェックロード不可: userId/store/type が不足");
+        return;
+      }
+
+      const res = await fetch(`/${store}/manual-check?userId=${userId}&type=${type}`);
+      if (!res.ok) return;
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error("JSON parse error:", e);
+        return;
+      }
+
+      // 反映
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        if (data[key] === true) el.checked = true;
+      });
+    }
+
+    // チェック変更イベント
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
+
+      const res = await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, type, recipeId: key })
+      });
+
+      const out = await res.json();
+      console.log("CHECK UPDATED:", out);
+    }
+
+    window.addEventListener("DOMContentLoaded", loadChecks);
+  </script>
+
+  <script>
+    function saveCheck(key) {
+      toggleCheck(key);
+    }
+  </script>
 </head>
 
 <body>
@@ -38,7 +91,7 @@
 <div class="section">
   <div class="header">
     <div>
-      <div class="header-title">1. クレーム対応</div>
+        <div class="header-title recipe-name" data-recipe-id="クレーム対応">クレーム対応</div>
       <div class="sub-title">最も発生率が高いトラブル</div>
     </div>
     <div class="arrow">▶</div>
@@ -80,13 +133,17 @@
       ✔ 店長・責任者へのエスカレーションを徹底
     </div>
   </div>
+  <div class="check-wrap">
+    <input type="checkbox" class="check-item" data-key="クレーム対応" onclick="toggleCheck('クレーム対応')">
+    <label for="chk-potato">この項目を理解しました</label>
+  </div>
 </div>
 
 <!-- 強盗・暴力トラブル -->
 <div class="section">
   <div class="header">
     <div>
-      <div class="header-title">2. 強盗・暴力トラブル</div>
+        <div class="header-title recipe-name" data-recipe-id="強盗・暴力トラブル">強盗・暴力トラブル</div>
       <div class="sub-title">身の安全が最優先</div>
     </div>
     <div class="arrow">▶</div>
@@ -121,13 +178,17 @@
       ✔ 必ず警察と店長へ早急に連絡  
     </div>
   </div>
+  <div class="check-wrap">
+    <input type="checkbox" class="check-item" data-key="強盗・暴力トラブル" onclick="toggleCheck('強盗・暴力トラブル')">
+    <label for="chk-potato">この項目を理解しました</label>
+  </div>
 </div>
 
 <!-- 商品入れ忘れ -->
 <div class="section">
   <div class="header">
     <div>
-      <div class="header-title">3. 商品の入れ忘れ（テイクアウト含む）</div>
+        <div class="header-title recipe-name" data-recipe-id="商品の入れ忘れ（テイクアウト含む）">商品の入れ忘れ（テイクアウト含む）</div>
       <div class="sub-title">最も起こりやすいミス</div>
     </div>
     <div class="arrow">▶</div>
@@ -153,13 +214,17 @@
       <li>テイクアウトはチェックリストを使用</li>
     </ul>
   </div>
+  <div class="check-wrap">
+    <input type="checkbox" class="check-item" data-key="商品の入れ忘れ（テイクアウト含む）" onclick="toggleCheck('商品の入れ忘れ（テイクアウト含む）')">
+    <label for="chk-potato">この項目を理解しました</label>
+  </div>
 </div>
 
 <!-- お客様急病 -->
 <div class="section">
   <div class="header">
     <div>
-      <div class="header-title">4. お客様の体調不良</div>
+        <div class="header-title recipe-name" data-recipe-id="お客様の体調不良">お客様の体調不良</div>
       <div class="sub-title">安全確保が最優先</div>
     </div>
     <div class="arrow">▶</div>
@@ -179,13 +244,17 @@
       ✔ アレルギーが疑われる場合は必ず119番
     </div>
   </div>
+  <div class="check-wrap">
+    <input type="checkbox" class="check-item" data-key="お客様の体調不良" onclick="toggleCheck('お客様の体調不良')">
+    <label for="chk-potato">この項目を理解しました</label>
+  </div>
 </div>
 
 <!-- 店内でのケガ -->
 <div class="section">
   <div class="header">
     <div>
-      <div class="header-title">5. 店内でのケガ・事故</div>
+        <div class="header-title recipe-name" data-recipe-id="店内でのケガ・事故">店内でのケガ・事故</div>
       <div class="sub-title">転倒・火傷・切り傷など</div>
     </div>
     <div class="arrow">▶</div>
@@ -205,13 +274,17 @@
       ✔ スタッフ間でも必ず情報共有
     </div>
   </div>
+  <div class="check-wrap">
+    <input type="checkbox" class="check-item" data-key="店内でのケガ・事故" onclick="toggleCheck('店内でのケガ・事故')">
+    <label for="chk-potato">この項目を理解しました</label>
+  </div>
 </div>
 
 <!-- 火災・ガス -->
 <div class="section">
   <div class="header">
     <div>
-      <div class="header-title">6. 火災・ガス漏れ</div>
+        <div class="header-title recipe-name" data-recipe-id="火災・ガス漏れ">火災・ガス漏れ</div>
       <div class="sub-title">焼き台のある店舗で最重要項目</div>
     </div>
     <div class="arrow">▶</div>
@@ -240,6 +313,10 @@
       ✔ 火事・ガスは「大声でパニックを起こさせない」のが重要  
       ✔ スタッフで役割を分担し、冷静に対応
     </div>
+  </div>
+  <div class="check-wrap">
+    <input type="checkbox" class="check-item" data-key="火災・ガス漏れ" onclick="toggleCheck('火災・ガス漏れ')">
+    <label for="chk-potato">この項目を理解しました</label>
   </div>
 </div>
 

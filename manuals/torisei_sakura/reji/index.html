@@ -116,6 +116,59 @@
       margin-bottom: 4px;
     }
   </style>
+  <script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;   // ← これが重要（undefined の原因だった）
+
+      if (!userId || !store || !type) {
+        console.warn("チェックロード不可: userId/store/type が不足");
+        return;
+      }
+
+      const res = await fetch(`/${store}/manual-check?userId=${userId}&type=${type}`);
+      if (!res.ok) return;
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error("JSON parse error:", e);
+        return;
+      }
+
+      // 反映
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        if (data[key] === true) el.checked = true;
+      });
+    }
+
+    // チェック変更イベント
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
+
+      const res = await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, type, recipeId: key })
+      });
+
+      const out = await res.json();
+      console.log("CHECK UPDATED:", out);
+    }
+
+    window.addEventListener("DOMContentLoaded", loadChecks);
+  </script>
+
+  <script>
+    function saveCheck(key) {
+      toggleCheck(key);
+    }
+  </script>
 </head>
 
 <body>
@@ -130,7 +183,7 @@
     <div class="section">
       <div class="header">
         <div>
-          <div class="header-title">1. 基本の会計の流れ</div>
+        <div class="header-title recipe-name" data-recipe-id="基本の会計の流れ">基本の会計の流れ</div>
           <div class="sub-title">最も使用頻度の高い基本オペレーション</div>
         </div>
         <div class="arrow">▶</div>
@@ -149,13 +202,17 @@
           ✔ 表示金額と注文内容の不一致が最もクレームになりやすい。必ず「注文確認 → 金額提示」の順で進行。
         </div>
       </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="基本の会計の流れ" onclick="toggleCheck('基本の会計の流れ')">
+        <label for="chk-potato">この項目を理解しました</label>
+      </div>
     </div>
 
     <!-- 2 現金会計 -->
     <div class="section">
       <div class="header">
         <div>
-          <div class="header-title">2. 現金会計</div>
+          <div class="header-title recipe-name" data-recipe-id="現金会計">現金会計</div>
           <div class="sub-title">間違いを防ぐための標準手順</div>
         </div>
         <div class="arrow">▶</div>
@@ -181,6 +238,10 @@
           ✔ 札をしまう前にレジへ「金額入力 → 釣り確認」を徹底  
           ✔ お釣りの間違いは必ず記録と報告
         </div>
+        <div class="check-wrap">
+          <input type="checkbox" class="check-item" data-key="現金会計" onclick="toggleCheck('現金会計')">
+          <label for="chk-potato">この項目を理解しました</label>
+        </div>
       </div>
     </div>
 
@@ -188,7 +249,7 @@
     <div class="section">
       <div class="header">
         <div>
-          <div class="header-title">3. カード会計（クレジット）</div>
+        <div class="header-title recipe-name" data-recipe-id="カード会計（クレジット）">カード会計（クレジット）</div>
           <div class="sub-title">サイン・暗証番号の対応含む</div>
         </div>
         <div class="arrow">▶</div>
@@ -207,6 +268,10 @@
           ✔ タッチ決済の場合はカードを受け取らず、お客様自身でタップ  
           ✔ 決済失敗は“端末のエラーコード”を必ず確認
         </div>
+        <div class="check-wrap">
+          <input type="checkbox" class="check-item" data-key="カード会計（クレジット）" onclick="toggleCheck('カード会計（クレジット）')">
+          <label for="chk-potato">この項目を理解しました</label>
+        </div>
       </div>
     </div>
 
@@ -214,7 +279,7 @@
     <div class="section">
       <div class="header">
         <div>
-          <div class="header-title">4. QRコード決済（PayPay等）</div>
+        <div class="header-title recipe-name" data-recipe-id="QRコード決済（PayPay等）">QRコード決済（PayPay等）</div>
           <div class="sub-title">スマホ決済の標準フロー</div>
         </div>
         <div class="arrow">▶</div>
@@ -233,6 +298,10 @@
           ✔ 決済完了画面を見ずに処理すると“未払い”が発生するため厳禁  
           ✔ 店舗側QRの場合、間違った金額入力に注意
         </div>
+        <div class="check-wrap">
+          <input type="checkbox" class="check-item" data-key="QRコード決済（PayPay等）" onclick="toggleCheck('QRコード決済（PayPay等）')">
+          <label for="chk-potato">この項目を理解しました</label>
+        </div>
       </div>
     </div>
 
@@ -240,7 +309,7 @@
     <div class="section">
       <div class="header">
         <div>
-          <div class="header-title">5. 伝票割り（複数人の割り勘）</div>
+        <div class="header-title recipe-name" data-recipe-id="伝票割り（複数人の割り勘）">伝票割り（複数人の割り勘）</div>
           <div class="sub-title">最もトラブルが多い操作</div>
         </div>
         <div class="arrow">▶</div>
@@ -258,6 +327,10 @@
           ✔ 個別会計は最も時間がかかるため、混雑時は“先に案内”する  
           ✔ 最後の1人分が合わないケースが多いため、こまめに金額確認
         </div>
+        <div class="check-wrap">
+          <input type="checkbox" class="check-item" data-key="伝票割り（複数人の割り勘）" onclick="toggleCheck('伝票割り（複数人の割り勘）')">
+          <label for="chk-potato">この項目を理解しました</label>
+        </div>
       </div>
     </div>
 
@@ -265,7 +338,7 @@
     <div class="section">
       <div class="header">
         <div>
-          <div class="header-title">6. レジ締め（閉店作業）</div>
+        <div class="header-title recipe-name" data-recipe-id="レジ締め（閉店作業）">レジ締め（閉店作業）</div>
           <div class="sub-title">現金差異防止のための基本手順</div>
         </div>
         <div class="arrow">▶</div>
@@ -283,6 +356,10 @@
         <div class="point">
           ✔ 差異がある場合は「いつ・どの会計で起きたか」を逆算  
           ✔ 伝票の入力ミスが最も多いため、日中のチェックが重要
+        </div>
+        <div class="check-wrap">
+          <input type="checkbox" class="check-item" data-key="レジ締め（閉店作業）" onclick="toggleCheck('レジ締め（閉店作業）')">
+          <label for="chk-potato">この項目を理解しました</label>
         </div>
       </div>
     </div>

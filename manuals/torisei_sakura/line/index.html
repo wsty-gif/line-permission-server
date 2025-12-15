@@ -46,6 +46,59 @@
     }
     .sub-title{font-size:14px;color:#6b7280;margin-bottom:4px;}
   </style>
+<script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;   // ← これが重要（undefined の原因だった）
+
+      if (!userId || !store || !type) {
+        console.warn("チェックロード不可: userId/store/type が不足");
+        return;
+      }
+
+      const res = await fetch(`/${store}/manual-check?userId=${userId}&type=${type}`);
+      if (!res.ok) return;
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error("JSON parse error:", e);
+        return;
+      }
+
+      // 反映
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        if (data[key] === true) el.checked = true;
+      });
+    }
+
+    // チェック変更イベント
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
+
+      const res = await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, type, recipeId: key })
+      });
+
+      const out = await res.json();
+      console.log("CHECK UPDATED:", out);
+    }
+
+    window.addEventListener("DOMContentLoaded", loadChecks);
+  </script>
+
+  <script>
+    function saveCheck(key) {
+      toggleCheck(key);
+    }
+  </script>
 </head>
 <body>
 
@@ -59,7 +112,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">ねぎま（鶏もも × 長ねぎ）</div>
+        <div class="header-title recipe-name" data-recipe-id="ねぎま（鶏もも × 長ねぎ）">ねぎま（鶏もも × 長ねぎ）</div>
         <div class="sub-title">人気No.1の基本串</div>
       </div>
       <div class="arrow">▶</div>
@@ -88,6 +141,10 @@
         ✔ 長ねぎは焼き過ぎると崩れるので裏返しは1回だけ  
         ✔ 肉は刺し過ぎずふんわり刺すと火が通りやすい
       </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="ねぎま（鶏もも × 長ねぎ）" onclick="toggleCheck('ねぎま（鶏もも × 長ねぎ）')">
+        <label for="chk-potato">この項目を理解しました</label>
+      </div>
     </div>
   </div>
 
@@ -95,7 +152,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">砂ずり（砂肝）</div>
+        <div class="header-title recipe-name" data-recipe-id="砂ずり（砂肝）">砂ずり（砂肝）</div>
         <div class="sub-title">歯ごたえが命の定番串</div>
       </div>
       <div class="arrow">▶</div>
@@ -120,6 +177,10 @@
         ✔ 焼きすぎると固くなるので「短時間で高火力」が基本  
         ✔ 焼き上がりはキュッと弾力が出た状態
       </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="砂ずり（砂肝）" onclick="toggleCheck('砂ずり（砂肝）')">
+        <label for="chk-potato">この項目を理解しました</label>
+      </div>
     </div>
   </div>
 
@@ -127,7 +188,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">自家製つくね</div>
+        <div class="header-title recipe-name" data-recipe-id="自家製つくね">自家製つくね</div>
         <div class="sub-title">ふわふわ食感が人気</div>
       </div>
       <div class="arrow">▶</div>
@@ -153,6 +214,10 @@
         ✔ 生焼け防止のため中央を軽く押し、透明な肉汁が出ればOK  
         ✔ タレは焦げやすいので最後に絡める
       </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="自家製つくね" onclick="toggleCheck('自家製つくね')">
+        <label for="chk-potato">この項目を理解しました</label>
+      </div>
     </div>
   </div>
 
@@ -160,7 +225,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">ささみ（梅・わさび・しそ）</div>
+        <div class="header-title recipe-name" data-recipe-id="ささみ（梅・わさび・しそ）">ささみ（梅・わさび・しそ）</div>
         <div class="sub-title">レア感が勝負の繊細な串</div>
       </div>
       <div class="arrow">▶</div>
@@ -186,6 +251,10 @@
         ✔ 焼きすぎるとパサつくため火加減は必ず弱火  
         ✔ 店舗の衛生ルールに合わせてレア度を調整
       </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="ささみ（梅・わさび・しそ）" onclick="toggleCheck('ささみ（梅・わさび・しそ）')">
+        <label for="chk-potato">この項目を理解しました</label>
+      </div>
     </div>
   </div>
 
@@ -193,7 +262,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">豚バラ串</div>
+        <div class="header-title recipe-name" data-recipe-id="豚バラ串">豚バラ串</div>
         <div class="sub-title">脂の旨味を楽しむボリューム串</div>
       </div>
       <div class="arrow">▶</div>
@@ -217,6 +286,10 @@
       <div class="point">
         ✔ 焼き過ぎると硬くなるので焦げ目がついたらすぐ返す  
         ✔ 火柱が上がりやすいので位置調整を徹底
+      </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="ささみ（梅・わさび・しそ）" onclick="toggleCheck('ささみ（梅・わさび・しそ）')">
+        <label for="chk-potato">この項目を理解しました</label>
       </div>
     </div>
   </div>

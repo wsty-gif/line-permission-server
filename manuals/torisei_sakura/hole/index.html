@@ -26,6 +26,61 @@
     .point{margin-top:10px;padding:10px;background:#fff7ed;border-left:4px solid #fb923c;border-radius:6px;font-size:14px;color:#b45309;}
 
   </style>
+
+<script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;   // ← これが重要（undefined の原因だった）
+
+      if (!userId || !store || !type) {
+        console.warn("チェックロード不可: userId/store/type が不足");
+        return;
+      }
+
+      const res = await fetch(`/${store}/manual-check?userId=${userId}&type=${type}`);
+      if (!res.ok) return;
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error("JSON parse error:", e);
+        return;
+      }
+
+      // 反映
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        if (data[key] === true) el.checked = true;
+      });
+    }
+
+    // チェック変更イベント
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
+
+      const res = await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, type, recipeId: key })
+      });
+
+      const out = await res.json();
+      console.log("CHECK UPDATED:", out);
+    }
+
+    window.addEventListener("DOMContentLoaded", loadChecks);
+  </script>
+
+  <script>
+    function saveCheck(key) {
+      toggleCheck(key);
+    }
+  </script>
+
 </head>
 
 <body>
@@ -40,7 +95,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">1. 接客の基本</div>
+        <div class="header-title recipe-name" data-recipe-id="接客の基本">接客の基本</div>
         <div class="sub-title">挨拶・ご案内・提供・退店まで</div>
       </div>
       <div class="arrow">▶</div>
@@ -77,6 +132,10 @@
         ✔ 接客で最重要なのは「表情・声のトーン・気づき」  
         ✔ 手が空いたら巡回し、焼き台やホールの状況を常に把握する
       </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="接客の基本" onclick="toggleCheck('接客の基本')">
+        <label for="chk-potato">この項目を理解しました</label>
+      </div>
     </div>
   </div>
 
@@ -84,7 +143,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">2. トイレ清掃</div>
+        <div class="header-title recipe-name" data-recipe-id="トイレ清掃">トイレ清掃</div>
         <div class="sub-title">汚れが最も気づかれやすい場所</div>
       </div>
       <div class="arrow">▶</div>
@@ -115,6 +174,11 @@
         ✔ トイレの清潔感は店の評価に直結  
         ✔ 必ず「清掃しましたカード」を立てる  
         ✔ トイレの汚れを見つけたら“すぐ対応”
+      </div>
+
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="トイレ清掃" onclick="toggleCheck('トイレ清掃')">
+        <label for="chk-potato">この項目を理解しました</label>
       </div>
     </div>
   </div>
@@ -149,7 +213,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">4. 開店準備</div>
+        <div class="header-title recipe-name" data-recipe-id="開店準備">開店準備</div>
         <div class="sub-title">営業がスムーズに始まるための準備</div>
       </div>
       <div class="arrow">▶</div>
@@ -169,6 +233,10 @@
         ✔ 最初の30分が店の印象を作る  
         ✔ 焼台・ホール・レジの担当を明確に分けると効率が上がる
       </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="開店準備" onclick="toggleCheck('開店準備')">
+        <label for="chk-potato">この項目を理解しました</label>
+      </div>
     </div>
   </div>
 
@@ -176,7 +244,7 @@
   <div class="section">
     <div class="header">
       <div>
-        <div class="header-title">5. 閉店作業</div>
+        <div class="header-title recipe-name" data-recipe-id="閉店作業">閉店作業</div>
         <div class="sub-title">ミス防止と翌日の効率UP</div>
       </div>
       <div class="arrow">▶</div>
@@ -195,6 +263,10 @@
       <div class="point">
         ✔ 閉店前に“明日の必要串の量”を確認しておくと仕込みが楽  
         ✔ 貴重品・売上の扱いは必ずマニュアル通りに
+      </div>
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="閉店作業" onclick="toggleCheck('閉店作業')">
+        <label for="chk-potato">この項目を理解しました</label>
       </div>
     </div>
   </div>
