@@ -7321,143 +7321,82 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // ① userId を LIFF から取得（既存仕様）
-  const userId = req.query.userId;
-  if (!userId) {
-    return res.send(`
-      <h3>ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。</h3>
-    `);
+  const storeConf = STORES[store];
+  if (!storeConf) {
+    return res.status(404).send("store not found");
   }
 
-  // ② 権限チェック
-  const permDoc = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .doc(userId)
-    .get();
+  res.send(`
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>理解度チェック</title>
 
-  if (!permDoc.exists || !permDoc.data().approved) {
-    return res.send("<h3>権限がありません</h3>");
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+<style>
+body { font-family: sans-serif; background:#f9fafb; padding:16px; }
+h2 { font-size:18px; margin-bottom:12px; }
+.section { background:white; border-radius:12px; padding:12px; margin-bottom:16px; }
+.item { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; }
+.item:last-child { border-bottom:none; }
+.checked { color:#16a34a; font-weight:bold; }
+</style>
+</head>
+
+<body>
+<h2>あなたの理解度チェック</h2>
+<div id="content">読み込み中...</div>
+
+<script>
+(async () => {
+  await liff.init({ liffId: "${storeConf.liffId}" });
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
   }
 
-  const userName = permDoc.data().name || "名前未登録";
+  const profile = await liff.getProfile();
+  const userId = profile.userId;
 
-  // ③ 全マニュアルの項目を取得（既存ロジック）
-  const manualTypes = ["line", "todo", "reji", "hole"];
-  let allItems = [];
+  const res = await fetch("/${store}/api/my-progress?userId=" + userId);
+  const data = await res.json();
 
-  for (const type of manualTypes) {
-    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
-    if (!fs.existsSync(htmlPath)) continue;
+  render(data);
+})();
 
-    const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html).map(i => ({
-      ...i,
-      manualType: type,
-    }));
+function render(data) {
+  const root = document.getElementById("content");
+  root.innerHTML = "";
 
-    allItems.push(...items);
-  }
+  Object.keys(data.manuals).forEach(type => {
+    const sec = document.createElement("div");
+    sec.className = "section";
 
-  // ④ チェック状況取得
-  const checkDoc = await db
-    .collection("companies")
-    .doc(store)
-    .collection("manualCheck")
-    .doc(userId)
-    .get();
+    sec.innerHTML = "<h3>" + data.manuals[type].title + "</h3>";
 
-  const checks = checkDoc.exists ? checkDoc.data() : {};
-
-  // ⑤ マニュアルごとにグルーピング
-  const grouped = {};
-  allItems.forEach(item => {
-    if (!grouped[item.manualType]) grouped[item.manualType] = [];
-    grouped[item.manualType].push(item);
-  });
-
-  // ⑥ HTML生成（★ ここが今回の修正ポイント）
-  let contentHtml = "";
-
-  Object.entries(grouped).forEach(([type, items]) => {
-    contentHtml += `
-      <h3 style="margin:16px 0 8px;">${type.toUpperCase()}</h3>
-      <table style="width:100%; border-collapse:collapse;">
-        <tr>
-          <th style="text-align:left; padding:6px;">項目</th>
-          <th style="width:60px;">理解</th>
-        </tr>
-    `;
-
-    items.forEach(item => {
-      const checked = checks[item.recipeId] ? "✔" : "";
-      contentHtml += `
-        <tr>
-          <td style="padding:6px;">${item.label}</td>
-          <td style="text-align:center;">${checked}</td>
-        </tr>
-      `;
+    data.manuals[type].items.forEach(i => {
+      sec.innerHTML += \`
+        <div class="item">
+          <span>\${i.label}</span>
+          <span class="\${i.checked ? "checked" : ""}">
+            \${i.checked ? "✔" : ""}
+          </span>
+        </div>
+      \`;
     });
 
-    contentHtml += `</table>`;
+    root.appendChild(sec);
   });
-
-  // ⑦ 画面出力（タイトル「理解」を追加）
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>理解度チェック</title>
-      <style>
-        body {
-          font-family: sans-serif;
-          padding: 16px;
-          background: #f9fafb;
-        }
-        h2 {
-          margin-bottom: 8px;
-        }
-        h3 {
-          margin-top: 24px;
-        }
-        table {
-          background: white;
-          margin-bottom: 16px;
-        }
-        th {
-          background: #e5e7eb;
-        }
-        th, td {
-          border-bottom: 1px solid #ddd;
-          font-size: 14px;
-        }
-      </style>
-    </head>
-    <body>
-
-      <h2>${userName} さんの理解度</h2>
-
-      <!-- ★ 追加：管理者画面と同じ「理解」タイトル -->
-      <div style="
-        margin: 12px 0;
-        padding: 8px;
-        font-weight: bold;
-        font-size: 16px;
-        border-bottom: 2px solid #2563eb;
-      ">
-        理解
-      </div>
-
-      ${contentHtml}
-
-    </body>
-    </html>
-  `);
+}
+</script>
+</body>
+</html>
+`);
 });
-
 
 app.get("/:store/api/my-progress", ensureStore, async (req, res) => {
   const { store } = req.params;
