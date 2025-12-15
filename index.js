@@ -7318,116 +7318,126 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 });
 
 
-/**
- * 従業員本人用：理解度チェック画面
- * URL: /:store/my-progress
- * ・LIFF で userId を取得
- * ・自分の理解度のみ表示
- * ・管理者用UIは一切含めない
- */
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // 🔹 LIFF から userId を受け取る想定
-  const userId = req.query.userId;
-  if (!userId) {
-    return res.send(`
-      <h3>ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。</h3>
-    `);
+  const storeConf = STORES[store];
+  if (!storeConf) {
+    return res.status(404).send("store not found");
   }
 
-  // 1️⃣ 権限情報（名前取得）
-  const permDoc = await db
+  res.send(`
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>理解度チェック</title>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+<style>
+body { font-family: sans-serif; background:#f9fafb; padding:16px; }
+h2 { font-size:18px; margin-bottom:12px; }
+.section { background:white; border-radius:12px; padding:12px; margin-bottom:16px; }
+.item { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; }
+.item:last-child { border-bottom:none; }
+.checked { color:#16a34a; font-weight:bold; }
+</style>
+</head>
+
+<body>
+<h2>あなたの理解度チェック</h2>
+<div id="content">読み込み中...</div>
+
+<script>
+(async () => {
+  await liff.init({ liffId: "${storeConf.liffId}" });
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
+
+  const profile = await liff.getProfile();
+  const userId = profile.userId;
+
+  const res = await fetch("/${store}/api/my-progress?userId=" + userId);
+  const data = await res.json();
+
+  render(data);
+})();
+
+function render(data) {
+  const root = document.getElementById("content");
+  root.innerHTML = "";
+
+  Object.keys(data.manuals).forEach(type => {
+    const sec = document.createElement("div");
+    sec.className = "section";
+
+    sec.innerHTML = "<h3>" + data.manuals[type].title + "</h3>";
+
+    data.manuals[type].items.forEach(i => {
+      sec.innerHTML += \`
+        <div class="item">
+          <span>\${i.label}</span>
+          <span class="\${i.checked ? "checked" : ""}">
+            \${i.checked ? "✔" : ""}
+          </span>
+        </div>
+      \`;
+    });
+
+    root.appendChild(sec);
+  });
+}
+</script>
+</body>
+</html>
+`);
+});
+
+app.get("/:store/api/my-progress", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ error: "userId missing" });
+  }
+
+  // チェック状況
+  const checkDoc = await db
     .collection("companies").doc(store)
-    .collection("permissions").doc(userId)
+    .collection("manualCheck")
+    .doc(userId)
     .get();
 
-  if (!permDoc.exists) {
-    return res.send("<h3>ユーザー情報が見つかりません</h3>");
-  }
+  const checked = checkDoc.exists ? checkDoc.data() : {};
 
-  const userName = permDoc.data().name || "名前未登録";
-
-  // 2️⃣ マニュアルHTMLをすべて解析（line / todo / reji / hole）
+  // マニュアルHTML解析
   const manualTypes = ["line", "todo", "reji", "hole"];
-  let allItems = [];
+  const manuals = {};
 
-  for (const type of manualTypes) {
-    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
+  for (const t of manualTypes) {
+    const htmlPath = path.join(__dirname, "manuals", store, t, "index.html");
     if (!fs.existsSync(htmlPath)) continue;
 
     const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html); // 既存関数
-    items.forEach(i => {
-      allItems.push({
-        manualType: type,
-        recipeId: i.recipeId,
+    const items = extractRecipeItemsFromHTML(html);
+
+    manuals[t] = {
+      title: STORES[store].manualTitles[t] || t,
+      items: items.map(i => ({
         label: i.label,
-      });
-    });
+        checked: !!checked[i.recipeId]
+      }))
+    };
   }
 
-  // 3️⃣ チェック状況取得
-  const checkDoc = await db
-    .collection("companies").doc(store)
-    .collection("manualCheck").doc(userId)
-    .get();
-
-  const checks = checkDoc.exists ? checkDoc.data() : {};
-
-  // 4️⃣ マニュアル種別ごとにグルーピング
-  const grouped = {};
-  for (const item of allItems) {
-    if (!grouped[item.manualType]) grouped[item.manualType] = [];
-    grouped[item.manualType].push(item);
-  }
-
-  // 5️⃣ HTML生成（管理者と同じ構造だが「戻るリンクなし」）
-  let bodyHtml = "";
-
-  Object.keys(grouped).forEach(type => {
-    const title =
-      STORES[store]?.manualTitles?.[type] || type;
-
-    bodyHtml += `<h3 style="margin-top:24px;">${title}</h3>`;
-    bodyHtml += `<table style="width:100%; border-collapse:collapse;">`;
-
-    grouped[type].forEach(item => {
-      const checked = checks[item.recipeId];
-      bodyHtml += `
-        <tr style="border-bottom:1px solid #eee;">
-          <td style="padding:8px;">${item.label}</td>
-          <td style="padding:8px; text-align:center;">
-            ${checked ? "✅" : ""}
-          </td>
-        </tr>
-      `;
-    });
-
-    bodyHtml += `</table>`;
-  });
-
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>理解度チェック</title>
-      <style>
-        body { font-family:sans-serif; padding:16px; background:#f9fafb; }
-        h2 { font-size:18px; margin-bottom:8px; }
-        h3 { font-size:16px; margin-top:20px; }
-        table { background:#fff; }
-      </style>
-    </head>
-    <body>
-      <h2>${userName} さんの理解度</h2>
-      ${bodyHtml}
-    </body>
-    </html>
-  `);
+  res.json({ manuals });
 });
+
 
 
 
