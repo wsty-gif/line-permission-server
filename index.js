@@ -7337,6 +7337,10 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
   // 以降は「userIdがあれば実データ／なければ空データ」
   let checkData = {};
   let userName = "あなた";
+  // 達成率カラー判定（従業員用）
+  let color = "red";
+  if (percent >= 80) color = "green";
+  else if (percent >= 60) color = "orange";
 
   if (targetUserId) {
     const permDoc = await db
