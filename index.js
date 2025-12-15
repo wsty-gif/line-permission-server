@@ -7337,15 +7337,63 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
-body { font-family: sans-serif; background:#f9fafb; padding:16px; }
-h2 { font-size:18px; margin-bottom:12px; }
-.section { background:white; border-radius:12px; padding:12px; margin-bottom:16px; }
-.item { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; }
-.item:last-child { border-bottom:none; }
-.checked { color:#16a34a; font-weight:bold; }
-.item.head { font-weight:bold; background:#f1f5f9; padding:8px 0; border-radius:8px; }
+body {
+  font-family: sans-serif;
+  background:#f9fafb;
+  padding:16px;
+}
 
+h2 {
+  font-size:18px;
+  margin-bottom:16px;
+}
+
+.section {
+  background:white;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:20px;
+  box-shadow:0 1px 2px rgba(0,0,0,0.04);
+}
+
+.section h3 {
+  font-size:16px;
+  margin:0 0 8px 0;
+  font-weight:700;
+}
+
+/* ヘッダー行（項目 / 理解） */
+.item.head {
+  display:flex;
+  justify-content:space-between;
+  padding:8px 4px;
+  background:#f1f5f9;
+  font-weight:700;
+  font-size:13px;
+  border-radius:6px;
+}
+
+/* 通常行 */
+.item {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 4px;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+}
+
+.item:last-child {
+  border-bottom:none;
+}
+
+.checked {
+  color:#16a34a;
+  font-weight:700;
+  font-size:16px;
+}
 </style>
+    
 </head>
 
 <body>
