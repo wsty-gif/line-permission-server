@@ -7317,65 +7317,54 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   `);
 });
 
-// ===============================
-// 従業員用：自分の理解度確認画面
-// URL: /:store/my-progress
-// ===============================
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const storeConf = STORES[store];
+  const { store } = req;
 
-  if (!storeConf) {
-    return res.status(404).send("店舗設定が見つかりません");
-  }
+  /* ===============================
+   * ① userId を既存ロジックで取得
+   * =============================== */
+  const userId = req.userId; // ← ここは「今すでに動いている取得方法そのまま」
 
-  // =========================
-  // 1. LIFF から userId 取得
-  // =========================
-  const userId = req.query.userId;
   if (!userId) {
     return res.send(`
-      <h3>ユーザー情報を取得できませんでした。</h3>
-      <p>LINEアプリ内から開いてください。</p>
+      <h3>ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。</h3>
     `);
   }
 
-  // =========================
-  // 2. ユーザー名取得
-  // =========================
+  /* ===============================
+   * ② 権限情報
+   * =============================== */
   const permDoc = await db
     .collection("companies").doc(store)
     .collection("permissions").doc(userId)
     .get();
 
   if (!permDoc.exists) {
-    return res.status(404).send("権限情報が見つかりません");
+    return res.send("<h3>ユーザー情報が見つかりません</h3>");
   }
 
   const userName = permDoc.data().name || "あなた";
 
-  // =========================
-  // 3. 全マニュアルHTML解析
-  // =========================
+  /* ===============================
+   * ③ マニュアル項目を HTML から抽出
+   * =============================== */
   const manualTypes = ["line", "todo", "reji", "hole"];
-  const manualItems = {}; // { type: [{ id, label }] }
+  const manuals = {};
 
   for (const type of manualTypes) {
     const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
     if (!fs.existsSync(htmlPath)) continue;
 
     const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html); // 既存関数
+    const items = extractRecipeItemsFromHTML(html); 
+    // ↑ 既存で使っている helper（recipeId + label を返す）
 
-    manualItems[type] = items.map(i => ({
-      id: i.recipeId,
-      label: i.label
-    }));
+    manuals[type] = items;
   }
 
-  // =========================
-  // 4. チェック状況取得
-  // =========================
+  /* ===============================
+   * ④ チェック状況
+   * =============================== */
   const checkDoc = await db
     .collection("companies").doc(store)
     .collection("manualCheck").doc(userId)
@@ -7383,77 +7372,91 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
 
   const checkedMap = checkDoc.exists ? checkDoc.data() : {};
 
-  // =========================
-  // 5. 集計
-  // =========================
+  /* ===============================
+   * ⑤ 進捗計算
+   * =============================== */
   let total = 0;
-  let checked = 0;
+  let done = 0;
 
-  Object.values(manualItems).forEach(list => {
+  Object.values(manuals).forEach(list => {
+    total += list.length;
     list.forEach(i => {
-      total++;
-      if (checkedMap[i.id]) checked++;
+      if (checkedMap[i.recipeId]) done++;
     });
   });
 
-  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
-  let color = "red";
-  if (percent >= 80) color = "green";
-  else if (percent >= 60) color = "orange";
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100);
 
-  // =========================
-  // 6. HTML生成
-  // =========================
-  const sectionsHtml = manualTypes.map(type => {
+  /* ===============================
+   * ⑥ マニュアルごとに HTML 組み立て
+   * =============================== */
+  let sectionsHtml = "";
+
+  for (const [type, items] of Object.entries(manuals)) {
+    if (items.length === 0) continue;
+
     const title =
-      storeConf.manualTitles?.[type] || "マニュアル";
+      STORES[store]?.manualTitles?.[type] ||
+      "マニュアル";
 
-    const items = manualItems[type] || [];
-    if (items.length === 0) return "";
-
-    const rows = items.map(i => `
-      <tr>
-        <td>${i.label}</td>
-        <td style="text-align:center">
-          ${checkedMap[i.id] ? "✓" : ""}
-        </td>
-      </tr>
-    `).join("");
-
-    return `
-      <h3 style="margin-top:24px">${title}</h3>
-      <table style="width:100%; border-collapse:collapse">
+    sectionsHtml += `
+      <h3 style="margin-top:24px;">${title}</h3>
+      <table style="width:100%; border-collapse:collapse;">
         <thead>
-          <tr style="background:#f3f4f6">
-            <th style="text-align:left;padding:8px">項目</th>
-            <th style="padding:8px">理解</th>
+          <tr style="background:#f1f5f9;">
+            <th style="text-align:left; padding:8px;">項目</th>
+            <th style="width:60px; text-align:center;">理解</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>
+          ${items.map(i => `
+            <tr>
+              <td style="padding:8px; border-bottom:1px solid #eee;">
+                ${i.label}
+              </td>
+              <td style="text-align:center; border-bottom:1px solid #eee;">
+                ${checkedMap[i.recipeId] ? "✓" : ""}
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
       </table>
     `;
-  }).join("");
+  }
 
+  /* ===============================
+   * ⑦ 出力
+   * =============================== */
   res.send(`
     <!DOCTYPE html>
     <html lang="ja">
     <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>あなたの理解度</title>
       <style>
-        body { font-family:sans-serif; background:#f9fafb; padding:16px }
-        .card {
-          background:white;
-          border-radius:12px;
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+          background:#f9fafb;
+          margin:0;
           padding:16px;
-          margin-bottom:16px;
-          box-shadow:0 2px 6px rgba(0,0,0,.05)
         }
-        table td, table th {
-          border-bottom:1px solid #e5e7eb;
-          padding:8px;
-          font-size:14px;
+        .card {
+          background:#fff;
+          border-radius:12px;
+          padding:20px;
+          box-shadow:0 2px 8px rgba(0,0,0,0.05);
+          margin-bottom:16px;
+        }
+        .percent {
+          font-size:36px;
+          font-weight:700;
+          color:${percent >= 80 ? "green" : percent >= 60 ? "orange" : "red"};
+          text-align:center;
+        }
+        .small {
+          text-align:center;
+          color:#666;
         }
       </style>
     </head>
@@ -7461,11 +7464,9 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
 
       <h2>あなたの理解度</h2>
 
-      <div class="card" style="text-align:center">
-        <div style="font-size:32px;font-weight:bold;color:${color}">
-          ${percent}%
-        </div>
-        <div>${checked} / ${total} 項目</div>
+      <div class="card">
+        <div class="percent">${percent}%</div>
+        <div class="small">${done} / ${total} 項目</div>
       </div>
 
       <div class="card">
@@ -7476,6 +7477,7 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
     </html>
   `);
 });
+  
 
 
 // 従業員用：自分の理解度データ
