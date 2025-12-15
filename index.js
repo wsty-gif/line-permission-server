@@ -7376,7 +7376,11 @@ function render(data) {
     const sec = document.createElement("div");
     sec.className = "section";
 
-    sec.innerHTML = "<h3>" + data.manuals[type].title + "</h3>";
+    sec.innerHTML = "<h3>" + data.manuals[type].title + "</h3>
+      <div class="item" style="font-weight:bold; background:#f1f5f9;">
+        <span>項目</span>
+        <span>理解</span>
+      </div>";
 
     data.manuals[type].items.forEach(i => {
       sec.innerHTML += \`
