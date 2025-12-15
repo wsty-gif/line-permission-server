@@ -7317,105 +7317,167 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
   `);
 });
 
+// ===============================
+// 従業員用：自分の理解度確認画面
+// URL: /:store/my-progress
+// ===============================
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // ① LIFF で userId を取得
-  const userId = req.query.userId || req.session?.userId;
-  if (!userId) {
-    return res.send(`
-      <p style="padding:16px">
-        ユーザー情報を取得できませんでした。<br>
-        LINEアプリ内から開いてください。
-      </p>
-    `);
-  }
-
-  // ② 権限情報
-  const permDoc = await db
-    .collection("companies").doc(store)
-    .collection("permissions").doc(userId)
-    .get();
-
-  if (!permDoc.exists) {
-    return res.send("権限情報が見つかりません");
-  }
-
-  const userName = permDoc.data().name || "名前未登録";
-
-  // ③ 全マニュアル HTML から項目抽出
-  const manualTypes = ["line", "todo", "reji", "hole"];
-  let allItems = [];
-
-  for (const type of manualTypes) {
-    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
-    if (!fs.existsSync(htmlPath)) continue;
-
-    const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html).map(i => ({
-      ...i,
-      manualType: type
-    }));
-    allItems.push(...items);
-  }
-
-  // 重複排除
-  const map = new Map();
-  allItems.forEach(i => map.set(i.recipeId, i));
-  allItems = [...map.values()];
-
-  // ④ チェック状況
-  const checkDoc = await db
-    .collection("companies").doc(store)
-    .collection("manualCheck").doc(userId)
-    .get();
-
-  const checks = checkDoc.exists ? checkDoc.data() : {};
-
-  // ⑤ 集計
-  const total = allItems.length;
-  const checkedCount = allItems.filter(i => checks[i.recipeId]).length;
-  const percent = total === 0 ? 0 : Math.round((checkedCount / total) * 100);
-
-  let color = "red";
-  if (percent >= 80) color = "green";
-  else if (percent >= 60) color = "gold";
-
-  // ⑥ HTML（※ 管理者と同じデザイン・戻るリンクなし）
+  // 🔽 LIFF で userId を取得するための HTML を返す
   res.send(`
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>理解度チェック</title>
-<style>
-body { font-family: sans-serif; padding:16px; background:#f9fafb; }
-h2 { margin-bottom:4px; }
-.percent { font-size:28px; font-weight:bold; color:${color}; }
-table { width:100%; border-collapse:collapse; background:white; }
-th, td { padding:8px; border-bottom:1px solid #eee; font-size:14px; }
-th { background:#2563eb; color:white; }
-</style>
+  <meta charset="UTF-8">
+  <title>理解度チェック</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background:#f9fafb;
+      padding:16px;
+    }
+    .card {
+      background:white;
+      border-radius:12px;
+      padding:16px;
+      margin-bottom:12px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    }
+    .percent {
+      font-size:32px;
+      font-weight:bold;
+      text-align:center;
+      margin:12px 0;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+    }
+    th, td {
+      padding:8px;
+      border-bottom:1px solid #eee;
+      text-align:left;
+    }
+  </style>
 </head>
 <body>
 
-<h2>${userName} さんの理解度</h2>
-<p class="percent">${percent}%</p>
+<h2>あなたの理解度</h2>
 
-<table>
-<tr><th>項目</th><th>理解</th></tr>
-${allItems.map(i => `
-<tr>
-  <td>${i.label}</td>
-  <td style="text-align:center">${checks[i.recipeId] ? "✔" : ""}</td>
-</tr>
-`).join("")}
-</table>
+<div id="content">読み込み中...</div>
+
+<script>
+(async () => {
+  try {
+    await liff.init({
+      liffId: "${req.storeConf.liffId}"
+    });
+
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    const userId = profile.userId;
+
+    const res = await fetch("/${store}/api/my-progress-data?userId=" + userId);
+    const data = await res.json();
+
+    render(data);
+
+  } catch (e) {
+    document.getElementById("content").innerHTML =
+      "ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。";
+  }
+})();
+
+function render(data) {
+  const color =
+    data.percent >= 80 ? "green" :
+    data.percent >= 60 ? "orange" : "red";
+
+  let html = \`
+    <div class="card">
+      <div class="percent" style="color:\${color}">
+        \${data.percent}%
+      </div>
+      <p style="text-align:center">
+        \${data.checked} / \${data.total} 項目
+      </p>
+    </div>
+
+    <div class="card">
+      <table>
+        <tr><th>項目</th><th>理解</th></tr>
+  \`;
+
+  data.items.forEach(i => {
+    html += \`
+      <tr>
+        <td>\${i.label}</td>
+        <td>\${i.checked ? "✔" : ""}</td>
+      </tr>
+    \`;
+  });
+
+  html += "</table></div>";
+  document.getElementById("content").innerHTML = html;
+}
+</script>
 
 </body>
 </html>
 `);
+});
+
+// 従業員用：自分の理解度データ
+app.get("/:store/api/my-progress-data", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ error: "userId missing" });
+  }
+
+  // ① マニュアル項目を HTML から抽出
+  const manualTypes = ["line", "todo", "reji", "hole"];
+  let allItems = [];
+
+  for (const t of manualTypes) {
+    const p = path.join(__dirname, "manuals", store, t, "index.html");
+    if (!fs.existsSync(p)) continue;
+
+    const html = fs.readFileSync(p, "utf8");
+    const items = extractRecipeItemsFromHTML(html).map(i => ({
+      ...i,
+      manualType: t
+    }));
+    allItems.push(...items);
+  }
+
+  // ② チェックデータ取得
+  const checkDoc = await db
+    .collection("companies").doc(store)
+    .collection("manualCheck")
+    .doc(userId)
+    .get();
+
+  const checks = checkDoc.exists ? checkDoc.data() : {};
+
+  const items = allItems.map(i => ({
+    label: i.label,
+    checked: !!checks[i.recipeId]
+  }));
+
+  const total = items.length;
+  const checked = items.filter(i => i.checked).length;
+  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+
+  res.json({ total, checked, percent, items });
 });
 
 
