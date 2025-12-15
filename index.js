@@ -7337,10 +7337,17 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
   // 以降は「userIdがあれば実データ／なければ空データ」
   let checkData = {};
   let userName = "あなた";
-  // 達成率カラー判定（従業員用）
+  const totalCount = allItems.length;
+  const checkedCount = allItems.filter(i => i.checked).length;
+
+  const percent = totalCount === 0
+    ? 0
+    : Math.round((checkedCount / totalCount) * 100);
+
   let color = "red";
   if (percent >= 80) color = "green";
-  else if (percent >= 60) color = "orange";
+  else if (percent >= 60) color = "gold";
+
 
   if (targetUserId) {
     const permDoc = await db
