@@ -7322,117 +7322,161 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 // URL: /:store/my-progress
 // ===============================
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
-  const { store } = req;
+  const { store } = req.params;
+  const storeConf = STORES[store];
 
-  // 🔽 LIFF で userId を取得するための HTML を返す
-  res.send(`
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>理解度チェック</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      background:#f9fafb;
-      padding:16px;
-    }
-    .card {
-      background:white;
-      border-radius:12px;
-      padding:16px;
-      margin-bottom:12px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.1);
-    }
-    .percent {
-      font-size:32px;
-      font-weight:bold;
-      text-align:center;
-      margin:12px 0;
-    }
-    table {
-      width:100%;
-      border-collapse:collapse;
-    }
-    th, td {
-      padding:8px;
-      border-bottom:1px solid #eee;
-      text-align:left;
-    }
-  </style>
-</head>
-<body>
-
-<h2>あなたの理解度</h2>
-
-<div id="content">読み込み中...</div>
-
-<script>
-(async () => {
-  try {
-    await liff.init({
-      liffId: "${req.storeConf.liffId}"
-    });
-
-    if (!liff.isLoggedIn()) {
-      liff.login();
-      return;
-    }
-
-    const profile = await liff.getProfile();
-    const userId = profile.userId;
-
-    const res = await fetch("/${store}/api/my-progress-data?userId=" + userId);
-    const data = await res.json();
-
-    render(data);
-
-  } catch (e) {
-    document.getElementById("content").innerHTML =
-      "ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。";
+  if (!storeConf) {
+    return res.status(404).send("店舗設定が見つかりません");
   }
-})();
 
-function render(data) {
-  const color =
-    data.percent >= 80 ? "green" :
-    data.percent >= 60 ? "orange" : "red";
+  // =========================
+  // 1. LIFF から userId 取得
+  // =========================
+  const userId = req.query.userId;
+  if (!userId) {
+    return res.send(`
+      <h3>ユーザー情報を取得できませんでした。</h3>
+      <p>LINEアプリ内から開いてください。</p>
+    `);
+  }
 
-  let html = \`
-    <div class="card">
-      <div class="percent" style="color:\${color}">
-        \${data.percent}%
-      </div>
-      <p style="text-align:center">
-        \${data.checked} / \${data.total} 項目
-      </p>
-    </div>
+  // =========================
+  // 2. ユーザー名取得
+  // =========================
+  const permDoc = await db
+    .collection("companies").doc(store)
+    .collection("permissions").doc(userId)
+    .get();
 
-    <div class="card">
-      <table>
-        <tr><th>項目</th><th>理解</th></tr>
-  \`;
+  if (!permDoc.exists) {
+    return res.status(404).send("権限情報が見つかりません");
+  }
 
-  data.items.forEach(i => {
-    html += \`
-      <tr>
-        <td>\${i.label}</td>
-        <td>\${i.checked ? "✔" : ""}</td>
-      </tr>
-    \`;
+  const userName = permDoc.data().name || "あなた";
+
+  // =========================
+  // 3. 全マニュアルHTML解析
+  // =========================
+  const manualTypes = ["line", "todo", "reji", "hole"];
+  const manualItems = {}; // { type: [{ id, label }] }
+
+  for (const type of manualTypes) {
+    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
+    if (!fs.existsSync(htmlPath)) continue;
+
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const items = extractRecipeItemsFromHTML(html); // 既存関数
+
+    manualItems[type] = items.map(i => ({
+      id: i.recipeId,
+      label: i.label
+    }));
+  }
+
+  // =========================
+  // 4. チェック状況取得
+  // =========================
+  const checkDoc = await db
+    .collection("companies").doc(store)
+    .collection("manualCheck").doc(userId)
+    .get();
+
+  const checkedMap = checkDoc.exists ? checkDoc.data() : {};
+
+  // =========================
+  // 5. 集計
+  // =========================
+  let total = 0;
+  let checked = 0;
+
+  Object.values(manualItems).forEach(list => {
+    list.forEach(i => {
+      total++;
+      if (checkedMap[i.id]) checked++;
+    });
   });
 
-  html += "</table></div>";
-  document.getElementById("content").innerHTML = html;
-}
-</script>
+  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+  let color = "red";
+  if (percent >= 80) color = "green";
+  else if (percent >= 60) color = "orange";
 
-</body>
-</html>
-`);
+  // =========================
+  // 6. HTML生成
+  // =========================
+  const sectionsHtml = manualTypes.map(type => {
+    const title =
+      storeConf.manualTitles?.[type] || "マニュアル";
+
+    const items = manualItems[type] || [];
+    if (items.length === 0) return "";
+
+    const rows = items.map(i => `
+      <tr>
+        <td>${i.label}</td>
+        <td style="text-align:center">
+          ${checkedMap[i.id] ? "✓" : ""}
+        </td>
+      </tr>
+    `).join("");
+
+    return `
+      <h3 style="margin-top:24px">${title}</h3>
+      <table style="width:100%; border-collapse:collapse">
+        <thead>
+          <tr style="background:#f3f4f6">
+            <th style="text-align:left;padding:8px">項目</th>
+            <th style="padding:8px">理解</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }).join("");
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>あなたの理解度</title>
+      <style>
+        body { font-family:sans-serif; background:#f9fafb; padding:16px }
+        .card {
+          background:white;
+          border-radius:12px;
+          padding:16px;
+          margin-bottom:16px;
+          box-shadow:0 2px 6px rgba(0,0,0,.05)
+        }
+        table td, table th {
+          border-bottom:1px solid #e5e7eb;
+          padding:8px;
+          font-size:14px;
+        }
+      </style>
+    </head>
+    <body>
+
+      <h2>あなたの理解度</h2>
+
+      <div class="card" style="text-align:center">
+        <div style="font-size:32px;font-weight:bold;color:${color}">
+          ${percent}%
+        </div>
+        <div>${checked} / ${total} 項目</div>
+      </div>
+
+      <div class="card">
+        ${sectionsHtml}
+      </div>
+
+    </body>
+    </html>
+  `);
 });
+
 
 // 従業員用：自分の理解度データ
 app.get("/:store/api/my-progress-data", ensureStore, async (req, res) => {
@@ -7458,6 +7502,15 @@ app.get("/:store/api/my-progress-data", ensureStore, async (req, res) => {
     }));
     allItems.push(...items);
   }
+// manualType ごとにグルーピング
+const groupedItems = {};
+
+allItems.forEach(item => {
+  if (!groupedItems[item.manualType]) {
+    groupedItems[item.manualType] = [];
+  }
+  groupedItems[item.manualType].push(item);
+});
 
   // ② チェックデータ取得
   const checkDoc = await db
