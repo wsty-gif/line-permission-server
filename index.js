@@ -7320,84 +7320,104 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const { store } = req;
 
-  // ---------- LIFF 用 HTML ----------
+  // ① LIFF で userId を取得
+  const userId = req.query.userId || req.session?.userId;
+  if (!userId) {
+    return res.send(`
+      <p style="padding:16px">
+        ユーザー情報を取得できませんでした。<br>
+        LINEアプリ内から開いてください。
+      </p>
+    `);
+  }
+
+  // ② 権限情報
+  const permDoc = await db
+    .collection("companies").doc(store)
+    .collection("permissions").doc(userId)
+    .get();
+
+  if (!permDoc.exists) {
+    return res.send("権限情報が見つかりません");
+  }
+
+  const userName = permDoc.data().name || "名前未登録";
+
+  // ③ 全マニュアル HTML から項目抽出
+  const manualTypes = ["line", "todo", "reji", "hole"];
+  let allItems = [];
+
+  for (const type of manualTypes) {
+    const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
+    if (!fs.existsSync(htmlPath)) continue;
+
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const items = extractRecipeItemsFromHTML(html).map(i => ({
+      ...i,
+      manualType: type
+    }));
+    allItems.push(...items);
+  }
+
+  // 重複排除
+  const map = new Map();
+  allItems.forEach(i => map.set(i.recipeId, i));
+  allItems = [...map.values()];
+
+  // ④ チェック状況
+  const checkDoc = await db
+    .collection("companies").doc(store)
+    .collection("manualCheck").doc(userId)
+    .get();
+
+  const checks = checkDoc.exists ? checkDoc.data() : {};
+
+  // ⑤ 集計
+  const total = allItems.length;
+  const checkedCount = allItems.filter(i => checks[i.recipeId]).length;
+  const percent = total === 0 ? 0 : Math.round((checkedCount / total) * 100);
+
+  let color = "red";
+  if (percent >= 80) color = "green";
+  else if (percent >= 60) color = "gold";
+
+  // ⑥ HTML（※ 管理者と同じデザイン・戻るリンクなし）
   res.send(`
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>理解度チェック</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      background:#f9fafb;
-      margin:0;
-      padding:16px;
-    }
-    h1 {
-      font-size:18px;
-      margin-bottom:12px;
-    }
-    .rate {
-      font-size:28px;
-      font-weight:bold;
-      margin:12px 0;
-    }
-    table {
-      width:100%;
-      border-collapse:collapse;
-      background:#fff;
-      font-size:14px;
-    }
-    th, td {
-      border-bottom:1px solid #eee;
-      padding:8px;
-      text-align:left;
-    }
-    th {
-      background:#f1f5f9;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>理解度チェック</title>
+<style>
+body { font-family: sans-serif; padding:16px; background:#f9fafb; }
+h2 { margin-bottom:4px; }
+.percent { font-size:28px; font-weight:bold; color:${color}; }
+table { width:100%; border-collapse:collapse; background:white; }
+th, td { padding:8px; border-bottom:1px solid #eee; font-size:14px; }
+th { background:#2563eb; color:white; }
+</style>
 </head>
 <body>
 
-<h1>あなたの理解度</h1>
-<div id="content">読み込み中...</div>
+<h2>${userName} さんの理解度</h2>
+<p class="percent">${percent}%</p>
 
-<script>
-(async () => {
-  try {
-    await liff.init({ liffId: "${stores[store].liffId}" });
-
-    if (!liff.isLoggedIn()) {
-      liff.login();
-      return;
-    }
-
-    const profile = await liff.getProfile();
-    const userId = profile.userId;
-
-    // 管理者画面と同じHTMLを取得（本人分だけ）
-    const res = await fetch(
-      "/${store}/admin/check-status/detail?userId=" + userId + "&mode=my"
-    );
-
-    const html = await res.text();
-    document.getElementById("content").innerHTML = html;
-
-  } catch (e) {
-    document.getElementById("content").innerHTML =
-      "ユーザー情報を取得できませんでした。<br>LINEアプリ内から開いてください。";
-  }
-})();
-</script>
+<table>
+<tr><th>項目</th><th>理解</th></tr>
+${allItems.map(i => `
+<tr>
+  <td>${i.label}</td>
+  <td style="text-align:center">${checks[i.recipeId] ? "✔" : ""}</td>
+</tr>
+`).join("")}
+</table>
 
 </body>
 </html>
 `);
 });
+
 
 
 
