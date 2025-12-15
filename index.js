@@ -7318,33 +7318,20 @@ app.get("/:store/admin/check-status/:userId", ensureStore, async (req, res) => {
 });
 
 app.get("/:store/my-progress", ensureStore, async (req, res) => {
-  const { store } = req;
+  const { store } = req.params;
+  const userId = req.query.userId;
 
-  /* ===============================
-     1. userId を安全に取得
-     =============================== */
-  let userId = req.query.userId;
-
-  // userId が無い場合でも「画面を出す」ための保険
+  // 🔴 userId が無い場合でも落とさない（テスト・直アクセス対策）
   if (!userId) {
-    const snap = await db
-      .collection("companies")
-      .doc(store)
-      .collection("permissions")
-      .where("approved", "==", true)
-      .limit(1)
-      .get();
-
-    if (snap.empty) {
-      return res.send("表示できるユーザーがいません");
-    }
-
-    userId = snap.docs[0].id;
+    return res.send(`
+      <h3>ユーザー情報を取得できませんでした。</h3>
+      <p>LINEアプリ内から開いてください。</p>
+    `);
   }
 
   /* ===============================
-     2. ユーザー名
-     =============================== */
+     1. ユーザー情報取得
+  =============================== */
   const permDoc = await db
     .collection("companies")
     .doc(store)
@@ -7352,15 +7339,17 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
     .doc(userId)
     .get();
 
-  const userName = permDoc.exists
-    ? permDoc.data().name
-    : "あなた";
+  if (!permDoc.exists) {
+    return res.send("<h3>ユーザー情報が存在しません</h3>");
+  }
+
+  const userName = permDoc.data().name || "名前未登録";
 
   /* ===============================
-     3. マニュアルHTML解析
-     =============================== */
+     2. マニュアルHTMLから項目抽出
+  =============================== */
   const manualTypes = ["line", "todo", "reji", "hole"];
-  const manuals = {}; // { line: [{id,label}], ... }
+  const manuals = [];
 
   for (const type of manualTypes) {
     const htmlPath = path.join(
@@ -7374,13 +7363,19 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
     if (!fs.existsSync(htmlPath)) continue;
 
     const html = fs.readFileSync(htmlPath, "utf8");
-    const items = extractRecipeItemsFromHTML(html); 
-    manuals[type] = items; 
+    const items = extractRecipeItemsFromHTML(html); // 既存関数
+
+    manuals.push({
+      type,
+      title:
+        (stores?.[store]?.manualTitles?.[type]) || type,
+      items
+    });
   }
 
   /* ===============================
-     4. チェック状況
-     =============================== */
+     3. チェック状況取得
+  =============================== */
   const checkDoc = await db
     .collection("companies")
     .doc(store)
@@ -7391,83 +7386,104 @@ app.get("/:store/my-progress", ensureStore, async (req, res) => {
   const checks = checkDoc.exists ? checkDoc.data() : {};
 
   /* ===============================
-     5. HTML生成（マニュアルごと）
-     =============================== */
+     4. 集計
+  =============================== */
   let total = 0;
   let checked = 0;
 
-  const sections = Object.entries(manuals).map(([type, items]) => {
-    if (!items.length) return "";
-
-    const rows = items.map(i => {
+  manuals.forEach(m => {
+    m.items.forEach(i => {
       total++;
-      const ok = checks[i.id];
-      if (ok) checked++;
+      if (checks[i.id]) checked++;
+    });
+  });
 
-      return `
-        <tr>
-          <td>${i.label}</td>
-          <td style="text-align:center">${ok ? "✓" : ""}</td>
-        </tr>
-      `;
-    }).join("");
+  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
 
-    const title =
-      stores[store]?.manualTitles?.[type] || type;
+  let color = "red";
+  if (percent >= 80) color = "green";
+  else if (percent >= 60) color = "orange";
+
+  /* ===============================
+     5. HTML生成（マニュアル別）
+  =============================== */
+  const sections = manuals.map(m => {
+    if (m.items.length === 0) return "";
+
+    const rows = m.items.map(i => `
+      <tr>
+        <td>${i.label}</td>
+        <td style="text-align:center;">${checks[i.id] ? "✓" : ""}</td>
+      </tr>
+    `).join("");
 
     return `
-      <h3 style="margin-top:24px">${title}</h3>
-      <table>
-        <thead>
-          <tr><th>項目</th><th>理解</th></tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
+      <h3 style="margin-top:24px;">${m.title}</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        <tr style="background:#f3f4f6;">
+          <th style="padding:8px; text-align:left;">項目</th>
+          <th style="padding:8px; width:80px;">理解</th>
+        </tr>
+        ${rows}
       </table>
     `;
   }).join("");
 
-  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
-  const color =
-    percent >= 80 ? "green" :
-    percent >= 60 ? "orange" : "red";
-
   /* ===============================
-     6. 出力
-     =============================== */
+     6. 画面出力
+  =============================== */
   res.send(`
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>あなたの理解度</title>
 <style>
-body { font-family: sans-serif; background:#f9fafb; padding:16px; }
-.card { background:#fff; padding:16px; border-radius:12px; margin-bottom:16px; }
-h1 { font-size:20px; margin-bottom:8px; }
-h3 { font-size:16px; }
-table { width:100%; border-collapse:collapse; }
-th,td { padding:8px; border-bottom:1px solid #eee; font-size:14px; }
-th { background:#f1f5f9; }
-.rate { font-size:32px; font-weight:bold; color:${color}; }
+body {
+  font-family: sans-serif;
+  background:#f9fafb;
+  padding:16px;
+}
+.card {
+  background:white;
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  margin-bottom:16px;
+}
+.percent {
+  font-size:32px;
+  font-weight:bold;
+  color:${color};
+}
+table {
+  background:white;
+  margin-bottom:16px;
+}
+td, th {
+  border-bottom:1px solid #e5e7eb;
+}
 </style>
 </head>
 <body>
 
-<div class="card">
-  <h1>あなたの理解度</h1>
-  <div class="rate">${percent}%</div>
+<h2>あなたの理解度</h2>
+
+<div class="card" style="text-align:center;">
+  <div class="percent">${percent}%</div>
   <div>${checked} / ${total} 項目</div>
 </div>
 
-${sections}
+<div class="card">
+  ${sections || "<p>項目がありません</p>"}
+</div>
 
 </body>
 </html>
   `);
 });
+
 
 
 
