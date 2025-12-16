@@ -31,34 +31,39 @@
 	.body .section{margin:12px 0 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
   </style>
 <script>
-    async function loadChecks() {
-      const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;
-      const type   = window.MANUAL_TYPE;
+async function loadChecks() {
+  const userId = window.MANUAL_USER_ID;
+  const store  = window.MANUAL_STORE;
 
-      if (!userId || !store || !type) {
-        console.warn("チェックロード不可: userId/store/type が不足");
-        return;
-      }
+  if (!userId || !store) {
+    console.warn("チェックロード不可: userId/store 不足");
+    return;
+  }
 
-      const res = await fetch(
-        `/${store}/api/manual-check?userId=${userId}&type=${type}`
-      );
-      // 🔽 JSON 以外は無視（HTMLが返ってきても落ちない）
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        console.warn("manual-check が JSON を返していません");
-        return;
-      }
+  const res = await fetch(
+    `/${store}/api/manual-check?userId=${userId}`
+  );
 
-      const data = await res.json();
+  // ❗ 失敗時は静かに終了
+  if (!res.ok) {
+    console.warn("manual-check 取得失敗");
+    return;
+  }
 
-      // 反映
-      document.querySelectorAll(".check-item").forEach(el => {
-        const key = el.dataset.key;
-        el.checked = data[key] === true;
-      });
-    }
+  let data = {};
+  try {
+    data = await res.json();
+  } catch (e) {
+    console.warn("manual-check JSON 解析失敗");
+    return;
+  }
+
+  // ✅ ここで確実に反映
+  document.querySelectorAll(".check-item").forEach(el => {
+    const key = el.dataset.key;
+    el.checked = data[key] === true;
+  });
+}
 
 
     // チェック変更イベント
