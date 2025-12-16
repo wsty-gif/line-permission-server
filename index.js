@@ -848,7 +848,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
 
   </head>
   <body>
-    <h1>${store} 管理画面</h1>
+    <h1>管理画面</h1>
 
     <!-- ✅ ボタン群 -->
     <div class="nav">
@@ -5984,7 +5984,7 @@ app.get("/:store/admin/check-status", ensureStore, async (req, res) => {
       </style>
     </head>
     <body>
-      <h1>理解度チェック管理（${store}）</h1>
+      <h1>理解度チェック管理</h1>
       <a class="btn" href="/${store}/admin">← 管理TOPへ戻る</a>
 
       <table>

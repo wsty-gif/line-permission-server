@@ -1,1383 +1,318 @@
-<html>
-
+<!-- nice_sweets：全項目をカード型アコーディオンUIで統一（スマホ最適化） -->
+<!DOCTYPE html>
+<html lang="ja">
 <head>
-	<base href="/manuals/storeA/line/">
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>storeA</title>
-	<style>
-		/* cspell:disable-file */
-		/* webkit printing magic: print all background colors */
-		html {
-			-webkit-print-color-adjust: exact;
-		}
-
-		* {
-			box-sizing: border-box;
-			-webkit-print-color-adjust: exact;
-		}
-
-		html,
-		body {
-			margin: 0;
-			padding: 0;
-		}
-
-		@media only screen {
-			body {
-				margin: 2em auto;
-				max-width: 900px;
-				color: rgb(55, 53, 47);
-			}
-		}
-
-		body {
-			white-space: normal !important;
-		}
-
-		a,
-		a.visited {
-			color: inherit;
-			text-decoration: underline;
-		}
-
-		.pdf-relative-link-path {
-			font-size: 80%;
-			color: #444;
-		}
-
-		h1,
-		h2,
-		h3 {
-			letter-spacing: -0.01em;
-			line-height: 1.2;
-			font-weight: 600;
-			margin-bottom: 0;
-		}
-
-		.page-title {
-			font-size: 2.5rem;
-			font-weight: 700;
-			margin-top: 0;
-			margin-bottom: 0.75em;
-		}
-
-		h1 {
-			font-size: 1.875rem;
-			margin-top: 1.875rem;
-		}
-
-		h2 {
-			font-size: 1.5rem;
-			margin-top: 1.5rem;
-		}
-
-		h3 {
-			font-size: 1.25rem;
-			margin-top: 1.25rem;
-		}
-
-		.source {
-			border: 1px solid #ddd;
-			border-radius: 3px;
-			padding: 1.5em;
-			word-break: break-all;
-		}
-
-		.callout {
-			border-radius: 10px;
-			padding: 1rem;
-		}
-
-		figure {
-			margin: 1.25em 0;
-			page-break-inside: avoid;
-		}
-
-		figcaption {
-			opacity: 0.5;
-			font-size: 85%;
-			margin-top: 0.5em;
-		}
-
-		mark {
-			background-color: transparent;
-		}
-
-		.indented {
-			padding-left: 1.5em;
-		}
-
-		hr {
-			background: transparent;
-			display: block;
-			width: 100%;
-			height: 1px;
-			visibility: visible;
-			border: none;
-			border-bottom: 1px solid rgba(55, 53, 47, 0.09);
-		}
-
-		img {
-			max-width: 100%;
-		}
-
-		@media only print {
-			img {
-				max-height: 100vh;
-				object-fit: contain;
-			}
-		}
-
-		@page {
-			margin: 1in;
-		}
-
-		.collection-content {
-			font-size: 0.875rem;
-		}
-
-		.collection-content td {
-			white-space: pre-wrap;
-			word-break: break-word;
-		}
-
-		.column-list {
-			display: flex;
-			justify-content: space-between;
-		}
-
-		.column {
-			padding: 0 1em;
-		}
-
-		.column:first-child {
-			padding-left: 0;
-		}
-
-		.column:last-child {
-			padding-right: 0;
-		}
-
-		.table_of_contents-item {
-			display: block;
-			font-size: 0.875rem;
-			line-height: 1.3;
-			padding: 0.125rem;
-		}
-
-		.table_of_contents-indent-1 {
-			margin-left: 1.5rem;
-		}
-
-		.table_of_contents-indent-2 {
-			margin-left: 3rem;
-		}
-
-		.table_of_contents-indent-3 {
-			margin-left: 4.5rem;
-		}
-
-		.table_of_contents-link {
-			text-decoration: none;
-			opacity: 0.7;
-			border-bottom: 1px solid rgba(55, 53, 47, 0.18);
-		}
-
-		table,
-		th,
-		td {
-			border: 1px solid rgba(55, 53, 47, 0.09);
-			border-collapse: collapse;
-		}
-
-		table {
-			border-left: none;
-			border-right: none;
-		}
-
-		th,
-		td {
-			font-weight: normal;
-			padding: 0.25em 0.5em;
-			line-height: 1.5;
-			min-height: 1.5em;
-			text-align: left;
-		}
-
-		th {
-			color: rgba(55, 53, 47, 0.6);
-		}
-
-		ol,
-		ul {
-			margin: 0;
-			margin-block-start: 0.6em;
-			margin-block-end: 0.6em;
-		}
-
-		li>ol:first-child,
-		li>ul:first-child {
-			margin-block-start: 0.6em;
-		}
-
-		ul>li {
-			list-style: disc;
-		}
-
-		ul.to-do-list {
-			padding-inline-start: 0;
-		}
-
-		ul.to-do-list>li {
-			list-style: none;
-		}
-
-		.to-do-children-checked {
-			text-decoration: line-through;
-			opacity: 0.375;
-		}
-
-		ul.toggle>li {
-			list-style: none;
-		}
-
-		ul {
-			padding-inline-start: 1.7em;
-		}
-
-		ul>li {
-			padding-left: 0.1em;
-		}
-
-		ol {
-			padding-inline-start: 1.6em;
-		}
-
-		ol>li {
-			padding-left: 0.2em;
-		}
-
-		.mono ol {
-			padding-inline-start: 2em;
-		}
-
-		.mono ol>li {
-			text-indent: -0.4em;
-		}
-
-		.toggle {
-			padding-inline-start: 0em;
-			list-style-type: none;
-		}
-
-		/* Indent toggle children */
-		.toggle>li>details {
-			padding-left: 1.7em;
-		}
-
-		.toggle>li>details>summary {
-			margin-left: -1.1em;
-		}
-
-		.selected-value {
-			display: inline-block;
-			padding: 0 0.5em;
-			background: rgba(206, 205, 202, 0.5);
-			border-radius: 3px;
-			margin-right: 0.5em;
-			margin-top: 0.3em;
-			margin-bottom: 0.3em;
-			white-space: nowrap;
-		}
-
-		.collection-title {
-			display: inline-block;
-			margin-right: 1em;
-		}
-
-		.page-description {
-			margin-bottom: 2em;
-		}
-
-		.simple-table {
-			margin-top: 1em;
-			font-size: 0.875rem;
-			empty-cells: show;
-		}
-
-		.simple-table td {
-			height: 29px;
-			min-width: 120px;
-		}
-
-		.simple-table th {
-			height: 29px;
-			min-width: 120px;
-		}
-
-		.simple-table-header-color {
-			background: rgb(247, 246, 243);
-			color: black;
-		}
-
-		.simple-table-header {
-			font-weight: 500;
-		}
-
-		time {
-			opacity: 0.5;
-		}
-
-		.icon {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			max-width: 1.2em;
-			max-height: 1.2em;
-			text-decoration: none;
-			vertical-align: text-bottom;
-			margin-right: 0.5em;
-		}
-
-		img.icon {
-			border-radius: 3px;
-		}
-
-		.callout img.notion-static-icon {
-			width: 1em;
-			height: 1em;
-		}
-
-		.callout p {
-			margin: 0;
-		}
-
-		.callout h1,
-		.callout h2,
-		.callout h3 {
-			margin: 0 0 0.6rem;
-		}
-
-		.user-icon {
-			width: 1.5em;
-			height: 1.5em;
-			border-radius: 100%;
-			margin-right: 0.5rem;
-		}
-
-		.user-icon-inner {
-			font-size: 0.8em;
-		}
-
-		.text-icon {
-			border: 1px solid #000;
-			text-align: center;
-		}
-
-		.page-cover-image {
-			display: block;
-			object-fit: cover;
-			width: 100%;
-			max-height: 30vh;
-		}
-
-		.page-header-icon {
-			font-size: 3rem;
-			margin-bottom: 1rem;
-		}
-
-		.page-header-icon-with-cover {
-			margin-top: -0.72em;
-			margin-left: 0.07em;
-		}
-
-		.page-header-icon img {
-			border-radius: 3px;
-		}
-
-		.link-to-page {
-			margin: 1em 0;
-			padding: 0;
-			border: none;
-			font-weight: 500;
-		}
-
-		p>.user {
-			opacity: 0.5;
-		}
-
-		td>.user,
-		td>time {
-			white-space: nowrap;
-		}
-
-		input[type="checkbox"] {
-			transform: scale(1.5);
-			margin-right: 0.6em;
-			vertical-align: middle;
-		}
-
-		p {
-			margin-top: 0.5em;
-			margin-bottom: 0.5em;
-		}
-
-		.image {
-			border: none;
-			margin: 1.5em 0;
-			padding: 0;
-			border-radius: 0;
-			text-align: center;
-		}
-
-		.code,
-		code {
-			background: rgba(135, 131, 120, 0.15);
-			border-radius: 3px;
-			padding: 0.2em 0.4em;
-			border-radius: 3px;
-			font-size: 85%;
-			tab-size: 2;
-		}
-
-		code {
-			color: #eb5757;
-		}
-
-		.code {
-			padding: 1.5em 1em;
-		}
-
-		.code-wrap {
-			white-space: pre-wrap;
-			word-break: break-all;
-		}
-
-		.code>code {
-			background: none;
-			padding: 0;
-			font-size: 100%;
-			color: inherit;
-		}
-
-		blockquote {
-			font-size: 1em;
-			margin: 1em 0;
-			padding-left: 1em;
-			border-left: 3px solid rgb(55, 53, 47);
-		}
-
-		blockquote.quote-large {
-			font-size: 1.25em;
-		}
-
-		.bookmark {
-			text-decoration: none;
-			max-height: 8em;
-			padding: 0;
-			display: flex;
-			width: 100%;
-			align-items: stretch;
-		}
-
-		.bookmark-title {
-			font-size: 0.85em;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			height: 1.75em;
-			white-space: nowrap;
-		}
-
-		.bookmark-text {
-			display: flex;
-			flex-direction: column;
-		}
-
-		.bookmark-info {
-			flex: 4 1 180px;
-			padding: 12px 14px 14px;
-			display: flex;
-			flex-direction: column;
-			justify-content: space-between;
-		}
-
-		.bookmark-image {
-			width: 33%;
-			flex: 1 1 180px;
-			display: block;
-			position: relative;
-			object-fit: cover;
-			border-radius: 1px;
-		}
-
-		.bookmark-description {
-			color: rgba(55, 53, 47, 0.6);
-			font-size: 0.75em;
-			overflow: hidden;
-			max-height: 4.5em;
-			word-break: break-word;
-		}
-
-		.bookmark-href {
-			font-size: 0.75em;
-			margin-top: 0.25em;
-		}
-
-		.sans {
-			font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-		}
-
-		.code {
-			font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace;
-		}
-
-		.serif {
-			font-family: Lyon-Text, Georgia, ui-serif, serif;
-		}
-
-		.mono {
-			font-family: iawriter-mono, Nitti, Menlo, Courier, monospace;
-		}
-
-		.pdf .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR';
-		}
-
-		.pdf .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR';
-		}
-
-		.pdf .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR';
-		}
-
-		.pdf .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR';
-		}
-
-		.highlight-default {
-			color: rgba(44, 44, 43, 1);
-		}
-
-		.highlight-gray {
-			color: rgba(125, 122, 117, 1);
-			fill: rgba(125, 122, 117, 1);
-		}
-
-		.highlight-brown {
-			color: rgba(159, 118, 90, 1);
-			fill: rgba(159, 118, 90, 1);
-		}
-
-		.highlight-orange {
-			color: rgba(210, 123, 45, 1);
-			fill: rgba(210, 123, 45, 1);
-		}
-
-		.highlight-yellow {
-			color: rgba(203, 148, 52, 1);
-			fill: rgba(203, 148, 52, 1);
-		}
-
-		.highlight-teal {
-			color: rgba(80, 148, 110, 1);
-			fill: rgba(80, 148, 110, 1);
-		}
-
-		.highlight-blue {
-			color: rgba(56, 125, 201, 1);
-			fill: rgba(56, 125, 201, 1);
-		}
-
-		.highlight-purple {
-			color: rgba(154, 107, 180, 1);
-			fill: rgba(154, 107, 180, 1);
-		}
-
-		.highlight-pink {
-			color: rgba(193, 76, 138, 1);
-			fill: rgba(193, 76, 138, 1);
-		}
-
-		.highlight-red {
-			color: rgba(207, 81, 72, 1);
-			fill: rgba(207, 81, 72, 1);
-		}
-
-		.highlight-default_background {
-			color: rgba(44, 44, 43, 1);
-		}
-
-		.highlight-gray_background {
-			background: rgba(42, 28, 0, 0.07);
-		}
-
-		.highlight-brown_background {
-			background: rgba(139, 46, 0, 0.086);
-		}
-
-		.highlight-orange_background {
-			background: rgba(224, 101, 1, 0.129);
-		}
-
-		.highlight-yellow_background {
-			background: rgba(211, 168, 0, 0.137);
-		}
-
-		.highlight-teal_background {
-			background: rgba(0, 100, 45, 0.09);
-		}
-
-		.highlight-blue_background {
-			background: rgba(0, 124, 215, 0.094);
-		}
-
-		.highlight-purple_background {
-			background: rgba(102, 0, 178, 0.078);
-		}
-
-		.highlight-pink_background {
-			background: rgba(197, 0, 93, 0.086);
-		}
-
-		.highlight-red_background {
-			background: rgba(223, 22, 0, 0.094);
-		}
-
-		.block-color-default {
-			color: inherit;
-			fill: inherit;
-		}
-
-		.block-color-gray {
-			color: rgba(125, 122, 117, 1);
-			fill: rgba(125, 122, 117, 1);
-		}
-
-		.block-color-brown {
-			color: rgba(159, 118, 90, 1);
-			fill: rgba(159, 118, 90, 1);
-		}
-
-		.block-color-orange {
-			color: rgba(210, 123, 45, 1);
-			fill: rgba(210, 123, 45, 1);
-		}
-
-		.block-color-yellow {
-			color: rgba(203, 148, 52, 1);
-			fill: rgba(203, 148, 52, 1);
-		}
-
-		.block-color-teal {
-			color: rgba(80, 148, 110, 1);
-			fill: rgba(80, 148, 110, 1);
-		}
-
-		.block-color-blue {
-			color: rgba(56, 125, 201, 1);
-			fill: rgba(56, 125, 201, 1);
-		}
-
-		.block-color-purple {
-			color: rgba(154, 107, 180, 1);
-			fill: rgba(154, 107, 180, 1);
-		}
-
-		.block-color-pink {
-			color: rgba(193, 76, 138, 1);
-			fill: rgba(193, 76, 138, 1);
-		}
-
-		.block-color-red {
-			color: rgba(207, 81, 72, 1);
-			fill: rgba(207, 81, 72, 1);
-		}
-
-		.block-color-default_background {
-			color: inherit;
-			fill: inherit;
-		}
-
-		.block-color-gray_background {
-			background: rgba(240, 239, 237, 1);
-		}
-
-		.block-color-brown_background {
-			background: rgba(245, 237, 233, 1);
-		}
-
-		.block-color-orange_background {
-			background: rgba(251, 235, 222, 1);
-		}
-
-		.block-color-yellow_background {
-			background: rgba(249, 243, 220, 1);
-		}
-
-		.block-color-teal_background {
-			background: rgba(232, 241, 236, 1);
-		}
-
-		.block-color-blue_background {
-			background: rgba(229, 242, 252, 1);
-		}
-
-		.block-color-purple_background {
-			background: rgba(243, 235, 249, 1);
-		}
-
-		.block-color-pink_background {
-			background: rgba(250, 233, 241, 1);
-		}
-
-		.block-color-red_background {
-			background: rgba(252, 233, 231, 1);
-		}
-
-		.select-value-color-default {
-			background-color: rgba(42, 28, 0, 0.07);
-		}
-
-		.select-value-color-gray {
-			background-color: rgba(28, 19, 1, 0.11);
-		}
-
-		.select-value-color-brown {
-			background-color: rgba(127, 51, 0, 0.156);
-		}
-
-		.select-value-color-orange {
-			background-color: rgba(196, 88, 0, 0.203);
-		}
-
-		.select-value-color-yellow {
-			background-color: rgba(209, 156, 0, 0.282);
-		}
-
-		.select-value-color-green {
-			background-color: rgba(0, 96, 38, 0.156);
-		}
-
-		.select-value-color-blue {
-			background-color: rgba(0, 118, 217, 0.203);
-		}
-
-		.select-value-color-purple {
-			background-color: rgba(92, 0, 163, 0.141);
-		}
-
-		.select-value-color-pink {
-			background-color: rgba(183, 0, 78, 0.152);
-		}
-
-		.select-value-color-red {
-			background-color: rgba(206, 24, 0, 0.164);
-		}
-
-		.checkbox {
-			display: inline-flex;
-			vertical-align: text-bottom;
-			width: 16;
-			height: 16;
-			background-size: 16px;
-			margin-left: 2px;
-			margin-right: 5px;
-		}
-
-		.checkbox-on {
-			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
-		}
-
-		.checkbox-off {
-			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
-		}
-		/* 文字サイズを全体的に大きくする（Notion書き出しHTML用） */
-		body {
-		font-size: 18px !important;   /* 基準文字サイズをUP */
-		line-height: 1.8 !important;  /* 行間も整えて読みやすく */
-		}
-
-		h1, h2, h3, h4 {
-		font-size: 1.25em !important; /* 見出しは少し控えめに拡大 */
-		line-height: 1.4 !important;
-		}
-		/* ▼ 通常文字を h1 のタイトル文字サイズに合わせる ▼ */
-		summary,
-		summary strong,
-		li,
-		li strong,
-		p,
-		p strong {
-			font-size: 1.4rem !important;   /* ← h1 と同じくらいに調整 */
-			line-height: 1.6 !important;
-		}
-
-		/* トグル(summary)の矢印がタイトルに合わせて大きく表示 */
-		summary::marker {
-			font-size: 1.4rem !important;
-		}
-	</style>
-</head>
-
-<body>
-	<article id="2a35898c-3c37-8069-87ee-e876be68ae42" class="page sans">
-		<header>
-			<h1 class="page-title">storeA</h1>
-			<p class="page-description"></p>
-		</header>
-		<div class="page-body">
-			<h1 id="2b15898c-3c37-8093-bebb-efe9f5713c1b" class="">ホールスタッフマニュアル</h1>
-			<hr id="2b15898c-3c37-801a-b9d7-e20fb3b81efa" />
-			<h2 id="2b15898c-3c37-80f9-96b9-cc80c914de97" class="">1. 基本マナーと役割</h2>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">ホールの役割</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-8056-bebd-c5d9c91389a4" class="bulleted-list">
-						<li style="list-style-type:disc">お客様の体験最適化</li>
-					</ul>
-					<ul id="2b15898c-3c37-800f-ab67-fca78c2392e1" class="bulleted-list">
-						<li style="list-style-type:disc">キッチンとの橋渡し</li>
-					</ul>
-					<ul id="2b15898c-3c37-80e2-af21-ff5728c9a32d" class="bulleted-list">
-						<li style="list-style-type:disc">店内安全と衛生の維持</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">基本姿勢</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80cd-80c4-e74b7a4899a2" class="bulleted-list">
-						<li style="list-style-type:disc"><strong>笑顔</strong> と <strong>挨拶</strong></li>
-					</ul>
-					<ul id="2b15898c-3c37-80d1-aa5e-f1edf6527b66" class="bulleted-list">
-						<li style="list-style-type:disc"><strong>傾聴</strong> と <strong>復唱</strong></li>
-					</ul>
-					<ul id="2b15898c-3c37-8048-9e45-c11e8c7eb46a" class="bulleted-list">
-						<li style="list-style-type:disc"><strong>清潔</strong> と <strong>整理整頓</strong></li>
-					</ul>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-8063-8267-c3de465e7d9c" />
-			<h2 id="2b15898c-3c37-80c1-82b6-cf1404a6e16c" class="">2. 身だしなみチェック（出勤前1分）</h2>
-			<ul id="2b15898c-3c37-80d9-8028-ea52d2987506" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">清潔な制服と名札</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-8040-ba15-e9c9bad5d997" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">髪はまとめ、爪は短く</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-80b9-baaf-f2096e198066" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">余計なアクセサリーなし</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-8014-8c15-c529ea187564" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">無香料または控えめな香り</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-8060-969f-cb7d6f0e5191" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">靴は滑りにくく清潔</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">NG例とOK例（画像で確認）</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80bc-a9ad-c7da034a9e62" class="bulleted-list">
-						<li style="list-style-type:disc">NG：皺のある制服、派手なアクセサリー</li>
-					</ul>
-					<ul id="2b15898c-3c37-8035-9c61-c53ad528c7c3" class="bulleted-list">
-						<li style="list-style-type:disc">OK：シンプルで清潔感のある装い</li>
-					</ul>
-					<figure id="2b15898c-3c37-8078-9340-cc3fa4c9cb50" class="image"><a href="storeA/1.png"><img
-								style="width:681.984375px" src="storeA/1.png" /></a></figure>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-80b7-9986-c51c71db6e43" />
-			<h2 id="2b15898c-3c37-8083-a392-c33211188ac2" class="">3. 開店準備（オープン作業）</h2>
-			<ol type="1" id="2b15898c-3c37-80c5-b61a-e9429b9286f9" class="numbered-list" start="1">
-				<li>タイムカード → 更衣 → 手洗い → ミーティング</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-808f-bdf5-f34d0fa29466" class="numbered-list" start="2">
-				<li>フロア清掃とテーブルセット</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-801e-ac35-fd0f8e318bbe" class="numbered-list" start="3">
-				<li>本日のおすすめと売切れ確認</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-80b8-9ee3-de9e561cab2d" class="numbered-list" start="4">
-				<li>釣銭と機器の動作確認</li>
-			</ol>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">テーブルセット チェックリスト</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80da-b768-d0203f84c3e2" class="to-do-list">
-						<li>
-							<div class="checkbox checkbox-off"></div> <span
-								class="to-do-children-unchecked">メニューと調味料の補充</span>
-							<div class="indented"></div>
-						</li>
-					</ul>
-					<ul id="2b15898c-3c37-804c-89de-f89be4b84fc4" class="to-do-list">
-						<li>
-							<div class="checkbox checkbox-off"></div> <span
-								class="to-do-children-unchecked">カトラリーの整列</span>
-							<div class="indented"></div>
-						</li>
-					</ul>
-					<ul id="2b15898c-3c37-8002-9e92-e6174a4cded3" class="to-do-list">
-						<li>
-							<div class="checkbox checkbox-off"></div> <span
-								class="to-do-children-unchecked">おしぼり・水の準備</span>
-							<div class="indented"></div>
-						</li>
-					</ul>
-					<ul id="2b15898c-3c37-809e-925a-c0f83327c299" class="to-do-list">
-						<li>
-							<div class="checkbox checkbox-off"></div> <span
-								class="to-do-children-unchecked">椅子と床の最終チェック</span>
-							<div class="indented"></div>
-						</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">動画：基本セットの流れ（仮）</summary>
-				<div class="indented">
-					<figure id="2b15898c-3c37-8085-ae79-ec5ae154729a">
-						<div class="source"><a
-								href="https://youtu.be/tdksLyqXW40?si=9e-W7tWFfwll-iS5">https://youtu.be/tdksLyqXW40?si=9e-W7tWFfwll-iS5</a>
-						</div>
-					</figure>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-8076-9f64-f4e49c59a229" />
-			<h2 id="2b15898c-3c37-80c3-9905-f68d5dc060bf" class="">4. 接客フロー（来店〜退店）</h2>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">4-1. 来店対応（30秒）</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80a0-ad5f-cada1add428c" class="bulleted-list">
-						<li style="list-style-type:disc">明るく「いらっしゃいませ」</li>
-					</ul>
-					<ul id="2b15898c-3c37-8009-aec7-e36298073d66" class="bulleted-list">
-						<li style="list-style-type:disc">人数と予約の有無を確認</li>
-					</ul>
-					<ul id="2b15898c-3c37-80f8-9e70-c50a68bc2603" class="bulleted-list">
-						<li style="list-style-type:disc">ご案内とメニュー・お水提供</li>
-					</ul>
-					<ul id="2b15898c-3c37-80b6-8559-dfff089386b0" class="bulleted-list">
-						<li style="list-style-type:disc">一言：「ご注文がお決まりになりましたらお声がけください」</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">4-2. 注文受付（正確さ重視）</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-800d-aaaf-cf1f2bb398d6" class="bulleted-list">
-						<li style="list-style-type:disc">メモと復唱「○○でよろしいでしょうか？」</li>
-					</ul>
-					<ul id="2b15898c-3c37-8086-a12d-d9918935bc7f" class="bulleted-list">
-						<li style="list-style-type:disc">アレルギー確認</li>
-					</ul>
-					<ul id="2b15898c-3c37-8070-8c74-c368e3839a86" class="bulleted-list">
-						<li style="list-style-type:disc">調理時間の案内</li>
-					</ul>
-					<ul id="2b15898c-3c37-8008-988c-ff03a14f3121" class="bulleted-list">
-						<li style="list-style-type:disc">オーダー送信と番号確認</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">4-3. 提供（安全・迅速）</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80af-98ad-ecfc6b1cfdec" class="bulleted-list">
-						<li style="list-style-type:disc">テーブル番号と品名確認</li>
-					</ul>
-					<ul id="2b15898c-3c37-8052-8876-f767b31b0e18" class="bulleted-list">
-						<li style="list-style-type:disc">「熱くなっております」など注意喚起</li>
-					</ul>
-					<ul id="2b15898c-3c37-80ae-8393-ef7dc1084bc6" class="bulleted-list">
-						<li style="list-style-type:disc">取り皿・取り箸の提案</li>
-					</ul>
-					<ul id="2b15898c-3c37-807b-9bea-f6c816859677" class="bulleted-list">
-						<li style="list-style-type:disc">一言：「ごゆっくりどうぞ」</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">4-4. 食事中フォロー（過不足なく）</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80ab-94f5-c05a54452b7d" class="to-do-list">
-						<li>
-							<div class="checkbox checkbox-off"></div> <span
-								class="to-do-children-unchecked">空皿の下げは確認してから</span>
-							<div class="indented"></div>
-						</li>
-					</ul>
-					<ul id="2b15898c-3c37-805b-a3ca-e7a46255a76d" class="to-do-list">
-						<li>
-							<div class="checkbox checkbox-off"></div> <span
-								class="to-do-children-unchecked">ドリンクの残量チェック</span>
-							<div class="indented"></div>
-						</li>
-					</ul>
-					<ul id="2b15898c-3c37-80cd-bbf4-c9c2720d1f40" class="to-do-list">
-						<li>
-							<div class="checkbox checkbox-off"></div> <span
-								class="to-do-children-unchecked">追加提案はタイミング良く</span>
-							<div class="indented"></div>
-						</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">4-5. 会計〜見送り</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-8005-8840-d7abba62341d" class="bulleted-list">
-						<li style="list-style-type:disc">伝票確認と丁寧な金銭授受</li>
-					</ul>
-					<ul id="2b15898c-3c37-80bc-aaea-cf4b2a1efd12" class="bulleted-list">
-						<li style="list-style-type:disc">お釣りは声出し確認</li>
-					</ul>
-					<ul id="2b15898c-3c37-8095-8baf-f5e8f12c176c" class="bulleted-list">
-						<li style="list-style-type:disc">ドア付近でお見送り「ありがとうございました」</li>
-					</ul>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-800d-80bb-ff6ab975ab47" />
-			<h2 id="2b15898c-3c37-803e-a891-cc48ccfcb7f6" class="">5. バッシング（片付け）</h2>
-			<ul id="2b15898c-3c37-8058-a35d-ee4e7b5c2a5b" class="bulleted-list">
-				<li style="list-style-type:disc">退店後すぐに食器回収</li>
-			</ul>
-			<ul id="2b15898c-3c37-805b-be30-da2c5e973894" class="bulleted-list">
-				<li style="list-style-type:disc">テーブルと椅子の拭き上げ</li>
-			</ul>
-			<ul id="2b15898c-3c37-80f9-a62e-ef412da4be0d" class="bulleted-list">
-				<li style="list-style-type:disc">床のゴミ確認</li>
-			</ul>
-			<ul id="2b15898c-3c37-8073-a05c-f103cca810ed" class="bulleted-list">
-				<li style="list-style-type:disc">セット復元</li>
-			</ul>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">スピードアップのコツ</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80d9-bb09-c4329695bc12" class="bulleted-list">
-						<li style="list-style-type:disc">大皿から順に</li>
-					</ul>
-					<ul id="2b15898c-3c37-8066-ac0f-fdd706820484" class="bulleted-list">
-						<li style="list-style-type:disc">グラスは別持ち</li>
-					</ul>
-					<ul id="2b15898c-3c37-80ab-afa8-fd29e80ddf2a" class="bulleted-list">
-						<li style="list-style-type:disc">トレイは積みすぎない</li>
-					</ul>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-80bb-8c95-ce753193b930" />
-			<h2 id="2b15898c-3c37-8027-90b6-d9fb84684152" class="">6. レジ業務</h2>
-			<ul id="2b15898c-3c37-80bc-b87b-cac5f7391f12" class="bulleted-list">
-				<li style="list-style-type:disc">金額入力 → 預かり確認 → お釣り・レシート</li>
-			</ul>
-			<ul id="2b15898c-3c37-80ca-b309-e33635162298" class="bulleted-list">
-				<li style="list-style-type:disc">現金・カード・QR決済に対応</li>
-			</ul>
-			<ul id="2b15898c-3c37-8072-a349-dbb296a67320" class="bulleted-list">
-				<li style="list-style-type:disc">高額紙幣は偽札チェック</li>
-			</ul>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">レジ締め手順（クローズ）</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80ce-8651-cec889ef1b4e" class="bulleted-list">
-						<li style="list-style-type:disc">売上と伝票照合</li>
-					</ul>
-					<ul id="2b15898c-3c37-802d-b340-c99a94efa5cd" class="bulleted-list">
-						<li style="list-style-type:disc">釣銭チェック</li>
-					</ul>
-					<ul id="2b15898c-3c37-8052-9b45-e9775fd119e4" class="bulleted-list">
-						<li style="list-style-type:disc">金庫保管</li>
-					</ul>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-8067-aa6b-ecc78fd8eddb" />
-			<h2 id="2b15898c-3c37-8080-b23a-c5ccda282b78" class="">7. 電話対応（予約・問い合わせ）</h2>
-			<blockquote id="2b15898c-3c37-8036-a85f-fda3c0404ac7" class="">「お電話ありがとうございます。○○でございます。」</blockquote>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">予約受付フォーマット</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80f2-9f29-ea954127669a" class="bulleted-list">
-						<li style="list-style-type:disc">日時</li>
-					</ul>
-					<ul id="2b15898c-3c37-8053-8572-d32e764dc237" class="bulleted-list">
-						<li style="list-style-type:disc">人数</li>
-					</ul>
-					<ul id="2b15898c-3c37-8069-a2cf-c05c8c470979" class="bulleted-list">
-						<li style="list-style-type:disc">お名前</li>
-					</ul>
-					<ul id="2b15898c-3c37-8000-880f-d2ce38c49d00" class="bulleted-list">
-						<li style="list-style-type:disc">連絡先</li>
-					</ul>
-					<ul id="2b15898c-3c37-80e9-baf5-f2cc2340dc63" class="bulleted-list">
-						<li style="list-style-type:disc">特別な要望</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">復唱テンプレ</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-807a-bac3-f62cf0d92c98" class="bulleted-list">
-						<li style="list-style-type:disc">「○月○日○時から○名様、○○様で承りました」</li>
-					</ul>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-805d-a946-d28c05299b99" />
-			<h2 id="2b15898c-3c37-8075-beb3-e959926e07df" class="">8. クレーム対応（基本7ステップ）</h2>
-			<ol type="1" id="2b15898c-3c37-80b1-8fa7-eaa19b9d12c4" class="numbered-list" start="1">
-				<li>謝罪</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-801c-8455-c8266ee723bb" class="numbered-list" start="2">
-				<li>傾聴</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-8014-8a98-e1806be06418" class="numbered-list" start="3">
-				<li>共感</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-8001-91f4-d59f1c059f7a" class="numbered-list" start="4">
-				<li>事実確認</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-806b-8b18-c468b6952ae9" class="numbered-list" start="5">
-				<li>報告</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-8047-8c64-de868523ccb7" class="numbered-list" start="6">
-				<li>代替案提示</li>
-			</ol>
-			<ol type="1" id="2b15898c-3c37-809c-a4d7-f4f3dfb19b88" class="numbered-list" start="7">
-				<li>再謝罪</li>
-			</ol>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">事例別トグル</summary>
-				<div class="indented">
-					<details open="">
-						<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">料理が遅い</summary>
-						<div class="indented">
-							<ul id="2b15898c-3c37-8095-9c21-c29866544f2e" class="bulleted-list">
-								<li style="list-style-type:disc">厨房確認</li>
-							</ul>
-							<ul id="2b15898c-3c37-8086-9dd1-d0f5184587b9" class="bulleted-list">
-								<li style="list-style-type:disc">残り時間案内</li>
-							</ul>
-							<ul id="2b15898c-3c37-80e5-9467-cb88ed69ff99" class="bulleted-list">
-								<li style="list-style-type:disc">必要あれば代替提案</li>
-							</ul>
-						</div>
-					</details>
-					<details open="">
-						<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">注文違い</summary>
-						<div class="indented">
-							<ul id="2b15898c-3c37-807a-afe3-e7bbedacda73" class="bulleted-list">
-								<li style="list-style-type:disc">即謝罪と作り直し</li>
-							</ul>
-							<ul id="2b15898c-3c37-8015-ae2a-e3eed4deb73a" class="bulleted-list">
-								<li style="list-style-type:disc">正しい料理を最優先</li>
-							</ul>
-						</div>
-					</details>
-					<details open="">
-						<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">異物混入</summary>
-						<div class="indented">
-							<ul id="2b15898c-3c37-80bd-ad0b-e367800a0ee2" class="bulleted-list">
-								<li style="list-style-type:disc">即時回収と責任者報告</li>
-							</ul>
-							<ul id="2b15898c-3c37-80b3-872b-e3aef1ba6279" class="bulleted-list">
-								<li style="list-style-type:disc">作り直しや返金判断</li>
-							</ul>
-						</div>
-					</details>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-80e2-9818-f4525cc70129" />
-			<h2 id="2b15898c-3c37-80c7-ae85-ea4043d9e220" class="">9. 連携と合図（声かけルール）</h2>
-			<ul id="2b15898c-3c37-80ea-92f3-e8ae08906ae6" class="bulleted-list">
-				<li style="list-style-type:disc">「○番テーブル、お水」</li>
-			</ul>
-			<ul id="2b15898c-3c37-808c-bad8-dc3e186c5738" class="bulleted-list">
-				<li style="list-style-type:disc">「△番テーブル、お会計」</li>
-			</ul>
-			<ul id="2b15898c-3c37-8042-a98d-d3e254bc7731" class="bulleted-list">
-				<li style="list-style-type:disc">バックヤードでは短くはっきり</li>
-			</ul>
-			<hr id="2b15898c-3c37-806b-a041-d0cb007170b7" />
-			<h2 id="2b15898c-3c37-8045-b475-f5a77d68d5c4" class="">10. 安全・衛生</h2>
-			<ul id="2b15898c-3c37-80c5-a04b-f583a2ea978e" class="bulleted-list">
-				<li style="list-style-type:disc">手洗いポイントと頻度</li>
-			</ul>
-			<ul id="2b15898c-3c37-80e6-b110-cc91232fbedc" class="bulleted-list">
-				<li style="list-style-type:disc">交差汚染を防ぐ取り扱い</li>
-			</ul>
-			<ul id="2b15898c-3c37-8098-b227-d17e3285765f" class="bulleted-list">
-				<li style="list-style-type:disc">転倒防止と危険物の管理</li>
-			</ul>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">音声メモ（仮）</summary>
-				<div class="indented">
-					<p id="2b15898c-3c37-8099-8b56-dd292b753c24" class="">
-					</p>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-80ba-8635-f8ad015f5c1f" />
-			<h2 id="2b15898c-3c37-80eb-a824-ef85181a30da" class="">付録A：言い回しリスト（そのまま使える）</h2>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">ご案内</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80f4-b268-e93e28224402" class="bulleted-list">
-						<li style="list-style-type:disc">「○名様ですね。こちらへどうぞ」</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">復唱</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80a3-83d2-faaa88069534" class="bulleted-list">
-						<li style="list-style-type:disc">「ご注文を復唱いたします。○○と△△」</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">提供時</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-805e-8e02-f1f41d389ff7" class="bulleted-list">
-						<li style="list-style-type:disc">「大変熱くなっております。お気をつけください」</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">会計時</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-8031-b766-df96da1359f5" class="bulleted-list">
-						<li style="list-style-type:disc">「○○円お預かりいたします」</li>
-					</ul>
-				</div>
-			</details>
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">見送り</summary>
-				<div class="indented">
-					<ul id="2b15898c-3c37-80b5-8b38-c84db366631a" class="bulleted-list">
-						<li style="list-style-type:disc">「ありがとうございました。またお待ちしております」</li>
-					</ul>
-				</div>
-			</details>
-			<hr id="2b15898c-3c37-806a-9039-f30162d7b8dc" />
-			<h2 id="2b15898c-3c37-80ad-bd20-e780fefc4ffc" class="">付録B：チェックリストまとめ</h2>
-			<ul id="2b15898c-3c37-8037-be8f-efb839f7376f" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">身だしなみ</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-80b7-8b88-f16413cd1049" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">開店準備</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-8042-bbe7-f391c1dae741" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">接客フロー</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-806a-b2cb-cc798b5f4926" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">バッシング</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-8039-b75c-faddd3b53f6e" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">レジ締め</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<ul id="2b15898c-3c37-8049-baab-d0ac2be8c352" class="to-do-list">
-				<li>
-					<div class="checkbox checkbox-off"></div> <span class="to-do-children-unchecked">クレーム対応ポイント</span>
-					<div class="indented"></div>
-				</li>
-			</ul>
-			<hr id="2b15898c-3c37-8005-8f88-c5193d5a0449" />
-			<details open="">
-				<summary style="font-weight:600;font-size:1.25em;line-height:1.3;margin:0">マニュアルの使い方（運用）</summary>
-			</details>
-			<ul id="2b15898c-3c37-801d-ac40-ed1bae4e3e63" class="bulleted-list">
-				<li style="list-style-type:disc">週1回5分の見直し</li>
-			</ul>
-			<ul id="2b15898c-3c37-808d-a975-cd0b0a2b934a" class="bulleted-list">
-				<li style="list-style-type:disc">気づきは付箋で追記</li>
-			</ul>
-			<ul id="2b15898c-3c37-804b-9e78-efbcc485dddb" class="bulleted-list">
-				<li style="list-style-type:disc">新人研修は上から順にトグルで進行</li>
-			</ul>
-		</div>
-	</article><span class="sans" style="font-size:14px;padding-top:2em"></span>
-</body>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nice_sweets レシピマニュアル</title>
+  <style>
+	body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;margin:0;background:#f8f9fa;color:#111;line-height:1.7;font-size:16px}
+	.wrapper{max-width:520px;margin:0 auto;padding:14px}
+	h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0}
+	.desc{text-align:center;font-size:13px;color:#6b7280;margin:0 0 18px}
+	.section{background:#fff;border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.1)}
+	.header{padding:12px;display:flex;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
+	.header-title{font-size:16px;font-weight:600}
+	.sub-title{font-size:13px;color:#6b7280}
+	.arrow{transition:.2s}
+	.open>.header .arrow{transform:rotate(90deg)}
+	.body{display:none;padding:12px;background:#f9fafb}
+	.open>.body{display:block}
+	.steps{margin:10px 0 0}
+	.steps li{margin-bottom:8px;font-size:15px}
+	.step-note{margin:4px 0 0 12px;font-size:13px;color:#b45309}
+	.img-box{margin-top:12px;border-radius:10px;background:#e5e7eb;padding:10px;text-align:center}
+	.img-box img{max-width:100%;border-radius:8px}
+	.point{margin-top:12px;padding:10px;background:#fff7ed;border-left:4px solid #fb923c;border-radius:6px;font-size:14px;color:#b45309}
+	.ingredient-box{margin-top:12px;padding:12px;border-radius:10px;background:#fee2e2;border:1px solid #fecaca}
+	.ingredient-box h4{margin:0 0 6px;font-size:14px;color:#b91c1c}
+	.ingredient-box p{margin:4px 0;font-size:14px}
+	.ingredient-box .note{margin-top:6px;font-size:13px;color:#b91c1c;font-weight:600}
+	.body .section{margin:12px 0 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  </style>
 <script>
-	document.addEventListener("DOMContentLoaded", () => {
-		document.querySelectorAll("details[open]").forEach(d => d.removeAttribute("open"));
-	});
-</script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
 
+      if (!userId || !store || !type) {
+        console.warn("チェックロード不可: userId/store/type が不足");
+        return;
+      }
+
+      const res = await fetch(
+        `/${store}/api/manual-check?userId=${userId}&type=${type}`
+      );
+      // 🔽 JSON 以外は無視（HTMLが返ってきても落ちない）
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        console.warn("manual-check が JSON を返していません");
+        return;
+      }
+
+      const data = await res.json();
+
+      // 反映
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        el.checked = data[key] === true;
+      });
+    }
+
+
+    // チェック変更イベント
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;   // ← これを必ず使う
+      const type   = window.MANUAL_TYPE;
+
+      if (!userId || !store || !type) {
+        console.warn("toggleCheck: 必要な情報が不足しています");
+        return;
+      }
+
+      const res = await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          type,
+          recipeId: key
+        })
+      });
+
+      const out = await res.json();
+      console.log("CHECK UPDATED:", out);
+    }
+
+    window.addEventListener("DOMContentLoaded", loadChecks);
+  </script>
+
+  <script>
+    function saveCheck(key) {
+      toggleCheck(key);
+    }
+  </script>
+</head>
+<body>
+<div class="wrapper">
+  <h1>nice_sweets レシピマニュアル</h1>
+  <div class="desc">スマホで確認できるデザート調理マニュアル</div>
+
+  <!-- アイス -->
+  <div class="section">
+    <div class="header"><div><div class="header-title">アイス</div><div class="sub-title">各種 ¥800</div></div><div class="arrow">▶</div></div>
+    <div class="body">
+
+      <!-- いちごアイス -->
+      <div class="section"><div class="header"><div class="header-title">いちごアイス</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>カップにアイスを巻く</li><li>いちご３きれ・チョコケーキ５きれ盛付</li><li>クッキーを写真のように盛り付け、スプーンを挿して完成</li></ol>
+          <div class="point">※ シールを必ず貼る</div>
+          <div class="img-box"><img src="nice_sweets/image.png"></div>
+        </div>
+      </div>
+
+      <!-- オレオアイス -->
+      <div class="section"><div class="header"><div class="header-title">オレオアイス</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>カップにアイスを巻く</li><li>チョコソースをかける（適量）</li><li>粉々オレオを盛り付け</li><li>画像より小さくなっているが、オレオを良い感じに３枚載せる</li><li>クッキーを写真の様に盛り付け、スプーンを挿して完成</li></ol>
+          <div class="point">※ シールを必ず貼る</div>
+          <div class="img-box"><img src="nice_sweets/image%201.png"></div>
+        </div>
+      </div>
+
+      <!-- チョコバナナアイス -->
+      <div class="section"><div class="header"><div class="header-title">チョコバナナアイス</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>カップにアイスを巻く</li><li>チョコソースをかける（適量）</li><li>バナナ３きれ・チョコケーキ５きれ盛付</li><li>クッキーを写真の様に盛り付け、スプーンを挿して完成</li></ol>
+          <div class="point">※ シールを必ず貼る</div>
+          <div class="img-box"><img src="nice_sweets/image%202.png"></div>
+        </div>
+      </div>
+
+      <!-- キャラメルアイス -->
+      <div class="section"><div class="header"><div class="header-title">キャラメルアイス</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>カップにアイスを巻く</li><li>キャラメルソースをかける（適量）</li><li>チーズケーキ５きれ盛付</li><li>クッキーを写真の様に盛り付け、スプーンを挿して完成</li></ol>
+          <div class="point">※ シールを必ず貼る</div>
+          <div class="img-box"><img src="nice_sweets/image%203.png"></div>
+        </div>
+      </div>
+
+      <!-- 抹茶アイス -->
+      <div class="section"><div class="header"><div class="header-title">抹茶アイス</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>カップにアイスを巻く</li><li>抹茶粉をかける（適量）</li><li>あんこ適量を盛り付ける</li><li>クッキーを写真の様に盛り付け、スプーンを挿して完成</li></ol>
+          <div class="point">※ シールを必ず貼る</div>
+          <div class="img-box"><img src="nice_sweets/image%204.png"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- クロッフル -->
+  <div class="section">
+    <div class="header"><div><div class="header-title">クロッフル</div><div class="sub-title">各種 ¥800</div></div><div class="arrow">▶</div></div>
+    <div class="body">
+
+      <div class="section"><div class="header"><div class="header-title">クロッフルの焼き方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>解凍済みクロワッサン生地に砂糖をふんだんに振りかける<div class="step-note">※ １～２パックは冷凍庫から冷蔵庫へ解凍しておくこと</div></li><li>プレートに置く前に生地を伸ばしておく<br>プレートに置いたらタイマー５分くらいに合わす<div class="step-note">※ 焼く前に余熱（３分くらい）温めておく</div></li><li>焼き終えたら棒を挿して置いておく</li><li>注文が入ったら電子レンジでちょっとだけ温めて完成（また何秒温めるか教えてください）</li></ol>
+          <div class="img-box"><img src="nice_sweets/nice_sweets.png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">いちごクロッフル</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>生クリームをふんだんに（クロッフルが見えないくらい）にかける</li><li>いちご４きれ・チーズ８きれ盛り付け</li><li>いちごソース（適量）をかけて完成</li></ol>
+          <div class="img-box"><img src="nice_sweets/image%205.png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">オレオクロッフル</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>生クリームをふんだんに（クロッフルが見えないくらい）にかける</li><li>オレオ４枚・粉々オレオ（適量）を盛付ける</li><li>チョコソース（適量）をかけて完成</li></ol>
+          <div class="img-box"><img src="nice_sweets/image%206.png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">チョコバナナクロッフル</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>生クリームをふんだんに（クロッフルが見えないくらい）にかける</li><li>バナナ４きれ・チョコケーキ８きれを盛付ける</li><li>チョコソース（適量）をかけて完成</li></ol>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="header"><div><div class="header-title">チュロス</div><div class="sub-title">各種 ¥800<br>チュロス＆アイス ¥1000</div></div><div class="arrow">▶</div></div>
+    <div class="body">
+
+      <div class="section"><div class="header"><div class="header-title">チュロスの焼き方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>冷凍のままチュロスを取出し温度２５０度、時間４分で焼く<div class="step-note">※ チョコとミルクを４本ずつ一気に</div></li><li>焼きあがったら半分に切る<div class="step-note">※ 焼く前に余熱（３分くらい）温めておく</div><br>焼き終えたらどこかに置いておく</li><li>注文が入ったら電子レンジでちょっとだけ温めて完成（また何秒温めるか教えてください）</li></ol>
+          <div class="img-box"><img src="nice_sweets/%E5%90%8D%E7%A7%B0%E6%9C%AA%E8%A8%AD%E5%AE%9A%E3%81%AE%E3%83%87%E3%82%B6%E3%82%A4%E3%83%B3_(16).png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">チュロス単品の作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>注文が入ったら窓付き容器にペーパーシートを敷いてチュロスを置く<div class="step-note">※ 各種3本ずつ</div></li><li>窓付き容器を閉めたら完成<div class="step-note">※ シールを必ず貼る事</div></li><li>いちごソース（適量）をかけて完成</li></ol>
+          <div class="img-box"><img src="nice_sweets/%E5%90%8D%E7%A7%B0%E6%9C%AA%E8%A8%AD%E5%AE%9A%E3%81%AE%E3%83%87%E3%82%B6%E3%82%A4%E3%83%B3_(17).png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">チュロス＆アイスの作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>アサイーカップの端っこに見本写真のようにアイスを巻く</li><li>生クリームアイスの横に巻いてチョコソースをかける</li><li>空いている隙間にチュロス２本ずつトッピングで完成<div class="step-note">※ シールを必ず貼る事</div></li></ol>
+          <div class="img-box"><img src="nice_sweets/image%208.png"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="header"><div><div class="header-title">フレンチトースト</div><div class="sub-title">各種 ¥800<br>フレンチ＆アイス ¥1000</div></div><div class="arrow">▶</div></div>
+    <div class="body">
+
+      <div class="section"><div class="header"><div class="header-title">フレンチトーストの焼き方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>フレンチトーストを冷凍のまま取出し６５０Wの２分で焼く<div class="step-note">※ フレンチトーストは作り置き✕</div></li><li>焼きあがったらフレンチトーストを合計９きれになるように切る</li><li>切ったらもう一度温める<br>６５０Wの１分３０秒</li></ol>
+          <div class="img-box"><img src="nice_sweets/%E5%90%8D%E7%A7%B0%E6%9C%AA%E8%A8%AD%E5%AE%9A%E3%81%AE%E3%83%87%E3%82%B6%E3%82%A4%E3%83%B3_(18).png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">フレンチトースト単品の作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>注文が入り焼き終わったら写真の様に入れる<div class="step-note">※ フォークを渡すの忘れずに！</div></li></ol>
+          <div class="img-box"><img src="nice_sweets/image%209.png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">フレンチ＆アイスの作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>注文が入り焼き終わったら写真の様に入れる</li><li>アイスをその上に巻く<div class="step-note">※ フレンチトーストは熱いのでアイスがすぐ溶ける為すぐの提供をお願いします</div></li></ol>
+          <div class="img-box"><img src="nice_sweets/image%2010.png"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="header"><div><div class="header-title">ジュース</div><div class="sub-title">各種 ¥750<br>大きいミキサーで！</div></div><div class="arrow">▶</div></div>
+    <div class="body">
+
+      <div class="section"><div class="header"><div class="header-title">いちごジュースの作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>ミキサーに下記の材料を入れて攪拌する<br>・解凍したカットイチゴ１００g<br>・牛乳１５０g<br>・はちみつ２０g</li><li>カップに氷を２，３個入れて攪拌したジュースに入れる<div class="step-note">※ シールを必ず貼る事</div></li></ol>
+          <div class="img-box"><img src="nice_sweets/image%2011.png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">マンゴージュースの作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>ミキサーに下記の材料を入れて攪拌する<br>・解凍したマンゴー１００g<br>・牛乳１５０g<br>・はちみつ２０g</li><li>カップに氷を２，３個入れて攪拌したジュースに入れる<div class="step-note">※ シールを必ず貼る事</div></li></ol>
+          <div class="img-box"><img src="nice_sweets/0a93fe91-87f8-40fb-a75a-957d4f822346.png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">バナナジュースの作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>ミキサーに下記の材料を入れて攪拌する<br>・バナナ１００g<br>・牛乳１５０g<br>・はちみつ２０g</li><li>カップに氷を２，３個入れて攪拌したジュースに入れる<div class="step-note">※ シールを必ず貼る事</div></li></ol>
+          <div class="img-box"><img src="nice_sweets/c7bdc220-6420-4b84-a937-a098187dc1ab.png"></div>
+        </div>
+      </div>
+
+      <div class="section"><div class="header"><div class="header-title">アサイージュースの作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps"><li>ミキサーに下記の材料を入れて攪拌する<br>・アサイーの原料１００g<br>・牛乳１５０g<br>・はちみつ２０g</li><li>カップに氷を２，３個入れて攪拌したジュースに入れる<div class="step-note">※ シールを必ず貼る事</div></li></ol>
+          <div class="img-box"><img src="nice_sweets/image%2012.png"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="header"><div><div class="header-title">アサイーボウル</div><div class="sub-title">¥1300</div></div><div class="arrow">▶</div></div>
+    <div class="body">
+
+      <div class="section"><div class="header"><div class="header-title">アサイーボウルの作り方</div><div class="arrow">▶</div></div>
+        <div class="body">
+          <ol class="steps">
+			<li>作り置きしてあるアサイーをカップに２００ｇ入れて平らにする<div class="step-note">※ 人によって量違うとのクレームが来るので注意</div></li>
+			<li>平らにした所にグラノーラを１ｃｍくらい敷いてバナナ（約１０きれ）載せる</li>
+			<li>お客さんから聞いたトッピングを店員さん自分好みでいいので盛り付ける<div class="step-note">※ 使う量は合わせてください</div></li>
+			<li>蓋を閉めて蓋の上にシールを貼って完成</li>
+		  </ol>
+		  <div class="ingredient-box">
+            <h4>🍓 トッピング内容</h4>
+            <p><strong>いちご2個（8きれ）・カットいちご（スプーン2杯）</strong></p>
+            <p><strong>キウイ（スプーン2杯）・マンゴー（2掴み）</strong></p>
+            <p><strong>ブルーベリー（スプーン2杯）・ケーキ類（5個）</strong></p>
+            <p><strong>オレオ（5枚）・粉々オレオ（スプーン2杯）</strong></p>
+            <div class="note">※ カットいちごとブルーベリーは冷凍で！</div>
+          </div>
+          <div class="img-box"><img src="nice_sweets/image%2013.png"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  document.querySelectorAll('.section > .header').forEach(h=>{
+    h.addEventListener('click',e=>{
+      e.stopPropagation();
+      h.parentElement.classList.toggle('open');
+    });
+  });
+})();
+</script>
+</body>
 </html>

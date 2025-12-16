@@ -116,45 +116,56 @@
       margin-bottom: 4px;
     }
   </style>
-  <script>
+<script>
     async function loadChecks() {
       const userId = window.MANUAL_USER_ID;
       const store  = window.MANUAL_STORE;
-      const type   = window.MANUAL_TYPE;   // ← これが重要（undefined の原因だった）
+      const type   = window.MANUAL_TYPE;
 
       if (!userId || !store || !type) {
         console.warn("チェックロード不可: userId/store/type が不足");
         return;
       }
 
-      const res = await fetch(`/${store}/manual-check?userId=${userId}&type=${type}`);
-      if (!res.ok) return;
-
-      let data = {};
-      try {
-        data = await res.json();
-      } catch (e) {
-        console.error("JSON parse error:", e);
+      const res = await fetch(
+        `/${store}/api/manual-check?userId=${userId}&type=${type}`
+      );
+      // 🔽 JSON 以外は無視（HTMLが返ってきても落ちない）
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        console.warn("manual-check が JSON を返していません");
         return;
       }
+
+      const data = await res.json();
 
       // 反映
       document.querySelectorAll(".check-item").forEach(el => {
         const key = el.dataset.key;
-        if (data[key] === true) el.checked = true;
+        el.checked = data[key] === true;
       });
     }
+
 
     // チェック変更イベント
     async function toggleCheck(key) {
       const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;
+      const store  = window.MANUAL_STORE;   // ← これを必ず使う
       const type   = window.MANUAL_TYPE;
+
+      if (!userId || !store || !type) {
+        console.warn("toggleCheck: 必要な情報が不足しています");
+        return;
+      }
 
       const res = await fetch(`/${store}/manual-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, type, recipeId: key })
+        body: JSON.stringify({
+          userId,
+          type,
+          recipeId: key
+        })
       });
 
       const out = await res.json();
