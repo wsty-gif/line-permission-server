@@ -858,7 +858,7 @@ app.get("/:store/admin", ensureStore, async (req, res) => {
         <a href="/${store}/admin/settings">店舗設定</a>
       -->
       <a href="/${store}/admin/manual-logs"
-        style="display:block;margin-top:20px;padding:12px;
+        style="display:block;padding:12px;
                 background:#2563eb;color:white;border-radius:8px;
                 text-align:center;text-decoration:none;">
         マニュアル閲覧ログ
