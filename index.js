@@ -3303,32 +3303,57 @@ app.get("/:store/admin/manual-check", ensureStore, async (req, res) => {
 // ① チェック保存（従業員がチェックを付けた）
 // ===============================
 app.post("/:store/manual-check", ensureStore, async (req, res) => {
-  try {
-    const { store } = req.params;
-    const { userId, recipeId } = req.body;
+  const { store } = req.params;
+  const { userId, recipeId, type } = req.body;
 
-    if (!userId || !recipeId) {
-      return res.status(400).json({ error: "userId と recipeId が必要です。" });
-    }
-
-    await db
-      .collection("companies")
-      .doc(store)
-      .collection("manualCheck")
-      .doc(userId)
-      .set(
-        {
-          [recipeId]: true, // 1つの項目だけ更新
-        },
-        { merge: true }
-      );
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error("manual-check POST error:", err);
-    res.status(500).json({ error: "保存に失敗しました。" });
+  if (!userId || !recipeId) {
+    return res.status(400).json({
+      error: "userId と recipeId が必要です。"
+    });
   }
+
+  // 権限チェック
+  const permDoc = await db
+    .collection("companies")
+    .doc(store)
+    .collection("permissions")
+    .doc(userId)
+    .get();
+
+  if (!permDoc.exists) {
+    return res.status(404).json({ error: "権限申請が未登録です。" });
+  }
+  if (!permDoc.data().approved) {
+    return res.status(403).json({ error: "承認待ちです。" });
+  }
+
+  const ref = db
+    .collection("companies")
+    .doc(store)
+    .collection("manualCheck")
+    .doc(userId);
+
+  const snap = await ref.get();
+  const current = snap.exists ? snap.data() : {};
+
+  // ★ true / false をトグル
+  const newValue = current[recipeId] === true ? false : true;
+
+  await ref.set(
+    {
+      [recipeId]: newValue,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    },
+    { merge: true }
+  );
+
+  res.json({
+    success: true,
+    recipeId,
+    value: newValue
+  });
 });
+
 
 // ===============================
 // ② チェック読み込み（従業員が何を理解済みか）
