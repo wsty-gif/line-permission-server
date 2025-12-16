@@ -1291,7 +1291,56 @@ await db
   return res.redirect(`/${store}/manual-view?userId=${userId}&type=${type}`);
 });
 
+// ✅ チェック状態取得（JSON専用）
+app.get("/:store/api/manual-check", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, type } = req.query;
 
+  if (!userId || !type) {
+    return res.status(400).json({});
+  }
+
+  const snap = await db
+    .collection("companies")
+    .doc(store)
+    .collection("manualCheck")
+    .doc(userId)
+    .get();
+
+  if (!snap.exists) {
+    return res.json({});
+  }
+
+  // type ごとのみ返す
+  const data = snap.data()[type] || {};
+  return res.json(data);
+});
+
+// ✅ チェック更新（ON / OFF 両対応）
+app.post("/:store/api/manual-check", ensureStore, async (req, res) => {
+  const { store } = req.params;
+  const { userId, type, key, checked } = req.body;
+
+  if (!userId || !type || !key) {
+    return res.status(400).json({ error: "不足しています" });
+  }
+
+  await db
+    .collection("companies")
+    .doc(store)
+    .collection("manualCheck")
+    .doc(userId)
+    .set(
+      {
+        [type]: {
+          [key]: checked === true
+        }
+      },
+      { merge: true }
+    );
+
+  return res.json({ success: true });
+});
 
 
 // ============================================
