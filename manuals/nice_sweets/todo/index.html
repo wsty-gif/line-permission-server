@@ -1,4 +1,4 @@
-<!-- nice_sweets：全項目をカード型アコーディオンUIで統一（スマホ最適化） -->
+<!-- nice_sweets：レジマニュアル（カード型アコーディオン・チェック統合版） -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -6,171 +6,100 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nice_sweets レジマニュアル</title>
   <style>
-	body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;margin:0;background:#f8f9fa;color:#111;line-height:1.7;font-size:16px}
-	.wrapper{max-width:520px;margin:0 auto;padding:14px}
-	h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0}
-	.desc{text-align:center;font-size:13px;color:#6b7280;margin:0 0 18px}
-	.section{background:#fff;border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.1)}
-	.header{padding:12px;display:flex;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
-	.header-title{font-size:16px;font-weight:600}
-	.sub-title{font-size:13px;color:#6b7280}
-	.arrow{transition:.2s}
-	.open>.header .arrow{transform:rotate(90deg)}
-	.body{display:none;padding:12px;background:#f9fafb}
-	.open>.body{display:block}
-	.steps{margin:10px 0 0}
-	.steps li{margin-bottom:8px;font-size:15px}
-	.step-note{margin:4px 0 0 12px;font-size:13px;color:#b45309}
-	.img-box{margin-top:12px;border-radius:10px;background:#e5e7eb;padding:10px;text-align:center}
-	.img-box img{max-width:100%;border-radius:8px}
-	.point{margin-top:12px;padding:10px;background:#fff7ed;border-left:4px solid #fb923c;border-radius:6px;font-size:14px;color:#b45309}
-	.ingredient-box{margin-top:12px;padding:12px;border-radius:10px;background:#fee2e2;border:1px solid #fecaca}
-	.ingredient-box h4{margin:0 0 6px;font-size:14px;color:#b91c1c}
-	.ingredient-box p{margin:4px 0;font-size:14px}
-	.ingredient-box .note{margin-top:6px;font-size:13px;color:#b91c1c;font-weight:600}
-	.body .section{margin:12px 0 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;margin:0;background:#f8f9fa;color:#111;line-height:1.7;font-size:16px}
+    .wrapper{max-width:520px;margin:0 auto;padding:14px}
+    h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0 16px}
+
+    .section{background:#fff;border-radius:14px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+    .header{padding:14px 14px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+    .header-title{font-size:16px;font-weight:700}
+    .arrow{transition:.25s;font-size:18px}
+    .open>.header .arrow{transform:rotate(90deg)}
+
+    .body{display:none;padding:12px 14px;background:#f9fafb}
+    .open>.body{display:block}
+
+    .steps{margin:0;padding-left:18px}
+    .steps li{margin:8px 0;font-size:15px}
+    .step-note{margin:4px 0 0 0;font-size:13px;color:#b45309}
+
+    .img-box{margin:12px 0 4px;border-radius:12px;background:#eef2f7;padding:10px;text-align:center}
+    .img-box img{max-width:100%;border-radius:10px}
+
+    .check-wrap{display:flex;align-items:center;gap:8px;padding:10px 14px 14px}
+    .check-wrap input{width:18px;height:18px}
+    .check-wrap label{font-size:14px;color:#374151}
   </style>
-<script>
-    async function loadChecks() {
-      const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;
-      const type   = window.MANUAL_TYPE;
-
-      if (!userId || !store || !type) {
-        console.warn("チェックロード不可: userId/store/type が不足");
-        return;
-      }
-
-      const res = await fetch(
-        `/${store}/api/manual-check?userId=${userId}&type=${type}`
-      );
-      // 🔽 JSON 以外は無視（HTMLが返ってきても落ちない）
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        console.warn("manual-check が JSON を返していません");
-        return;
-      }
-
-      const data = await res.json();
-
-      // 反映
-      document.querySelectorAll(".check-item").forEach(el => {
-        const key = el.dataset.key;
-        el.checked = data[key] === true;
-      });
-    }
-
-
-    // チェック変更イベント
-    async function toggleCheck(key) {
-      const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;   // ← これを必ず使う
-      const type   = window.MANUAL_TYPE;
-
-      if (!userId || !store || !type) {
-        console.warn("toggleCheck: 必要な情報が不足しています");
-        return;
-      }
-
-      const res = await fetch(`/${store}/manual-check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          type,
-          recipeId: key
-        })
-      });
-
-      const out = await res.json();
-      console.log("CHECK UPDATED:", out);
-    }
-
-    window.addEventListener("DOMContentLoaded", loadChecks);
-  </script>
-
-  <script>
-    function saveCheck(key) {
-      toggleCheck(key);
-    }
-  </script>
 </head>
 <body>
 <div class="wrapper">
-	<h1>nice_sweets レジマニュアル</h1>
-	<!-- レジオープン（開店時） -->
-	<div class="section">
-		<div class="header">
-			<div class="header-title recipe-name" data-recipe-id="レジオープン（開店時）">レジオープン（開店時）</div>
-			<div class="arrow">▶</div>
-		</div>
-		<div class="body">
-			<ol class="steps">
-				<li>USENレジアプリをタップ</li>
-				<li>担当者から自分の名前を選択</li>
-				<li>パスワード：「<strong>nice1111</strong>」<strong>（共通）</strong>を入力し、「<strong>Login</strong>」を押す</li>
-				<li>必ず金種別で金額確認を行う</li>
-				<li>「<strong>即会計</strong>」を押す</li>
-				<li>担当者選択から自分の名前を選択</li>
-				<li>担当者から自分の名前を選択</li>
-			</ol>
-			<div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image.png"></div>
-		</div>
-		<div class="check-wrap">
-			<input type="checkbox" class="check-item" data-key="レジオープン（開店時）" onclick="toggleCheck('レジオープン（開店時）')">
-			<label for="chk-potato">この項目を理解しました</label>
-		</div>
-		</div>
-	</div>
+  <h1>nice_sweets レジマニュアル</h1>
 
-	<!-- 注文操作（会計） -->
-	<div class="section">
-		<div class="header">
-			<div class="header-title recipe-name" data-recipe-id="注文操作（会計）">注文操作（会計）</div>
-			<div class="arrow">▶</div>
-		</div>
-		<div class="body">
-			<ol class="steps">
-				<li>「<strong>注文</strong>」を押す</li>
-				<li>注文内容を選択し、「<strong>注文確定</strong>」を押す（個数も確認する）</li>
-				<li>お預かり金額を入力し、「<strong>会計完了</strong>」を押す</li>
-				<li>（お客様情報画面）「<strong>登録</strong>」を押す</li>
-				<li>会計完了画面で「<strong>レシート発行</strong>」を押す（必ず！）
-					<div class="step-note">※ 領収書が必要な場合は「<strong>領収書発行</strong>」を押す</div>
-				</li>
-			</ol>
-			<div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image%201.png"></div>
-		</div>
-		<div class="check-wrap">
-			<input type="checkbox" class="check-item" data-key="レジオープン（開店時）" onclick="toggleCheck('レジオープン（開店時）')">
-			<label for="chk-potato">この項目を理解しました</label>
-		</div>
-		</div>
-	</div>
+  <!-- レジオープン -->
+  <div class="section">
+    <div class="header">
+      <div class="header-title">レジオープン（開店時）</div>
+      <div class="arrow">▶</div>
+    </div>
+    <div class="body">
+      <ol class="steps">
+        <li>USENレジアプリをタップ</li>
+        <li>担当者から自分の名前を選択</li>
+        <li>パスワード「<strong>nice1111</strong>」を入力し <strong>Login</strong></li>
+        <li>必ず金種別で金額確認を行う</li>
+        <li><strong>即会計</strong> を押す</li>
+      </ol>
+      <div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image.png"></div>
+    </div>
+    <div class="check-wrap">
+      <input type="checkbox" class="check-item" data-key="レジオープン（開店時）" onclick="toggleCheck('レジオープン（開店時）')">
+      <label>この項目を理解しました</label>
+    </div>
+  </div>
 
-	<!-- レジクローズ（閉店時） -->
-	<div class="section">
-		<div class="header">
-			<div class="header-title recipe-name" data-recipe-id="レジクローズ（閉店時）">レジクローズ（閉店時）</div>
-			<div class="arrow">▶</div>
-		</div>
-		<div class="body">
-			<ol class="steps">
-				<li>「<strong>レジクローズ</strong>」を押す</li>
-				<li>「<strong>金種別入力</strong>」を押す</li>
-				<li>レジを鍵で開けて金種別で数える</li>
-				<li>金種別で数字を入力し、「<strong>確定</strong>」を押す</li>
-				<li>「<strong>確定</strong>」を押す</li>
-				<li>（確認画面）「<strong>OK</strong>」を押す</li>
-			</ol>
-			<div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image%202.png"></div>
-		</div>
-		<div class="check-wrap">
-			<input type="checkbox" class="check-item" data-key="レジクローズ（閉店時）" onclick="toggleCheck('レジクローズ（閉店時）')">
-			<label for="chk-potato">この項目を理解しました</label>
-		</div>
-		</div>
-	</div>
+  <!-- 注文操作 -->
+  <div class="section">
+    <div class="header">
+      <div class="header-title">注文操作（会計）</div>
+      <div class="arrow">▶</div>
+    </div>
+    <div class="body">
+      <ol class="steps">
+        <li><strong>注文</strong> を押す</li>
+        <li>商品・個数を確認し <strong>注文確定</strong></li>
+        <li>お預かり金額を入力し <strong>会計完了</strong></li>
+        <li>会計完了画面で <strong>レシート発行</strong>
+          <div class="step-note">※ 領収書が必要な場合は「領収書発行」</div>
+        </li>
+      </ol>
+      <div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image%201.png"></div>
+    </div>
+    <div class="check-wrap">
+      <input type="checkbox" class="check-item" data-key="注文操作（会計）" onclick="toggleCheck('注文操作（会計）')">
+      <label>この項目を理解しました</label>
+    </div>
+  </div>
+
+  <!-- レジクローズ -->
+  <div class="section">
+    <div class="header">
+      <div class="header-title">レジクローズ（閉店時）</div>
+      <div class="arrow">▶</div>
+    </div>
+    <div class="body">
+      <ol class="steps">
+        <li><strong>レジクローズ</strong> を押す</li>
+        <li><strong>金種別入力</strong> を押す</li>
+        <li>レジを開け金種別に数える</li>
+        <li>金額を入力し <strong>確定</strong></li>
+      </ol>
+      <div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image%202.png"></div>
+    </div>
+    <div class="check-wrap">
+      <input type="checkbox" class="check-item" data-key="レジクローズ（閉店時）" onclick="toggleCheck('レジクローズ（閉店時）')">
+      <label>この項目を理解しました</label>
+    </div>
+  </div>
 
 </div>
 
