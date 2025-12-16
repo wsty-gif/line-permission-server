@@ -1,1056 +1,188 @@
-<html>
-
+<!-- nice_sweets：全項目をカード型アコーディオンUIで統一（スマホ最適化） -->
+<!DOCTYPE html>
+<html lang="ja">
 <head>
-	<base href="/manuals/nice_sweets/todo/">
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>nice_sweets</title>
-	<style>
-		/* cspell:disable-file */
-		/* webkit printing magic: print all background colors */
-		html {
-			-webkit-print-color-adjust: exact;
-		}
-
-		* {
-			box-sizing: border-box;
-			-webkit-print-color-adjust: exact;
-		}
-
-		html,
-		body {
-			margin: 0;
-			padding: 0;
-		}
-
-		@media only screen {
-			body {
-				margin: 2em auto;
-				max-width: 900px;
-				color: rgb(55, 53, 47);
-			}
-		}
-
-		body {
-			white-space: normal !important;
-		}
-
-		a,
-		a.visited {
-			color: inherit;
-			text-decoration: underline;
-		}
-
-		.pdf-relative-link-path {
-			font-size: 80%;
-			color: #444;
-		}
-
-		h1,
-		h2,
-		h3 {
-			letter-spacing: -0.01em;
-			line-height: 1.2;
-			font-weight: 600;
-			margin-bottom: 0;
-		}
-
-		/* Override strong tags inside headings to maintain consistent weight */
-		h1 strong,
-		h2 strong,
-		h3 strong {
-			font-weight: 600;
-		}
-
-		.page-title {
-			font-size: 2.5rem;
-			font-weight: 700;
-			margin-top: 0;
-			margin-bottom: 0.75em;
-		}
-
-		h1 {
-			font-size: 1.875rem;
-			margin-top: 1.875rem;
-		}
-
-		h2 {
-			font-size: 1.5rem;
-			margin-top: 1.5rem;
-		}
-
-		h3 {
-			font-size: 1.25rem;
-			margin-top: 1.25rem;
-		}
-
-		.source {
-			border: 1px solid #ddd;
-			border-radius: 3px;
-			padding: 1.5em;
-			word-break: break-all;
-		}
-
-		.callout {
-			border-radius: 10px;
-			padding: 1rem;
-		}
-
-		figure {
-			margin: 1.25em 0;
-			page-break-inside: avoid;
-		}
-
-		figcaption {
-			opacity: 0.5;
-			font-size: 85%;
-			margin-top: 0.5em;
-		}
-
-		mark {
-			background-color: transparent;
-		}
-
-		.indented {
-			padding-left: 1.5em;
-		}
-
-		hr {
-			background: transparent;
-			display: block;
-			width: 100%;
-			height: 1px;
-			visibility: visible;
-			border: none;
-			border-bottom: 1px solid rgba(55, 53, 47, 0.09);
-		}
-
-		img {
-			max-width: 100%;
-		}
-
-		@media only print {
-			img {
-				max-height: 100vh;
-				object-fit: contain;
-			}
-		}
-
-		@page {
-			margin: 1in;
-		}
-
-		.collection-content {
-			font-size: 0.875rem;
-		}
-
-		.collection-content td {
-			white-space: pre-wrap;
-			word-break: break-word;
-		}
-
-		.column-list {
-			display: flex;
-			justify-content: space-between;
-		}
-
-		.column {
-			padding: 0 1em;
-		}
-
-		.column:first-child {
-			padding-left: 0;
-		}
-
-		.column:last-child {
-			padding-right: 0;
-		}
-
-		.table_of_contents-item {
-			display: block;
-			font-size: 0.875rem;
-			line-height: 1.3;
-			padding: 0.125rem;
-		}
-
-		.table_of_contents-indent-1 {
-			margin-left: 1.5rem;
-		}
-
-		.table_of_contents-indent-2 {
-			margin-left: 3rem;
-		}
-
-		.table_of_contents-indent-3 {
-			margin-left: 4.5rem;
-		}
-
-		.table_of_contents-link {
-			text-decoration: none;
-			opacity: 0.7;
-			border-bottom: 1px solid rgba(55, 53, 47, 0.18);
-		}
-
-		table,
-		th,
-		td {
-			border: 1px solid rgba(55, 53, 47, 0.09);
-			border-collapse: collapse;
-		}
-
-		table {
-			border-left: none;
-			border-right: none;
-		}
-
-		th,
-		td {
-			font-weight: normal;
-			padding: 0.25em 0.5em;
-			line-height: 1.5;
-			min-height: 1.5em;
-			text-align: left;
-		}
-
-		th {
-			color: rgba(55, 53, 47, 0.6);
-		}
-
-		ol,
-		ul {
-			margin: 0;
-			margin-block-start: 0.6em;
-			margin-block-end: 0.6em;
-		}
-
-		li>ol:first-child,
-		li>ul:first-child {
-			margin-block-start: 0.6em;
-		}
-
-		ul>li {
-			list-style: disc;
-		}
-
-		ul.to-do-list {
-			padding-inline-start: 0;
-		}
-
-		ul.to-do-list>li {
-			list-style: none;
-		}
-
-		.to-do-children-checked {
-			text-decoration: line-through;
-			opacity: 0.375;
-		}
-
-		ul.toggle>li {
-			list-style: none;
-		}
-
-		ul {
-			padding-inline-start: 1.7em;
-		}
-
-		ul>li {
-			padding-left: 0.1em;
-		}
-
-		ol {
-			padding-inline-start: 1.6em;
-		}
-
-		ol>li {
-			padding-left: 0.2em;
-		}
-
-		.mono ol {
-			padding-inline-start: 2em;
-		}
-
-		.mono ol>li {
-			text-indent: -0.4em;
-		}
-
-		.toggle {
-			padding-inline-start: 0em;
-			list-style-type: none;
-		}
-
-		/* Indent toggle children */
-		.toggle>li>details {
-			padding-left: 1.7em;
-		}
-
-		.toggle>li>details>summary {
-			margin-left: -1.1em;
-		}
-
-		.selected-value {
-			display: inline-block;
-			padding: 0 0.5em;
-			background: rgba(206, 205, 202, 0.5);
-			border-radius: 3px;
-			margin-right: 0.5em;
-			margin-top: 0.3em;
-			margin-bottom: 0.3em;
-			white-space: nowrap;
-		}
-
-		.collection-title {
-			display: inline-block;
-			margin-right: 1em;
-		}
-
-		.page-description {
-			margin-bottom: 2em;
-		}
-
-		.simple-table {
-			margin-top: 1em;
-			font-size: 0.875rem;
-			empty-cells: show;
-		}
-
-		.simple-table td {
-			height: 29px;
-			min-width: 120px;
-		}
-
-		.simple-table th {
-			height: 29px;
-			min-width: 120px;
-		}
-
-		.simple-table-header-color {
-			background: rgb(247, 246, 243);
-			color: black;
-		}
-
-		.simple-table-header {
-			font-weight: 500;
-		}
-
-		time {
-			opacity: 0.5;
-		}
-
-		.icon {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			max-width: 1.2em;
-			max-height: 1.2em;
-			text-decoration: none;
-			vertical-align: text-bottom;
-			margin-right: 0.5em;
-		}
-
-		img.icon {
-			border-radius: 3px;
-		}
-
-		.callout img.notion-static-icon {
-			width: 1em;
-			height: 1em;
-		}
-
-		.callout p {
-			margin: 0;
-		}
-
-		.callout h1,
-		.callout h2,
-		.callout h3 {
-			margin: 0 0 0.6rem;
-		}
-
-		.user-icon {
-			width: 1.5em;
-			height: 1.5em;
-			border-radius: 100%;
-			margin-right: 0.5rem;
-		}
-
-		.user-icon-inner {
-			font-size: 0.8em;
-		}
-
-		.text-icon {
-			border: 1px solid #000;
-			text-align: center;
-		}
-
-		.page-cover-image {
-			display: block;
-			object-fit: cover;
-			width: 100%;
-			max-height: 30vh;
-		}
-
-		.page-header-icon {
-			font-size: 3rem;
-			margin-bottom: 1rem;
-		}
-
-		.page-header-icon-with-cover {
-			margin-top: -0.72em;
-			margin-left: 0.07em;
-		}
-
-		.page-header-icon img {
-			border-radius: 3px;
-		}
-
-		.link-to-page {
-			margin: 1em 0;
-			padding: 0;
-			border: none;
-			font-weight: 500;
-		}
-
-		p>.user {
-			opacity: 0.5;
-		}
-
-		td>.user,
-		td>time {
-			white-space: nowrap;
-		}
-
-		input[type="checkbox"] {
-			transform: scale(1.5);
-			margin-right: 0.6em;
-			vertical-align: middle;
-		}
-
-		p {
-			margin-top: 0.5em;
-			margin-bottom: 0.5em;
-		}
-
-		.image {
-			border: none;
-			margin: 1.5em 0;
-			padding: 0;
-			border-radius: 0;
-			text-align: center;
-		}
-
-		.code,
-		code {
-			background: rgba(135, 131, 120, 0.15);
-			border-radius: 3px;
-			padding: 0.2em 0.4em;
-			border-radius: 3px;
-			font-size: 85%;
-			tab-size: 2;
-		}
-
-		code {
-			color: #eb5757;
-		}
-
-		.code {
-			padding: 1.5em 1em;
-		}
-
-		.code-wrap {
-			white-space: pre-wrap;
-			word-break: break-all;
-		}
-
-		.code>code {
-			background: none;
-			padding: 0;
-			font-size: 100%;
-			color: inherit;
-		}
-
-		blockquote {
-			font-size: 1em;
-			margin: 1em 0;
-			padding-left: 1em;
-			border-left: 3px solid rgb(55, 53, 47);
-		}
-
-		blockquote.quote-large {
-			font-size: 1.25em;
-		}
-
-		.bookmark {
-			text-decoration: none;
-			max-height: 8em;
-			padding: 0;
-			display: flex;
-			width: 100%;
-			align-items: stretch;
-		}
-
-		.bookmark-title {
-			font-size: 0.85em;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			height: 1.75em;
-			white-space: nowrap;
-		}
-
-		.bookmark-text {
-			display: flex;
-			flex-direction: column;
-		}
-
-		.bookmark-info {
-			flex: 4 1 180px;
-			padding: 12px 14px 14px;
-			display: flex;
-			flex-direction: column;
-			justify-content: space-between;
-		}
-
-		.bookmark-image {
-			width: 33%;
-			flex: 1 1 180px;
-			display: block;
-			position: relative;
-			object-fit: cover;
-			border-radius: 1px;
-		}
-
-		.bookmark-description {
-			color: rgba(55, 53, 47, 0.6);
-			font-size: 0.75em;
-			overflow: hidden;
-			max-height: 4.5em;
-			word-break: break-word;
-		}
-
-		.bookmark-href {
-			font-size: 0.75em;
-			margin-top: 0.25em;
-		}
-
-		.sans {
-			font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-		}
-
-		.code {
-			font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace;
-		}
-
-		.serif {
-			font-family: Lyon-Text, Georgia, ui-serif, serif;
-		}
-
-		.mono {
-			font-family: iawriter-mono, Nitti, Menlo, Courier, monospace;
-		}
-
-		.pdf .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .sans {
-			font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR';
-		}
-
-		.pdf .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .code {
-			font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR';
-		}
-
-		.pdf .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .serif {
-			font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR';
-		}
-
-		.pdf .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP';
-		}
-
-		.pdf:lang(zh-CN) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC';
-		}
-
-		.pdf:lang(zh-TW) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC';
-		}
-
-		.pdf:lang(ko-KR) .mono {
-			font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR';
-		}
-
-		.highlight-default {
-			color: rgba(44, 44, 43, 1);
-		}
-
-		.highlight-gray {
-			color: rgba(125, 122, 117, 1);
-			fill: rgba(125, 122, 117, 1);
-		}
-
-		.highlight-brown {
-			color: rgba(159, 118, 90, 1);
-			fill: rgba(159, 118, 90, 1);
-		}
-
-		.highlight-orange {
-			color: rgba(210, 123, 45, 1);
-			fill: rgba(210, 123, 45, 1);
-		}
-
-		.highlight-yellow {
-			color: rgba(203, 148, 52, 1);
-			fill: rgba(203, 148, 52, 1);
-		}
-
-		.highlight-teal {
-			color: rgba(80, 148, 110, 1);
-			fill: rgba(80, 148, 110, 1);
-		}
-
-		.highlight-blue {
-			color: rgba(56, 125, 201, 1);
-			fill: rgba(56, 125, 201, 1);
-		}
-
-		.highlight-purple {
-			color: rgba(154, 107, 180, 1);
-			fill: rgba(154, 107, 180, 1);
-		}
-
-		.highlight-pink {
-			color: rgba(193, 76, 138, 1);
-			fill: rgba(193, 76, 138, 1);
-		}
-
-		.highlight-red {
-			color: rgba(207, 81, 72, 1);
-			fill: rgba(207, 81, 72, 1);
-		}
-
-		.highlight-default_background {
-			color: rgba(44, 44, 43, 1);
-		}
-
-		.highlight-gray_background {
-			background: rgba(42, 28, 0, 0.07);
-		}
-
-		.highlight-brown_background {
-			background: rgba(139, 46, 0, 0.086);
-		}
-
-		.highlight-orange_background {
-			background: rgba(224, 101, 1, 0.129);
-		}
-
-		.highlight-yellow_background {
-			background: rgba(211, 168, 0, 0.137);
-		}
-
-		.highlight-teal_background {
-			background: rgba(0, 100, 45, 0.09);
-		}
-
-		.highlight-blue_background {
-			background: rgba(0, 124, 215, 0.094);
-		}
-
-		.highlight-purple_background {
-			background: rgba(102, 0, 178, 0.078);
-		}
-
-		.highlight-pink_background {
-			background: rgba(197, 0, 93, 0.086);
-		}
-
-		.highlight-red_background {
-			background: rgba(223, 22, 0, 0.094);
-		}
-
-		.block-color-default {
-			color: inherit;
-			fill: inherit;
-		}
-
-		.block-color-gray {
-			color: rgba(125, 122, 117, 1);
-			fill: rgba(125, 122, 117, 1);
-		}
-
-		.block-color-brown {
-			color: rgba(159, 118, 90, 1);
-			fill: rgba(159, 118, 90, 1);
-		}
-
-		.block-color-orange {
-			color: rgba(210, 123, 45, 1);
-			fill: rgba(210, 123, 45, 1);
-		}
-
-		.block-color-yellow {
-			color: rgba(203, 148, 52, 1);
-			fill: rgba(203, 148, 52, 1);
-		}
-
-		.block-color-teal {
-			color: rgba(80, 148, 110, 1);
-			fill: rgba(80, 148, 110, 1);
-		}
-
-		.block-color-blue {
-			color: rgba(56, 125, 201, 1);
-			fill: rgba(56, 125, 201, 1);
-		}
-
-		.block-color-purple {
-			color: rgba(154, 107, 180, 1);
-			fill: rgba(154, 107, 180, 1);
-		}
-
-		.block-color-pink {
-			color: rgba(193, 76, 138, 1);
-			fill: rgba(193, 76, 138, 1);
-		}
-
-		.block-color-red {
-			color: rgba(207, 81, 72, 1);
-			fill: rgba(207, 81, 72, 1);
-		}
-
-		.block-color-default_background {
-			color: inherit;
-			fill: inherit;
-		}
-
-		.block-color-gray_background {
-			background: rgba(240, 239, 237, 1);
-		}
-
-		.block-color-brown_background {
-			background: rgba(245, 237, 233, 1);
-		}
-
-		.block-color-orange_background {
-			background: rgba(251, 235, 222, 1);
-		}
-
-		.block-color-yellow_background {
-			background: rgba(249, 243, 220, 1);
-		}
-
-		.block-color-teal_background {
-			background: rgba(232, 241, 236, 1);
-		}
-
-		.block-color-blue_background {
-			background: rgba(229, 242, 252, 1);
-		}
-
-		.block-color-purple_background {
-			background: rgba(243, 235, 249, 1);
-		}
-
-		.block-color-pink_background {
-			background: rgba(250, 233, 241, 1);
-		}
-
-		.block-color-red_background {
-			background: rgba(252, 233, 231, 1);
-		}
-
-		.select-value-color-default {
-			background-color: rgba(42, 28, 0, 0.07);
-		}
-
-		.select-value-color-gray {
-			background-color: rgba(28, 19, 1, 0.11);
-		}
-
-		.select-value-color-brown {
-			background-color: rgba(127, 51, 0, 0.156);
-		}
-
-		.select-value-color-orange {
-			background-color: rgba(196, 88, 0, 0.203);
-		}
-
-		.select-value-color-yellow {
-			background-color: rgba(209, 156, 0, 0.282);
-		}
-
-		.select-value-color-green {
-			background-color: rgba(0, 96, 38, 0.156);
-		}
-
-		.select-value-color-blue {
-			background-color: rgba(0, 118, 217, 0.203);
-		}
-
-		.select-value-color-purple {
-			background-color: rgba(92, 0, 163, 0.141);
-		}
-
-		.select-value-color-pink {
-			background-color: rgba(183, 0, 78, 0.152);
-		}
-
-		.select-value-color-red {
-			background-color: rgba(206, 24, 0, 0.164);
-		}
-
-		.checkbox {
-			display: inline-flex;
-			vertical-align: text-bottom;
-			width: 16;
-			height: 16;
-			background-size: 16px;
-			margin-left: 2px;
-			margin-right: 5px;
-		}
-
-		.checkbox-on {
-			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
-		}
-
-		.checkbox-off {
-			background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
-		}
-
-		/* 文字サイズを全体的に大きくする（Notion書き出しHTML用） */
-		body {
-		font-size: 18px !important;   /* 基準文字サイズをUP */
-		line-height: 1.8 !important;  /* 行間も整えて読みやすく */
-		}
-
-		h1, h2, h3, h4 {
-		font-size: 1.25em !important; /* 見出しは少し控えめに拡大 */
-		line-height: 1.4 !important;
-		}
-		/* ▼ 通常文字を h1 のタイトル文字サイズに合わせる ▼ */
-		summary,
-		summary strong,
-		li,
-		li strong,
-		p,
-		p strong {
-			font-size: 2.5rem !important;   /* ← h1 と同じくらいに調整 */
-			line-height: 1.6 !important;
-		}
-
-		/* トグル(summary)の矢印がタイトルに合わせて大きく表示 */
-		summary::marker {
-			font-size: 2.5rem !important;
-		}
-
-		/* 作り方の手順（番号付きリスト）の文字サイズを1.4emに統一 */
-		.numbered-list li strong,
-		.numbered-list li {
-			font-size: 1em !important;
-			line-height: 1.5em !important;
-		}
-	</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nice_sweets レジマニュアル</title>
+  <style>
+	body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;margin:0;background:#f8f9fa;color:#111;line-height:1.7;font-size:16px}
+	.wrapper{max-width:520px;margin:0 auto;padding:14px}
+	h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0}
+	.desc{text-align:center;font-size:13px;color:#6b7280;margin:0 0 18px}
+	.section{background:#fff;border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.1)}
+	.header{padding:12px;display:flex;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
+	.header-title{font-size:16px;font-weight:600}
+	.sub-title{font-size:13px;color:#6b7280}
+	.arrow{transition:.2s}
+	.open>.header .arrow{transform:rotate(90deg)}
+	.body{display:none;padding:12px;background:#f9fafb}
+	.open>.body{display:block}
+	.steps{margin:10px 0 0}
+	.steps li{margin-bottom:8px;font-size:15px}
+	.step-note{margin:4px 0 0 12px;font-size:13px;color:#b45309}
+	.img-box{margin-top:12px;border-radius:10px;background:#e5e7eb;padding:10px;text-align:center}
+	.img-box img{max-width:100%;border-radius:8px}
+	.point{margin-top:12px;padding:10px;background:#fff7ed;border-left:4px solid #fb923c;border-radius:6px;font-size:14px;color:#b45309}
+	.ingredient-box{margin-top:12px;padding:12px;border-radius:10px;background:#fee2e2;border:1px solid #fecaca}
+	.ingredient-box h4{margin:0 0 6px;font-size:14px;color:#b91c1c}
+	.ingredient-box p{margin:4px 0;font-size:14px}
+	.ingredient-box .note{margin-top:6px;font-size:13px;color:#b91c1c;font-weight:600}
+	.body .section{margin:12px 0 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  </style>
+<script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
+
+      if (!userId || !store || !type) {
+        console.warn("チェックロード不可: userId/store/type が不足");
+        return;
+      }
+
+      const res = await fetch(
+        `/${store}/api/manual-check?userId=${userId}&type=${type}`
+      );
+      // 🔽 JSON 以外は無視（HTMLが返ってきても落ちない）
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        console.warn("manual-check が JSON を返していません");
+        return;
+      }
+
+      const data = await res.json();
+
+      // 反映
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        el.checked = data[key] === true;
+      });
+    }
+
+
+    // チェック変更イベント
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;   // ← これを必ず使う
+      const type   = window.MANUAL_TYPE;
+
+      if (!userId || !store || !type) {
+        console.warn("toggleCheck: 必要な情報が不足しています");
+        return;
+      }
+
+      const res = await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          type,
+          recipeId: key
+        })
+      });
+
+      const out = await res.json();
+      console.log("CHECK UPDATED:", out);
+    }
+
+    window.addEventListener("DOMContentLoaded", loadChecks);
+  </script>
+
+  <script>
+    function saveCheck(key) {
+      toggleCheck(key);
+    }
+  </script>
 </head>
-
 <body>
-	<article id="2b25898c-3c37-8066-9432-d500faea6b75" class="page sans">
-		<header>
-			<h1 class="page-title" dir="auto">nice_sweets</h1>
-			<p class="page-description" dir="auto"></p>
-		</header>
-		<div class="page-body">
-			<div style="display:contents" dir="auto">
-				<h1 id="2b25898c-3c37-80c4-ad6a-da0d6106308e" class=""><strong style="font-size: 1.4em !important;">レジマニュアル</strong></h1>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="2b25898c-3c37-80ed-9c4c-c034ea3a14bc" class="">以下の手順に沿ってレジ操作を行ってください。</p>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="2b25898c-3c37-80f5-a299-d2300a3ff9f8" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="2b25898c-3c37-8032-8268-cbcafa2868fe" class="block-color-yellow_background toggle">
-					<li>
-						<details open="">
-							<summary>🔓 <strong>レジオープン（開店時）</strong></summary>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-80b8-83dc-f4d81510caf1" class="numbered-list" start="1">
-									<li>USENレジアプリをタップ</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-801f-9964-f06181cdab4f" class="numbered-list" start="2">
-									<li>担当者から自分の名前を選択</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-807e-aec6-e972faa1fc45" class="numbered-list" start="3">
-									<li>パスワード：「<strong>nice1111</strong>」<strong>（共通）</strong>を入力し、「<strong>Login</strong>」を押す
-									</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-8019-ace0-cba92b177125" class="numbered-list" start="4">
-									<li><strong>必ず金種別で金額確認を行う</strong></li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-80c0-86b8-cc1643f6f681" class="numbered-list" start="5">
-									<li>「<strong>即会計</strong>」を押す</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-8015-a85e-d0f708a0ee9e" class="numbered-list" start="6">
-									<li>担当者選択から自分の名前を選択</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="ltr">
-								<figure id="2b25898c-3c37-800e-80c7-c98ca75930de" class="image"><a
-										href="nice_sweets/image.png"><img style="width:681.984375px"
-											src="nice_sweets/image.png" /></a></figure>
-							</div>
-						</details>
-					</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="2b25898c-3c37-80dc-9eaa-de53e6b75ba9" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="2b25898c-3c37-80ae-bc90-df0db40a0330" class="block-color-blue_background toggle">
-					<li>
-						<details open="">
-							<summary>🧾 <strong>注文操作（会計）</strong></summary>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-8090-a78b-cf6c11825d91" class="numbered-list" start="1">
-									<li>「<strong>注文</strong>」を押す</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-8031-9db3-ef055cfe39b5" class="numbered-list" start="2">
-									<li>注文内容を選択し、「<strong>注文確定</strong>」を押す（個数も確認する）</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-80d6-8e99-ff63d113be94" class="numbered-list" start="3">
-									<li>お預かり金額を入力し、「<strong>会計完了</strong>」を押す</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-803b-b09d-c4750f25a79c" class="numbered-list" start="4">
-									<li>（お客様情報画面）「<strong>登録</strong>」を押す</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-80a0-93cd-feeede214a96" class="numbered-list" start="5">
-									<li>会計完了画面で「<strong>レシート発行</strong>」を押す<mark
-											class="highlight-red"><strong>（必ず！）</strong></mark>
-										<div style="display:contents" dir="auto">
-											<p id="2b25898c-3c37-80e9-86c7-c67e162930ba" class="">
-												※領収書が必要な場合は「<strong>領収書発行</strong>」を押す</p>
-										</div>
-										<div style="display:contents" dir="ltr">
-											<figure id="2b25898c-3c37-8045-8b2c-e20a70d08589" class="image"><a
-													href="nice_sweets/image%201.png"><img style="width:528px"
-														src="nice_sweets/image%201.png" /></a></figure>
-										</div>
-									</li>
-								</ol>
-							</div>
-						</details>
-					</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<hr id="2b25898c-3c37-800d-95ca-c8b57e97d272" />
-			</div>
-			<div style="display:contents" dir="auto">
-				<ul id="2b25898c-3c37-802e-ad25-fa173d4c3e30" class="block-color-gray_background toggle">
-					<li>
-						<details open="">
-							<summary>🔐 <strong>レジクローズ（閉店時）</strong></summary>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-804d-a597-c756165fc20c" class="numbered-list" start="1">
-									<li>「<strong>レジクローズ</strong>」を押す</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-80e6-9575-c841784eabab" class="numbered-list" start="2">
-									<li>「<strong>金種別入力</strong>」を押す</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-807d-b12b-f0a6a925a7fe" class="numbered-list" start="3">
-									<li>レジを鍵で開けて金種別で数える</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-804b-a29d-c81c0e11ae1e" class="numbered-list" start="4">
-									<li>金種別で数字を入力し、「<strong>確定</strong>」を押す</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-80eb-a2b8-dba0ffee684a" class="numbered-list" start="5">
-									<li>「<strong>確定</strong>」を押す</li>
-								</ol>
-							</div>
-							<div style="display:contents" dir="auto">
-								<ol type="1" id="2b25898c-3c37-809f-8ca4-df902b48532e" class="numbered-list" start="6">
-									<li>（確認画面）「<strong>OK</strong>」を押す<div style="display:contents" dir="ltr">
-											<figure id="2b25898c-3c37-8055-b69f-cb6606f93bda" class="image"><a
-													href="nice_sweets/image%202.png"><img style="width:528px"
-														src="nice_sweets/image%202.png" /></a></figure>
-										</div>
-									</li>
-								</ol>
-							</div>
-						</details>
-					</li>
-				</ul>
-			</div>
-			<div style="display:contents" dir="auto">
-				<p id="2b25898c-3c37-80ab-99ba-d319b276caad" class="">
-				</p>
-			</div>
+<div class="wrapper">
+	<h1>nice_sweets レジマニュアル</h1>
+	<!-- レジオープン（開店時） -->
+	<div class="section">
+		<div class="header">
+			<div class="header-title recipe-name" data-recipe-id="レジオープン（開店時）">レジオープン（開店時）</div>
+			<div class="arrow">▶</div>
 		</div>
-	</article><span class="sans" style="font-size:14px;padding-top:2em"></span>
-</body>
+		<div class="body">
+			<ol class="steps">
+				<li>USENレジアプリをタップ</li>
+				<li>担当者から自分の名前を選択</li>
+				<li>パスワード：「<strong>nice1111</strong>」<strong>（共通）</strong>を入力し、「<strong>Login</strong>」を押す</li>
+				<li>必ず金種別で金額確認を行う</li>
+				<li>「<strong>即会計</strong>」を押す</li>
+				<li>担当者選択から自分の名前を選択</li>
+				<li>担当者から自分の名前を選択</li>
+			</ol>
+			<div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image.png"></div>
+		</div>
+		<div class="check-wrap">
+			<input type="checkbox" class="check-item" data-key="レジオープン（開店時）" onclick="toggleCheck('レジオープン（開店時）')">
+			<label for="chk-potato">この項目を理解しました</label>
+		</div>
+		</div>
+	</div>
+
+	<!-- 注文操作（会計） -->
+	<div class="section">
+		<div class="header">
+			<div class="header-title recipe-name" data-recipe-id="注文操作（会計）">注文操作（会計）</div>
+			<div class="arrow">▶</div>
+		</div>
+		<div class="body">
+			<ol class="steps">
+				<li>「<strong>注文</strong>」を押す</li>
+				<li>注文内容を選択し、「<strong>注文確定</strong>」を押す（個数も確認する）</li>
+				<li>お預かり金額を入力し、「<strong>会計完了</strong>」を押す</li>
+				<li>（お客様情報画面）「<strong>登録</strong>」を押す</li>
+				<li>会計完了画面で「<strong>レシート発行</strong>」を押す（必ず！）
+					<div class="step-note">※ 領収書が必要な場合は「<strong>領収書発行</strong>」を押す</div>
+				</li>
+			</ol>
+			<div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image%201.png"></div>
+		</div>
+		<div class="check-wrap">
+			<input type="checkbox" class="check-item" data-key="レジオープン（開店時）" onclick="toggleCheck('レジオープン（開店時）')">
+			<label for="chk-potato">この項目を理解しました</label>
+		</div>
+		</div>
+	</div>
+
+	<!-- レジクローズ（閉店時） -->
+	<div class="section">
+		<div class="header">
+			<div class="header-title recipe-name" data-recipe-id="レジクローズ（閉店時）">レジクローズ（閉店時）</div>
+			<div class="arrow">▶</div>
+		</div>
+		<div class="body">
+			<ol class="steps">
+				<li>「<strong>レジクローズ</strong>」を押す</li>
+				<li>「<strong>金種別入力</strong>」を押す</li>
+				<li>レジを鍵で開けて金種別で数える</li>
+				<li>金種別で数字を入力し、「<strong>確定</strong>」を押す</li>
+				<li>「<strong>確定</strong>」を押す</li>
+				<li>（確認画面）「<strong>OK</strong>」を押す</li>
+			</ol>
+			<div class="img-box"><img src="/manuals/nice_sweets/todo/nice_sweets/image%202.png"></div>
+		</div>
+		<div class="check-wrap">
+			<input type="checkbox" class="check-item" data-key="レジクローズ（閉店時）" onclick="toggleCheck('レジクローズ（閉店時）')">
+			<label for="chk-potato">この項目を理解しました</label>
+		</div>
+		</div>
+	</div>
+
+</div>
 
 <script>
-	document.addEventListener("DOMContentLoaded", () => {
-		document.querySelectorAll("details[open]").forEach(d => d.removeAttribute("open"));
-	});
+(function(){
+  document.querySelectorAll('.section > .header').forEach(h=>{
+    h.addEventListener('click',e=>{
+      e.stopPropagation();
+      h.parentElement.classList.toggle('open');
+    });
+  });
+})();
 </script>
-
+</body>
 </html>
