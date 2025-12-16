@@ -3304,27 +3304,12 @@ app.get("/:store/admin/manual-check", ensureStore, async (req, res) => {
 // ===============================
 app.post("/:store/manual-check", ensureStore, async (req, res) => {
   const { store } = req.params;
-  const { userId, recipeId, type } = req.body;
+  const { userId, recipeId, checked } = req.body;
 
-  if (!userId || !recipeId) {
+  if (!userId || !recipeId || typeof checked !== "boolean") {
     return res.status(400).json({
-      error: "userId と recipeId が必要です。"
+      error: "userId / recipeId / checked が必要です"
     });
-  }
-
-  // 権限チェック
-  const permDoc = await db
-    .collection("companies")
-    .doc(store)
-    .collection("permissions")
-    .doc(userId)
-    .get();
-
-  if (!permDoc.exists) {
-    return res.status(404).json({ error: "権限申請が未登録です。" });
-  }
-  if (!permDoc.data().approved) {
-    return res.status(403).json({ error: "承認待ちです。" });
   }
 
   const ref = db
@@ -3333,26 +3318,17 @@ app.post("/:store/manual-check", ensureStore, async (req, res) => {
     .collection("manualCheck")
     .doc(userId);
 
-  const snap = await ref.get();
-  const current = snap.exists ? snap.data() : {};
-
-  // ★ true / false をトグル
-  const newValue = current[recipeId] === true ? false : true;
-
+  // ★ recipeId をキーにして true / false を保存
   await ref.set(
     {
-      [recipeId]: newValue,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      [recipeId]: checked
     },
     { merge: true }
   );
 
-  res.json({
-    success: true,
-    recipeId,
-    value: newValue
-  });
+  res.json({ success: true, recipeId, checked });
 });
+
 
 
 // ===============================

@@ -62,29 +62,32 @@
 
 
     // チェック変更イベント
-    async function toggleCheck(key) {
-      const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;   // ← これを必ず使う
-      const type   = window.MANUAL_TYPE;
+	async function toggleCheck(key) {
+	const userId = window.MANUAL_USER_ID;
+	const store  = window.MANUAL_STORE;
+	const type   = window.MANUAL_TYPE;
 
-      if (!userId || !store || !type) {
-        console.warn("toggleCheck: 必要な情報が不足しています");
-        return;
-      }
+	const checkbox = document.querySelector(
+		`.check-item[data-key="${key}"]`
+	);
 
-      const res = await fetch(`/${store}/manual-check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          type,
-          recipeId: key
-        })
-      });
+	const checked = checkbox.checked; // ← ★ 追加（true / false）
 
-      const out = await res.json();
-      console.log("CHECK UPDATED:", out);
-    }
+	const res = await fetch(`/${store}/manual-check`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+		userId,
+		type,
+		recipeId: key,
+		checked            // ← ★ 送る
+		})
+	});
+
+	const out = await res.json();
+	console.log("CHECK UPDATED:", out);
+	}
+
 
     window.addEventListener("DOMContentLoaded", loadChecks);
   </script>
