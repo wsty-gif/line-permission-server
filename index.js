@@ -1293,28 +1293,30 @@ await db
 
 // ✅ チェック状態取得（JSON専用）
 app.get("/:store/api/manual-check", ensureStore, async (req, res) => {
-  const { store } = req.params;
-  const { userId, type } = req.query;
+  const { store } = req;
+  const { userId } = req.query;
 
-  if (!userId || !type) {
-    return res.status(400).json({});
-  }
-
-  const snap = await db
-    .collection("companies")
-    .doc(store)
-    .collection("manualCheck")
-    .doc(userId)
-    .get();
-
-  if (!snap.exists) {
+  // ❗ userId が無くても 400 にしない（← 超重要）
+  if (!userId) {
     return res.json({});
   }
 
-  // type ごとのみ返す
-  const data = snap.data()[type] || {};
-  return res.json(data);
+  try {
+    const doc = await db
+      .collection("companies")
+      .doc(store)
+      .collection("manualCheck")
+      .doc(userId)
+      .get();
+
+    // 常に JSON を返す
+    return res.json(doc.exists ? doc.data() : {});
+  } catch (e) {
+    console.error("manual-check load error:", e);
+    return res.json({});
+  }
 });
+
 
 // ✅ チェック更新（ON / OFF 両対応）
 app.post("/:store/api/manual-check", ensureStore, async (req, res) => {
