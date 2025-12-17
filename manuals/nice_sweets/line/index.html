@@ -5,109 +5,109 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nice_sweets レシピマニュアル</title>
-  <style>
-	body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;margin:0;background:#f8f9fa;color:#111;line-height:1.7;font-size:16px}
-	.wrapper{max-width:520px;margin:0 auto;padding:14px}
-	h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0}
-	.desc{text-align:center;font-size:13px;color:#6b7280;margin:0 0 18px}
-	.section{background:#fff;border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.1)}
-	.header{padding:12px;display:flex;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
-	.header-title{font-size:16px;font-weight:600}
-	.sub-title{font-size:13px;color:#6b7280}
-	.arrow{transition:.2s}
-	.open>.header .arrow{transform:rotate(90deg)}
-	.body{display:none;padding:12px;background:#f9fafb}
-	.open>.body{display:block}
-	.steps{margin:10px 0 0}
-	.steps li{margin-bottom:8px;font-size:15px}
-	.step-note{margin:4px 0 0 12px;font-size:13px;color:#b45309}
-	.img-box{margin-top:12px;border-radius:10px;background:#e5e7eb;padding:10px;text-align:center}
-	.img-box img{max-width:100%;border-radius:8px}
-	.point{margin-top:12px;padding:10px;background:#fff7ed;border-left:4px solid #fb923c;border-radius:6px;font-size:14px;color:#b45309}
-	.ingredient-box{margin-top:12px;padding:12px;border-radius:10px;background:#fee2e2;border:1px solid #fecaca}
-	.ingredient-box h4{margin:0 0 6px;font-size:14px;color:#b91c1c}
-	.ingredient-box p{margin:4px 0;font-size:14px}
-	.ingredient-box .note{margin-top:6px;font-size:13px;color:#b91c1c;font-weight:600}
-	.body .section{margin:12px 0 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-	.check-wrap {margin-top: 14px;}
-	.check-label {display: flex;align-items: center;gap: 10px;padding: 10px 12px;border-radius: 8px;background: #f1f5f9;cursor: pointer;user-select: none;}
-	.check-label:hover {background: #e5e7eb;}
-	.check-label input[type="checkbox"] {width: 20px;height: 20px;accent-color: #16a34a; /* 緑で分かりやすく */}
-	.check-text {font-size: 14px;font-weight: 600;color: #111827;}
+	<style>
+		body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;margin:0;background:#f8f9fa;color:#111;line-height:1.7;font-size:16px}
+		.wrapper{max-width:520px;margin:0 auto;padding:14px}
+		h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0}
+		.desc{text-align:center;font-size:13px;color:#6b7280;margin:0 0 18px}
+		.section{background:#fff;border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.1)}
+		.header{padding:12px;display:flex;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
+		.header-title{font-size:16px;font-weight:600}
+		.sub-title{font-size:13px;color:#6b7280}
+		.arrow{transition:.2s}
+		.open>.header .arrow{transform:rotate(90deg)}
+		.body{display:none;padding:12px;background:#f9fafb}
+		.open>.body{display:block}
+		.steps{margin:10px 0 0}
+		.steps li{margin-bottom:8px;font-size:15px}
+		.step-note{margin:4px 0 0 12px;font-size:13px;color:#b45309}
+		.img-box{margin-top:12px;border-radius:10px;background:#e5e7eb;padding:10px;text-align:center}
+		.img-box img{max-width:100%;border-radius:8px}
+		.point{margin-top:12px;padding:10px;background:#fff7ed;border-left:4px solid #fb923c;border-radius:6px;font-size:14px;color:#b45309}
+		.ingredient-box{margin-top:12px;padding:12px;border-radius:10px;background:#fee2e2;border:1px solid #fecaca}
+		.ingredient-box h4{margin:0 0 6px;font-size:14px;color:#b91c1c}
+		.ingredient-box p{margin:4px 0;font-size:14px}
+		.ingredient-box .note{margin-top:6px;font-size:13px;color:#b91c1c;font-weight:600}
+		.body .section{margin:12px 0 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+		.check-wrap {margin-top: 14px;}
+		.check-label {display: flex;align-items: center;gap: 10px;padding: 10px 12px;border-radius: 8px;background: #f1f5f9;cursor: pointer;user-select: none;}
+		.check-label:hover {background: #e5e7eb;}
+		.check-label input[type="checkbox"] {width: 20px;height: 20px;accent-color: #16a34a; /* 緑で分かりやすく */}
+		.check-text {font-size: 14px;font-weight: 600;color: #111827;}
 
-  </style>
-<script>
-async function loadChecks() {
-  const userId = window.MANUAL_USER_ID;
-  const store  = window.MANUAL_STORE;
+	</style>
+	<script>
+		async function loadChecks() {
+		const userId = window.MANUAL_USER_ID;
+		const store  = window.MANUAL_STORE;
 
-  if (!userId || !store) {
-    console.warn("チェックロード不可: userId/store 不足");
-    return;
-  }
+		if (!userId || !store) {
+			console.warn("チェックロード不可: userId/store 不足");
+			return;
+		}
 
-  const res = await fetch(
-    `/${store}/api/manual-check?userId=${userId}`
-  );
+		const res = await fetch(
+			`/${store}/api/manual-check?userId=${userId}`
+		);
 
-  // ❗ 失敗時は静かに終了
-  if (!res.ok) {
-    console.warn("manual-check 取得失敗");
-    return;
-  }
+		// ❗ 失敗時は静かに終了
+		if (!res.ok) {
+			console.warn("manual-check 取得失敗");
+			return;
+		}
 
-  let data = {};
-  try {
-    data = await res.json();
-  } catch (e) {
-    console.warn("manual-check JSON 解析失敗");
-    return;
-  }
+		let data = {};
+		try {
+			data = await res.json();
+		} catch (e) {
+			console.warn("manual-check JSON 解析失敗");
+			return;
+		}
 
-  // ✅ ここで確実に反映
-  document.querySelectorAll(".check-item").forEach(el => {
-    const key = el.dataset.key;
-    el.checked = data[key] === true;
-  });
-}
-
-
-    // チェック変更イベント
-	async function toggleCheck(key) {
-	const userId = window.MANUAL_USER_ID;
-	const store  = window.MANUAL_STORE;
-	const type   = window.MANUAL_TYPE;
-
-	const checkbox = document.querySelector(
-		`.check-item[data-key="${key}"]`
-	);
-
-	const checked = checkbox.checked; // ← ★ 追加（true / false）
-
-	const res = await fetch(`/${store}/manual-check`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-		userId,
-		type,
-		recipeId: key,
-		checked            // ← ★ 送る
-		})
-	});
-
-	const out = await res.json();
-	console.log("CHECK UPDATED:", out);
-	}
+		// ✅ ここで確実に反映
+		document.querySelectorAll(".check-item").forEach(el => {
+			const key = el.dataset.key;
+			el.checked = data[key] === true;
+		});
+		}
 
 
-    window.addEventListener("DOMContentLoaded", loadChecks);
-  </script>
+		// チェック変更イベント
+		async function toggleCheck(key) {
+		const userId = window.MANUAL_USER_ID;
+		const store  = window.MANUAL_STORE;
+		const type   = window.MANUAL_TYPE;
 
-  <script>
-    function saveCheck(key) {
-      toggleCheck(key);
-    }
-  </script>
+		const checkbox = document.querySelector(
+			`.check-item[data-key="${key}"]`
+		);
+
+		const checked = checkbox.checked; // ← ★ 追加（true / false）
+
+		const res = await fetch(`/${store}/manual-check`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+			userId,
+			type,
+			recipeId: key,
+			checked            // ← ★ 送る
+			})
+		});
+
+		const out = await res.json();
+		console.log("CHECK UPDATED:", out);
+		}
+
+
+		window.addEventListener("DOMContentLoaded", loadChecks);
+	</script>
+
+	<script>
+		function saveCheck(key) {
+			toggleCheck(key);
+		}
+	</script>
 </head>
 <body>
 <div class="wrapper">
