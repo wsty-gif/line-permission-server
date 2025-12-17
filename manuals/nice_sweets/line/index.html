@@ -29,6 +29,12 @@
 	.ingredient-box p{margin:4px 0;font-size:14px}
 	.ingredient-box .note{margin-top:6px;font-size:13px;color:#b91c1c;font-weight:600}
 	.body .section{margin:12px 0 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+	.check-wrap {margin-top: 14px;}
+	.check-label {display: flex;align-items: center;gap: 10px;padding: 10px 12px;border-radius: 8px;background: #f1f5f9;cursor: pointer;user-select: none;}
+	.check-label:hover {background: #e5e7eb;}
+	.check-label input[type="checkbox"] {width: 20px;height: 20px;accent-color: #16a34a; /* 緑で分かりやすく */}
+	.check-text {font-size: 14px;font-weight: 600;color: #111827;}
+
   </style>
 <script>
 async function loadChecks() {
@@ -123,7 +129,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="いちごアイス" onclick="toggleCheck('いちごアイス')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>	
 		</div>
 		</div>
@@ -142,7 +148,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%201.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="オレオアイス" onclick="toggleCheck('オレオアイス')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>	
 		</div>
 		</div>
@@ -160,7 +166,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%202.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="チョコバナナアイス" onclick="toggleCheck('チョコバナナアイス')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>	
 		</div>
 		</div>
@@ -178,7 +184,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%203.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="キャラメルアイス" onclick="toggleCheck('キャラメルアイス')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -196,7 +202,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%204.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="抹茶アイス" onclick="toggleCheck('抹茶アイス')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -224,7 +230,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/nice_sweets.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="クロッフルの焼き方" onclick="toggleCheck('クロッフルの焼き方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -239,7 +245,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%205.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="いちごクロッフル" onclick="toggleCheck('いちごクロッフル')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -254,7 +260,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%206.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="オレオクロッフル" onclick="toggleCheck('オレオクロッフル')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -269,7 +275,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%207.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="チョコバナナクロッフル" onclick="toggleCheck('チョコバナナクロッフル')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -295,7 +301,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/%E5%90%8D%E7%A7%B0%E6%9C%AA%E8%A8%AD%E5%AE%9A%E3%81%AE%E3%83%87%E3%82%B6%E3%82%A4%E3%83%B3_(16).png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="チュロスの焼き方" onclick="toggleCheck('チュロスの焼き方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -314,7 +320,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/%E5%90%8D%E7%A7%B0%E6%9C%AA%E8%A8%AD%E5%AE%9A%E3%81%AE%E3%83%87%E3%82%B6%E3%82%A4%E3%83%B3_(17).png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="チュロス単品の作り方" onclick="toggleCheck('チュロス単品の作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -331,7 +337,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%208.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="チュロス＆アイスの作り方" onclick="toggleCheck('チュロス＆アイスの作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -354,7 +360,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/%E5%90%8D%E7%A7%B0%E6%9C%AA%E8%A8%AD%E5%AE%9A%E3%81%AE%E3%83%87%E3%82%B6%E3%82%A4%E3%83%B3_(18).png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="フレンチトーストの焼き方" onclick="toggleCheck('フレンチトーストの焼き方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -369,7 +375,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%209.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="フレンチトースト単品の作り方" onclick="toggleCheck('フレンチトースト単品の作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -385,7 +391,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%2010.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="フレンチ＆アイスの作り方" onclick="toggleCheck('フレンチ＆アイスの作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -407,7 +413,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%2011.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="いちごジュースの作り方" onclick="toggleCheck('いちごジュースの作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -423,7 +429,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/0a93fe91-87f8-40fb-a75a-957d4f822346.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="マンゴージュースの作り方" onclick="toggleCheck('マンゴージュースの作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -439,7 +445,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/c7bdc220-6420-4b84-a937-a098187dc1ab.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="バナナジュースの作り方" onclick="toggleCheck('バナナジュースの作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -455,7 +461,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%2012.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="アサイージュースの作り方" onclick="toggleCheck('アサイージュースの作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
@@ -489,7 +495,7 @@ async function loadChecks() {
 			<div class="img-box"><img src="/manuals/nice_sweets/line/nice_sweets/image%2013.png"></div>
 			<div class="check-wrap">
 				<input type="checkbox" class="check-item" data-key="アサイーボウルの作り方" onclick="toggleCheck('アサイーボウルの作り方')">
-				<label for="chk-potato">この項目を理解しました</label>
+				<span class="check-text">この項目を理解しました</span>
 			</div>
 			</div>
 		</div>
