@@ -3,302 +3,313 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>オペレーションマニュアル</title>
+  <title>フードマニュアル</title>
   <style>
-    body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;margin:0;background:#f8f9fa;color:#111;line-height:1.7;font-size:16px;}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
+      margin:0;background:#f8f9fa;color:#111;
+      line-height:1.7;font-size:16px;
+    }
     .wrapper{max-width:520px;margin:0 auto;padding:14px;}
-    h1{text-align:center;font-size:20px;color:#16a34a;margin-bottom:10px;}
+    h1{text-align:center;font-size:20px;color:#e11d48;margin:6px 0 10px;}
 
-    .section{background:#fff;border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.1);}
-    .header{padding:12px;display:flex;justify-content:space-between;cursor:pointer;user-select:none;}
+    /* ===== アコーディオン（重要：直下だけ開く） ===== */
+    .section{
+      background:#fff;border-radius:12px;
+      margin-bottom:14px;overflow:hidden;
+      box-shadow:0 1px 6px rgba(0,0,0,0.1);
+      border:1px solid rgba(0,0,0,0.04);
+    }
+    .header{
+      padding:12px;display:flex;justify-content:space-between;gap:10px;
+      cursor:pointer;user-select:none;background:#fff;align-items:center;
+    }
     .header-title{font-size:16px;font-weight:600;}
-    .sub-title{font-size:13px;color:#6b7280;margin-top:2px;}
-    .arrow{transition:0.2s;}
-    .open .arrow{transform:rotate(90deg);}
-    .body{display:none;padding:12px;background:#f9fafb;}
-    .open .body{display:block;}
+    .arrow{transition:0.2s;flex:0 0 auto;}
 
-    .steps{margin-top:8px;padding-left:18px;}
-    .steps li{margin-bottom:8px;font-size:14px;}
+    /* ★ここがポイント：openは「そのsection直下」だけ */
+    .section > .body{display:none;padding:12px;background:#f9fafb;}
+    .section.open > .body{display:block;}
+    .section.open > .header .arrow{transform:rotate(90deg);}
 
-    .img-box{margin-top:10px;border-radius:10px;background:#e5e7eb;padding:10px;display:flex;gap:10px;}
-    .img-thumb{width:80px;height:80px;background:#d1d5db;border-radius:8px;display:flex;justify-content:center;align-items:center;font-size:12px;text-align:center;padding:4px;}
-    .point{margin-top:10px;padding:10px;background:#fff7ed;border-left:4px solid #fb923c;border-radius:6px;font-size:14px;color:#b45309;}
+    /* ===== 見た目（既存デザイン寄せ） ===== */
+    .steps{margin:10px 0 0; padding-left:18px;}
+    .steps li{margin-bottom:6px;font-size:14px;}
+    .highlight-count{color:#dc2626;font-weight:700;}
 
+    /* 写真 */
+    .photo-box{
+      margin:12px 0;
+      padding:10px;
+      background:#e5e7eb;
+      border-radius:14px;
+    }
+    .photo-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap:8px;
+    }
+    .photo-grid img{
+      width:100%;
+      aspect-ratio: 4 / 3;
+      height:auto;
+      display:block;
+      border-radius:10px;
+      object-fit:cover;
+      background:#d1d5db;
+    }
+
+    /* ポイント（仕込みなど） */
+    .point{
+      margin-top:10px;padding:10px;background:#fff7ed;
+      border-left:4px solid #fb923c;border-radius:8px;
+      font-size:14px;color:#b45309;
+    }
+    .prep-title{font-weight:700;margin-bottom:6px;}
+    .prep-list{padding-left:18px;margin:0;}
+    .prep-list li{margin-bottom:6px;line-height:1.6;}
+
+    /* チェック */
+    .check-wrap{
+      margin-top:12px;
+      padding:10px 12px;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      display:flex; align-items:center; gap:10px;
+    }
+    .check-item{transform:scale(1.2);}
+    .check-text{font-size:14px;font-weight:600; cursor:pointer;}
   </style>
 
-<script>
+  <script>
     async function loadChecks() {
       const userId = window.MANUAL_USER_ID;
       const store  = window.MANUAL_STORE;
-      const type   = window.MANUAL_TYPE;
 
-      if (!userId || !store || !type) {
-        console.warn("チェックロード不可: userId/store/type が不足");
-        return;
-      }
+      if (!userId || !store) return;
 
-      const res = await fetch(
-        `/${store}/api/manual-check?userId=${userId}&type=${type}`
-      );
-      // 🔽 JSON 以外は無視（HTMLが返ってきても落ちない）
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        console.warn("manual-check が JSON を返していません");
-        return;
-      }
+      const res = await fetch(`/${store}/api/manual-check?userId=${userId}`);
+      if (!res.ok) return;
 
-      const data = await res.json();
+      let data = {};
+      try { data = await res.json(); } catch(e){ return; }
 
-      // 反映
       document.querySelectorAll(".check-item").forEach(el => {
         const key = el.dataset.key;
         el.checked = data[key] === true;
       });
     }
 
-
-    // チェック変更イベント
     async function toggleCheck(key) {
       const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;   // ← これを必ず使う
+      const store  = window.MANUAL_STORE;
       const type   = window.MANUAL_TYPE;
 
-      if (!userId || !store || !type) {
-        console.warn("toggleCheck: 必要な情報が不足しています");
-        return;
-      }
+      const checkbox = document.querySelector(`.check-item[data-key="${key}"]`);
+      const checked = checkbox ? checkbox.checked : false;
 
-      const res = await fetch(`/${store}/manual-check`, {
+      await fetch(`/${store}/manual-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          type,
-          recipeId: key
-        })
+        body: JSON.stringify({ userId, type, recipeId: key, checked })
+      }).catch(()=>{});
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      // 初期表示：すべて閉じる
+      document.querySelectorAll(".section.open").forEach(s => s.classList.remove("open"));
+
+      // アコーディオン：イベント委譲（ネストしても確実に動く）
+      document.addEventListener("click", (e) => {
+        const header = e.target.closest(".header");
+        if (!header) return;
+
+        // チェック周りクリックは開閉させない（誤爆防止）
+        if (e.target.closest(".check-wrap")) return;
+
+        const section = header.closest(".section");
+        if (!section) return;
+
+        section.classList.toggle("open");
       });
 
-      const out = await res.json();
-      console.log("CHECK UPDATED:", out);
-    }
+      // 「この項目を理解しました」文字クリックでチェックON/OFF
+      document.addEventListener("click", (e) => {
+        const label = e.target.closest(".check-text");
+        if (!label) return;
+        const wrap = label.closest(".check-wrap");
+        const cb = wrap ? wrap.querySelector(".check-item") : null;
+        if (!cb) return;
+        cb.checked = !cb.checked;
+        toggleCheck(cb.dataset.key);
+      });
 
-    window.addEventListener("DOMContentLoaded", loadChecks);
+      loadChecks();
+    });
   </script>
-
-  <script>
-    function saveCheck(key) {
-      toggleCheck(key);
-    }
-  </script>
-
 </head>
 
 <body>
 <div class="wrapper">
+  <h1>オープン準備マニュアル</h1>
 
-  <h1>オペレーションマニュアル</h1>
-  <p style="text-align:center;font-size:13px;color:#6b7280;margin-bottom:16px;">
-    接客・清掃・開店/閉店作業の基本手順
-  </p>
-
-  <!-- 接客 -->
+  <!-- オープン準備（カテゴリ） -->
   <div class="section">
     <div class="header">
-      <div>
-        <div class="header-title recipe-name" data-recipe-id="接客の基本">接客の基本</div>
-        <div class="sub-title">挨拶・ご案内・提供・退店まで</div>
-      </div>
-      <div class="arrow">▶</div>
-    </div>
-    <div class="body">
-
-      <strong>【入店対応】</strong>
-      <ol class="steps">
-        <li>お客様が来店したら 3秒以内に「いらっしゃいませ！」</li>
-        <li>人数を確認 → テーブルへご案内</li>
-        <li>メニューをお渡しし「ご注文がお決まりになりましたらお呼びください」</li>
-      </ol>
-
-      <strong>【オーダー対応】</strong>
-      <ol class="steps">
-        <li>復唱は必ず「語尾までハッキリ」</li>
-        <li>注文をハンディに正確に入力</li>
-        <li>料理提供時は「〇〇になります。熱いのでお気をつけください」など一言添える</li>
-      </ol>
-
-      <strong>【退店時】</strong>
-      <ol class="steps">
-        <li>お客様が席を立ったら「ありがとうございました！」</li>
-        <li>テーブルの片付けをすぐ実施（提供皿・串・グラス）</li>
-        <li>テーブルセットを整え、次のお客様に備える</li>
-      </ol>
-
-      <div class="img-box">
-        <div class="img-thumb">接客画像</div>
-        <div><strong>接客姿勢の例</strong><br>背筋を伸ばし笑顔で対応。</div>
-      </div>
-
-      <div class="point">
-        ✔ 接客で最重要なのは「表情・声のトーン・気づき」  
-        ✔ 手が空いたら巡回し、焼き台やホールの状況を常に把握する
-      </div>
-      <div class="check-wrap">
-        <input type="checkbox" class="check-item" data-key="接客の基本" onclick="toggleCheck('接客の基本')">
-        <span class="check-text">この項目を理解しました</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- トイレ掃除 -->
-  <div class="section">
-    <div class="header">
-      <div>
-        <div class="header-title recipe-name" data-recipe-id="トイレ清掃">トイレ清掃</div>
-        <div class="sub-title">汚れが最も気づかれやすい場所</div>
-      </div>
+      <div><div class="header-title">オープン準備</div></div>
       <div class="arrow">▶</div>
     </div>
 
     <div class="body">
-      <strong>【頻度】</strong>  
-      ・開店前  
-      ・ピーク後（21:00頃）  
-      ・閉店前  
 
-      <strong style="display:block;margin-top:10px;">【清掃手順】</strong>
-      <ol class="steps">
-        <li>換気扇ON、トイレットペーパー残量を確認</li>
-        <li>ゴミ箱の中身を捨てる</li>
-        <li>便座・便器周りを消毒スプレー → ペーパーで拭く</li>
-        <li>床をモップ or ウエットシートで拭く</li>
-        <li>手洗い場の水滴・鏡の汚れを除去</li>
-        <li>芳香剤の位置調整・補充</li>
-      </ol>
+      <!-- オープン準備（キッチン） -->
+      <div class="section">
+        <div class="header">
+          <div>
+            <div class="header-title recipe-name" data-recipe-id="オープン準備（キッチン）">
+              オープン準備（キッチン）
+            </div>
+          </div>
+          <div class="arrow">▶</div>
+        </div>
 
-      <div class="img-box">
-        <div class="img-thumb">トイレ掃除</div>
-        <div><strong>注意ポイント</strong><br>便座裏・床の角は忘れがち。</div>
+        <div class="body">
+
+          <strong>10:00 〜</strong>
+          <ol class="steps">
+            <li>洗浄器をセットして給湯する</li>
+            <li>米を洗い、炊く</li>
+            <li>まな板、まな板たてを洗浄器にかける</li>
+            <li>しゃもじ入れに水を入れる</li>
+            <li>ふきんをたたむ</li>
+          </ol>
+
+          <strong>10:15 〜</strong>
+          <ol class="steps">
+            <li>お湯をわかす（スープ用・とろり卵用・ポット・スペアリブ用）</li>
+            <li>スペアリブのたれを火にかける</li>
+            <li>まな板を戻す</li>
+            <li>フライヤーのふたを洗浄器にかける</li>
+            <li>キャベツを出してキャベツ置きへセット</li>
+            <li>鉄板側作業台のセッティング</li>
+            <li>冷凍庫から出す（かしわ飯の素、スペアリブ、唐揚げ など）</li>
+            <li>納品対応（肉は冷蔵庫上段、野菜は所定位置へ）</li>
+            <li>鉄板・フライヤーのガスをつける</li>
+          </ol>
+
+          <strong>10:30 〜 10:40頃</strong>
+          <ol class="steps">
+            <li>スープを作る</li>
+            <li>野菜仕込み分を冷蔵庫から出して片づける</li>
+            <li>とろり卵を作る</li>
+            <li>カット野菜仕込み（ワンプレート用を野菜冷蔵庫へ）</li>
+            <li>スペアリブ仕込み</li>
+          </ol>
+
+          <strong>11:00 〜 営業中（仕込みリスト）</strong>
+          <ol class="steps">
+            <li>カット野菜仕込み</li>
+            <li>スペアリブ仕込み</li>
+            <li>チヂミ仕込み</li>
+            <li>とりスープ仕込み</li>
+            <li>豆腐納品片づけ</li>
+            <li>ライスコロッケ</li>
+            <li>アボカドフライ</li>
+            <li>さわらバジル</li>
+            <li>ニョッキ</li>
+            <li>カマンベール大吟醸</li>
+            <li>ローストビーフ カット</li>
+            <li>ラーメンチャーシュー</li>
+            <li>ラーメンみそ</li>
+            <li>やみつききゅうり</li>
+          </ol>
+
+          <div class="check-wrap">
+            <input
+              type="checkbox"
+              class="check-item"
+              data-key="オープン準備（キッチン）"
+              onclick="toggleCheck('オープン準備（キッチン）')"
+            >
+            <span class="check-text">この項目を理解しました</span>
+          </div>
+
+        </div>
       </div>
 
-      <div class="point">
-        ✔ トイレの清潔感は店の評価に直結  
-        ✔ 必ず「清掃しましたカード」を立てる  
-        ✔ トイレの汚れを見つけたら“すぐ対応”
+      <!-- オープン準備（ホール） -->
+      <div class="section">
+        <div class="header">
+          <div>
+            <div class="header-title recipe-name" data-recipe-id="オープン準備（ホール）">
+              オープン準備（ホール）
+            </div>
+          </div>
+          <div class="arrow">▶</div>
+        </div>
+
+        <div class="body">
+
+          <strong>10:00 〜</strong>
+          <ol class="steps">
+            <li>エアコンをつける</li>
+            <li>タブレットで本日の予約確認（印刷してキッチン冷蔵庫へ貼る・済マーク記入）</li>
+            <li>外のごみ箱を店内へ入れ、ごみ袋を設置（大きいゴミ箱は裏口へ）</li>
+            <li>勝手口の鍵を開ける</li>
+          </ol>
+
+          <strong>10:05 〜（テラス準備）</strong>
+          <ol class="steps">
+            <li>空きびん等を裏口へ出す</li>
+            <li>おしぼりウォーマー電源ON</li>
+            <li>コーヒーメーカー電源ON</li>
+            <li>ポット2台セット</li>
+            <li>ビールサーバー準備</li>
+            <li>お冷ポット準備</li>
+            <li>かんずけ電源ON</li>
+            <li>ダスター準備</li>
+          </ol>
+
+          <strong>10:15 〜（ホール準備）</strong>
+          <ol class="steps">
+            <li>掃き掃除</li>
+            <li>テーブル拭き掃除</li>
+            <li>マット・お箸セット</li>
+            <li>オーダータブレット電源ON（テーブル番号設定・アクセスガイド開始）</li>
+            <li>トイレ確認（ゴミ箱・ペーパー・照明・扉）</li>
+            <li>空気清浄機2台の電源ON</li>
+            <li>入口ののれん、コンセントをはねる</li>
+          </ol>
+
+          <strong>10:40 〜</strong>
+          <ol class="steps">
+            <li>ランチサラダ準備（平日4トレー／土日祝7トレー）</li>
+            <li>コース用プリン・お通し等の準備</li>
+          </ol>
+
+          <strong>11:00 〜</strong>
+          <ol class="steps">
+            <li>オープン（照明・有線ch9・のれん・自動ドア電源を確認）</li>
+          </ol>
+
+          <div class="check-wrap">
+            <input
+              type="checkbox"
+              class="check-item"
+              data-key="オープン準備（ホール）"
+              onclick="toggleCheck('オープン準備（ホール）')"
+            >
+            <span class="check-text">この項目を理解しました</span>
+          </div>
+
+        </div>
       </div>
 
-      <div class="check-wrap">
-        <input type="checkbox" class="check-item" data-key="トイレ清掃" onclick="toggleCheck('トイレ清掃')">
-        <span class="check-text">この項目を理解しました</span>
-      </div>
     </div>
   </div>
 
-  <!-- ホール巡回 -->
-  <div class="section">
-    <div class="header">
-      <div>
-        <div class="header-title">3. ホール巡回</div>
-        <div class="sub-title">気づき力が売上と満足度を上げる</div>
-      </div>
-      <div class="arrow">▶</div>
-    </div>
-    <div class="body">
-      <ol class="steps">
-        <li>テーブルの空き皿・串を見つけたらすぐ下げる</li>
-        <li>ドリンク残量が減っていたら「追加いかがですか？」</li>
-        <li>焼台が混んでいれば提供フォローへ</li>
-        <li>お客様同士が呼びかけている場合は必ず気づいて声をかける</li>
-        <li>汚れた箇所（床・テーブル）を即時掃除</li>
-      </ol>
-
-      <div class="point">
-        ✔ ホールは「歩いて確認し続ける」のが基本  
-        ✔ 声かけは店の雰囲気を大きく左右する  
-        ✔ 無表情禁止（常にやわらかい顔）
-      </div>
-    </div>
-  </div>
-
-  <!-- 開店準備 -->
-  <div class="section">
-    <div class="header">
-      <div>
-        <div class="header-title recipe-name" data-recipe-id="開店準備">開店準備</div>
-        <div class="sub-title">営業がスムーズに始まるための準備</div>
-      </div>
-      <div class="arrow">▶</div>
-    </div>
-
-    <div class="body">
-      <ol class="steps">
-        <li>レジ立ち上げ → 釣銭確認</li>
-        <li>ホール照明・音楽・換気チェック</li>
-        <li>テーブルセット（箸・おしぼり・調味料）</li>
-        <li>焼台の火入れ → 温度チェック</li>
-        <li>ドリンク補充（氷・ジョッキ冷え具合）</li>
-        <li>トイレチェック</li>
-      </ol>
-
-      <div class="point">
-        ✔ 最初の30分が店の印象を作る  
-        ✔ 焼台・ホール・レジの担当を明確に分けると効率が上がる
-      </div>
-      <div class="check-wrap">
-        <input type="checkbox" class="check-item" data-key="開店準備" onclick="toggleCheck('開店準備')">
-        <span class="check-text">この項目を理解しました</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 閉店作業 -->
-  <div class="section">
-    <div class="header">
-      <div>
-        <div class="header-title recipe-name" data-recipe-id="閉店作業">閉店作業</div>
-        <div class="sub-title">ミス防止と翌日の効率UP</div>
-      </div>
-      <div class="arrow">▶</div>
-    </div>
-
-    <div class="body">
-      <ol class="steps">
-        <li>レジ締め・売上確認</li>
-        <li>テーブル＆床掃除（モップ・ゴミ回収）</li>
-        <li>トイレ清掃 → 紙・洗剤の補充</li>
-        <li>焼台の灰処理・後片付け</li>
-        <li>冷蔵庫内の確認（串の残数・廃棄判断）</li>
-        <li>電源・照明を順番にオフ</li>
-      </ol>
-
-      <div class="point">
-        ✔ 閉店前に“明日の必要串の量”を確認しておくと仕込みが楽  
-        ✔ 貴重品・売上の扱いは必ずマニュアル通りに
-      </div>
-      <div class="check-wrap">
-        <input type="checkbox" class="check-item" data-key="閉店作業" onclick="toggleCheck('閉店作業')">
-        <span class="check-text">この項目を理解しました</span>
-      </div>
-    </div>
-  </div>
 
 </div>
-
-<script>
-  document.querySelectorAll(".section").forEach(sec=>{
-    sec.querySelector(".header").addEventListener("click",()=>{
-      sec.classList.toggle("open");
-
-      // 開いたときにスクロール位置補正
-      if(sec.classList.contains("open")){
-        setTimeout(()=>{
-          const rect = sec.getBoundingClientRect().top + window.scrollY;
-          window.scrollTo({top: rect - 80, behavior: "smooth"});
-        }, 20);
-      }
-    });
-  });
-</script>
-
 </body>
 </html>
