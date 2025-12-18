@@ -1,92 +1,163 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>フードマニュアル</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>フードマニュアル</title>
+  <style>
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
+      margin:0;background:#f8f9fa;color:#111;
+      line-height:1.7;font-size:16px;
+    }
+    .wrapper{max-width:520px;margin:0 auto;padding:14px;}
+    h1{text-align:center;font-size:20px;color:#e11d48;margin:6px 0 10px;}
 
-<style>
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
-  margin:0;background:#f8f9fa;color:#111;
-  line-height:1.7;font-size:16px;
-}
-.wrapper{max-width:520px;margin:0 auto;padding:14px}
-h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0}
+    /* ===== アコーディオン（重要：直下だけ開く） ===== */
+    .section{
+      background:#fff;border-radius:12px;
+      margin-bottom:14px;overflow:hidden;
+      box-shadow:0 1px 6px rgba(0,0,0,0.1);
+      border:1px solid rgba(0,0,0,0.04);
+    }
+    .header{
+      padding:12px;display:flex;justify-content:space-between;gap:10px;
+      cursor:pointer;user-select:none;background:#fff;align-items:center;
+    }
+    .header-title{font-size:16px;font-weight:600;}
+    .arrow{transition:0.2s;flex:0 0 auto;}
 
-.section{
-  background:#fff;
-  border-radius:12px;
-  margin-bottom:14px;
-  overflow:hidden;
-  box-shadow:0 1px 6px rgba(0,0,0,.1);
-}
-.header{
-  padding:12px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  cursor:pointer;
-}
-.header-title{font-weight:600}
-.arrow{transition:.2s}
-.section.open>.header .arrow{transform:rotate(90deg)}
+    /* ★ここがポイント：openは「そのsection直下」だけ */
+    .section > .body{display:none;padding:12px;background:#f9fafb;}
+    .section.open > .body{display:block;}
+    .section.open > .header .arrow{transform:rotate(90deg);}
 
-.body{
-  display:none;
-  padding:12px;
-  background:#f9fafb;
-}
-.section.open>.body{display:block}
+    /* ===== 見た目（既存デザイン寄せ） ===== */
+    .steps{margin:10px 0 0; padding-left:18px;}
+    .steps li{margin-bottom:6px;font-size:14px;}
+    .highlight-count{color:#dc2626;font-weight:700;}
 
-/* 中身 */
-.steps{padding-left:18px;margin-top:8px}
-.steps li{margin-bottom:6px;font-size:14px}
+    /* 写真 */
+    .photo-box{
+      margin:12px 0;
+      padding:10px;
+      background:#e5e7eb;
+      border-radius:14px;
+    }
+    .photo-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap:8px;
+    }
+    .photo-grid img{
+      width:100%;
+      aspect-ratio: 4 / 3;
+      height:auto;
+      display:block;
+      border-radius:10px;
+      object-fit:cover;
+      background:#d1d5db;
+    }
 
-.point{
-  margin-top:10px;
-  padding:10px;
-  background:#fff7ed;
-  border-left:4px solid #fb923c;
-  border-radius:8px;
-  font-size:14px;
-  color:#b45309;
-}
+    /* ポイント（仕込みなど） */
+    .point{
+      margin-top:10px;padding:10px;background:#fff7ed;
+      border-left:4px solid #fb923c;border-radius:8px;
+      font-size:14px;color:#b45309;
+    }
+    .prep-title{font-weight:700;margin-bottom:6px;}
+    .prep-list{padding-left:18px;margin:0;}
+    .prep-list li{margin-bottom:6px;line-height:1.6;}
 
-.prep-title{font-weight:700;margin-bottom:6px}
-.prep-list{padding-left:18px;margin:0}
-.prep-list li{margin-bottom:6px}
+    /* チェック */
+    .check-wrap{
+      margin-top:12px;
+      padding:10px 12px;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      display:flex; align-items:center; gap:10px;
+    }
+    .check-item{transform:scale(1.2);}
+    .check-text{font-size:14px;font-weight:600; cursor:pointer;}
+  </style>
 
-.check-wrap{
-  margin-top:12px;
-  padding:10px;
-  background:#fff;
-  border-radius:10px;
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
-.check-text{font-weight:600}
-</style>
+  <script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+
+      if (!userId || !store) return;
+
+      const res = await fetch(`/${store}/api/manual-check?userId=${userId}`);
+      if (!res.ok) return;
+
+      let data = {};
+      try { data = await res.json(); } catch(e){ return; }
+
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        el.checked = data[key] === true;
+      });
+    }
+
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
+
+      const checkbox = document.querySelector(`.check-item[data-key="${key}"]`);
+      const checked = checkbox ? checkbox.checked : false;
+
+      await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, type, recipeId: key, checked })
+      }).catch(()=>{});
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      // 初期表示：すべて閉じる
+      document.querySelectorAll(".section.open").forEach(s => s.classList.remove("open"));
+
+      // アコーディオン：イベント委譲（ネストしても確実に動く）
+      document.addEventListener("click", (e) => {
+        const header = e.target.closest(".header");
+        if (!header) return;
+
+        // チェック周りクリックは開閉させない（誤爆防止）
+        if (e.target.closest(".check-wrap")) return;
+
+        const section = header.closest(".section");
+        if (!section) return;
+
+        section.classList.toggle("open");
+      });
+
+      // 「この項目を理解しました」文字クリックでチェックON/OFF
+      document.addEventListener("click", (e) => {
+        const label = e.target.closest(".check-text");
+        if (!label) return;
+        const wrap = label.closest(".check-wrap");
+        const cb = wrap ? wrap.querySelector(".check-item") : null;
+        if (!cb) return;
+        cb.checked = !cb.checked;
+        toggleCheck(cb.dataset.key);
+      });
+
+      loadChecks();
+    });
+  </script>
 </head>
 
 <body>
 <div class="wrapper">
-<h1>フードマニュアル</h1>
+  <h1>フードマニュアル</h1>
 
-<!-- フード -->
-<div class="section">
-  <div class="header">
-    <div class="header-title">フード</div>
-    <div class="arrow">▶</div>
-  </div>
-
-  <div class="body">
-
-    <!-- 創作小皿 -->
+    <!-- 創作小皿（カテゴリ） -->
     <div class="section">
       <div class="header">
-        <div class="header-title">創作小皿</div>
+        <div><div class="header-title">創作小皿</div></div>
         <div class="arrow">▶</div>
       </div>
 
@@ -95,104 +166,192 @@ h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0}
         <!-- 豚トロチャーシュー -->
         <div class="section">
           <div class="header">
-            <div class="header-title">豚トロチャーシュー</div>
+            <div><div class="header-title recipe-name" data-recipe-id="豚トロチャーシュー">豚トロチャーシュー</div></div>
             <div class="arrow">▶</div>
           </div>
+
           <div class="body">
             <strong>材料</strong><br>
-            ・豚トロチャーシュー 70g<br>
-            ・タレ 10cc<br>
+            ・豚トロチャーシュー：70g<br>
+            ・タレ：10cc<br>
+            ・たまねぎスライス：20g<br>
+            ・からし：2g<br>
+            ・きざみねぎ<br>
+            ・糸とうがらし<br>
+
+            <div class="photo-box">
+              <div class="photo-grid">
+                <img src="/manuals/torisei_sakura/line/torisei_sakura/豚トロチャーシュー.jpg" alt="完成例">
+              </div>
+            </div>
 
             <ol class="steps">
-              <li>レンジで7秒温める</li>
-              <li>バーナーであぶる</li>
+              <li>豚トロチャーシュースライス70ｇ（7枚）をレンジで７秒温める</li>
+              <li>1をバーナーであぶる</li>
+              <li>玉ねぎスライスを皿に盛り、2を盛り付ける</li>
+              <li>上からたれをかけて皿のふちにからしを乗せる</li>
+              <li>きざみねぎ、糸唐辛子をトッピングする</li>
             </ol>
 
             <div class="point">
               <div class="prep-title">仕込み</div>
               <ol class="prep-list">
-                <li>調味液に1日漬ける</li>
-                <li>焼き目を付け保温</li>
+                <li>グレープフルーツジュース200cc・しょうゆ200cc・砂糖100gを合わせ、豚トロ5枚（約2kg分）を入れて1日漬け込む</li>
+                <li>漬け汁を切り、鉄板で両面に焼き目をつける</li>
+                <li>アルミで包み、保温機に入れる</li>
+                <li>粗熱が取れたら冷蔵保存</li>
+                <li>残った漬け汁は半量まで煮詰めて「かけダレ」にする</li>
+                <li>豚トロを1枚10gにスライスする</li>
               </ol>
+            </div>
+
+            <div class="check-wrap">
+              <input type="checkbox" class="check-item" data-key="豚トロチャーシュー" onclick="toggleCheck('豚トロチャーシュー')">
+              <span class="check-text">この項目を理解しました</span>
             </div>
           </div>
         </div>
 
-        <!-- カマンベール -->
+        <!-- カマンベールの大吟醸漬 -->
         <div class="section">
           <div class="header">
-            <div class="header-title">カマンベールの大吟醸漬け</div>
+            <div>
+              <div class="header-title recipe-name" data-recipe-id="カマンベールの大吟醸漬け">
+                カマンベールの大吟醸漬け
+              </div>
+            </div>
             <div class="arrow">▶</div>
           </div>
+
           <div class="body">
             <strong>材料</strong><br>
-            ・カマンベールチーズ漬け 5切れ<br>
-            ・ブラックペッパー 0.1g
+            ・カマンベールチーズ漬け：5切れ<br>
+            ・ブラックペッパー：0.1g<br>
+
+            <div class="photo-box">
+              <div class="photo-grid">
+                <img src="/manuals/torisei_sakura/line/torisei_sakura/カマンベールの大吟醸漬.jpg" alt="完成例">
+              </div>
+            </div>
 
             <ol class="steps">
-              <li>吟醸酒を煮切る</li>
-              <li>冷やしてチーズを漬け込む</li>
-              <li>盛り付ける</li>
+              <li>吟醸酒800ccを煮切り、540gまで煮詰める（チーズ6箱分）</li>
+              <li>1に大吟醸酒（松の翠）を少量加える</li>
+              <li>2の分量の10分の1の味生庵を加え、冷蔵庫で冷やす</li>
+              <li>カマンベールチーズを16等分に切り、3に半日以上漬け込む</li>
+              <li>5切れを皿に盛り付け、ブラックペッパーを振る</li>
             </ol>
+
+            <div class="check-wrap">
+              <input
+                type="checkbox"
+                class="check-item"
+                data-key="カマンベールの大吟醸漬け"
+                onclick="toggleCheck('カマンベールの大吟醸漬け')"
+              >
+              <span class="check-text">この項目を理解しました</span>
+            </div>
           </div>
         </div>
 
-        <!-- カプレーゼ -->
+        <!-- 丸ごとトマトのカプレーゼ -->
         <div class="section">
           <div class="header">
-            <div class="header-title">丸ごとトマトのカプレーゼ</div>
+            <div>
+              <div class="header-title recipe-name" data-recipe-id="丸ごとトマトのカプレーゼ">
+                丸ごとトマトのカプレーゼ
+              </div>
+            </div>
             <div class="arrow">▶</div>
           </div>
+
           <div class="body">
             <strong>材料</strong><br>
-            ・トマト1個<br>
-            ・モッツァレラ20g<br>
-            ・鶏生ハム20g
+            ・トマト：1個<br>
+            ・モッツァレラチーズ：20g<br>
+            ・鶏の生ハム：20g<br>
+            ・バジルソース：5g<br>
+            ・ベビーリーフ：2g<br>
+
+            <div class="photo-box">
+              <div class="photo-grid">
+                <img src="/manuals/torisei_sakura/line/torisei_sakura/カプレーゼ.jpg" alt="完成例">
+              </div>
+            </div>
 
             <ol class="steps">
-              <li>具材を刻む</li>
-              <li>トマトをくり抜く</li>
-              <li>詰めて盛る</li>
+              <li>モッツァレラチーズを3gの角切りにする（7ヶ切）</li>
+              <li>鶏の生ハムを細切りにする</li>
+              <li>トマトのへたを切り落とし、中身をくり抜く</li>
+              <li>転がらないように、トマトの底を平らにする</li>
+              <li>くり抜いたトマトの中身を角切りにする</li>
+              <li>4・1・2をボウルに入れ、バジルソースで和える</li>
+              <li>6をトマトの中に戻し、皿に盛り付ける</li>
+              <li>入りきらない具を皿の手前に盛り、ベビーリーフを添える</li>
             </ol>
+
+            <div class="check-wrap">
+              <input
+                type="checkbox"
+                class="check-item"
+                data-key="丸ごとトマトのカプレーゼ"
+                onclick="toggleCheck('丸ごとトマトのカプレーゼ')"
+              >
+              <span class="check-text">この項目を理解しました</span>
+            </div>
           </div>
         </div>
 
-        <!-- 磯部風 -->
+        <!-- クリームチーズの磯辺風 -->
         <div class="section">
           <div class="header">
-            <div class="header-title">クリームチーズの磯部風</div>
+            <div>
+              <div class="header-title recipe-name" data-recipe-id="クリームチーズの磯部風">
+                クリームチーズの磯部風
+              </div>
+            </div>
             <div class="arrow">▶</div>
           </div>
+
           <div class="body">
             <strong>材料</strong><br>
-            ・クリームチーズ 8切れ<br>
-            ・青のり 0.2g
+            ・クリームチーズ漬け：8切れ<br>
+            ・青のり：0.2g<br>
+
+            <div class="photo-box">
+              <div class="photo-grid">
+                <img src="/manuals/torisei_sakura/line/torisei_sakura/クリームチーズの磯辺風.jpg" alt="完成例">
+              </div>
+            </div>
 
             <ol class="steps">
-              <li>割り醤油に30分漬ける</li>
-              <li>青のりと和える</li>
+              <li>クリームチーズを角切りにし、バットに並べる</li>
+              <li>濃口醤油2：煮切ったみりん3の割り醤油をかけ、30分漬ける</li>
+              <li>ボウルに2を8切れ入れ、青のりと和えて皿に盛り付ける</li>
             </ol>
+
+            <div class="point">
+              <div class="prep-title">仕込み・補足</div>
+              <ol class="prep-list">
+                <li>割り醤油を6倍で作る場合、みりん180gを煮切ると約180ccになる</li>
+              </ol>
+            </div>
+
+            <div class="check-wrap">
+              <input
+                type="checkbox"
+                class="check-item"
+                data-key="クリームチーズの磯部風"
+                onclick="toggleCheck('クリームチーズの磯部風')"
+              >
+              <span class="check-text">この項目を理解しました</span>
+            </div>
           </div>
         </div>
 
       </div>
     </div>
 
-  </div>
 </div>
-</div>
-
-<script>
-document.addEventListener("click", e => {
-  const header = e.target.closest(".header");
-  if (!header) return;
-
-  const section = header.parentElement;
-  if (!section.classList.contains("section")) return;
-
-  section.classList.toggle("open");
-});
-</script>
-
 </body>
 </html>
