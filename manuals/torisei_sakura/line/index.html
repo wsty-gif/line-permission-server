@@ -45,6 +45,10 @@
       font-size:14px;color:#b45309;
     }
     .sub-title{font-size:14px;color:#6b7280;margin-bottom:4px;}
+    .highlight-count {
+      color: #dc2626;
+      font-weight: 700;
+    }
   </style>
 <script>
     async function loadChecks() {
@@ -119,46 +123,46 @@
     スマホでサッと確認できる、店舗向け公式レシピ集です。
   </p>
 
-  <!-- 1. ねぎま -->
-  <div class="section">
-    <div class="header">
-      <div>
-        <div class="header-title recipe-name" data-recipe-id="ねぎま（鶏もも × 長ねぎ）">ねぎま（鶏もも × 長ねぎ）</div>
-        <div class="sub-title">人気No.1の基本串</div>
-      </div>
-      <div class="arrow">▶</div>
-    </div>
-    <div class="body">
-      <strong>材料（1本）</strong><br>
-      ・鶏もも角切り：20g × 2  
-      ・長ねぎ：2切れ  
+	<div class="section">
+		<div class="header"><div><div class="header-title">ドリンク</div></div><div class="arrow">▶</div></div>
+		<div class="body">
+      <!-- 1. ねぎま -->
+      <div class="section">
+        <div class="header">
+          <div>
+            <div class="header-title recipe-name" data-recipe-id="ソフトドリンク">ソフトドリンク</div>
+          </div>
+          <div class="arrow">▶</div>
+        </div>
+        <div class="body">
+          <strong>材料（1杯）</strong><br>
+          ・ソフトドリンク：適量  
+          ・氷：5つ  
 
-      <div class="img-box">
-        <div class="img-thumb">画像を入れる</div>
-        <div>
-          <strong>盛り付け完成例</strong><br>
-          店舗の写真に差し替えてください
+          <div class="img-box">
+            <div class="img-thumb"><img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg"></div>
+            <!-- <div>
+              <strong>盛り付け完成例</strong><br>
+              店舗の写真に差し替えてください
+            </div> -->
+          </div>
+
+          <ol class="steps">
+            <li>ソフトドリンクグラスに氷を<span class="highlight-count">5つ</span>入れ、グラスに添わせながら注ぐ</li>
+          </ol>
+
+          <div class="point">
+            ✔ 長ねぎは焼き過ぎると崩れるので裏返しは1回だけ  
+            ✔ 肉は刺し過ぎずふんわり刺すと火が通りやすい
+          </div>
+          <div class="check-wrap">
+            <input type="checkbox" class="check-item" data-key="ソフトドリンク" onclick="toggleCheck('ソフトドリンク')">
+            <span class="check-text">この項目を理解しました</span>
+          </div>
         </div>
       </div>
-
-      <ol class="steps">
-        <li>鶏もも → 長ねぎ → 鶏ももの順に刺す</li>
-        <li>塩振りは片面 2振りずつ、全体にまんべんなく</li>
-        <li>強火で皮面を3分焼き、裏返して2分</li>
-        <li>最後に中火で1分。肉がぷっくりしたらOK</li>
-      </ol>
-
-      <div class="point">
-        ✔ 長ねぎは焼き過ぎると崩れるので裏返しは1回だけ  
-        ✔ 肉は刺し過ぎずふんわり刺すと火が通りやすい
-      </div>
-      <div class="check-wrap">
-        <input type="checkbox" class="check-item" data-key="ねぎま（鶏もも × 長ねぎ）" onclick="toggleCheck('ねぎま（鶏もも × 長ねぎ）')">
-        <span class="check-text">この項目を理解しました</span>
-      </div>
-    </div>
-  </div>
-
+		</div>
+	</div>
   <!-- 2. 砂ずり -->
   <div class="section">
     <div class="header">
