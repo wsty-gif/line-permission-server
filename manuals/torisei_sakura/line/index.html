@@ -418,16 +418,16 @@
 document.addEventListener("DOMContentLoaded", () => {
 
   // 初期状態：すべて閉じる
-  document.querySelectorAll(".section").forEach(sec => {
-    sec.classList.remove("open");
+  document.querySelectorAll(".section").forEach(section => {
+    section.classList.remove("open");
   });
 
-  // header クリックで「その section だけ」開閉
-  document.querySelectorAll(".header").forEach(header => {
+  // headerクリックで「対応するbodyのみ」開閉
+  document.querySelectorAll(".section > .header").forEach(header => {
     header.addEventListener("click", (e) => {
-      e.stopPropagation(); // ← これが超重要
+      e.stopPropagation(); // 親への伝播を完全に止める
 
-      const section = header.closest(".section");
+      const section = header.parentElement;
       if (!section) return;
 
       section.classList.toggle("open");
@@ -436,6 +436,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 </script>
+
 
 
 
