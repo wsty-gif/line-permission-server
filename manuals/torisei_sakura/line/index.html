@@ -49,6 +49,31 @@
       color: #dc2626;
       font-weight: 700;
     }
+    /* 写真エリア（nice_sweets風） */
+    .photo-box {
+      margin: 12px 0;
+      padding: 10px;
+      background: #e5e7eb;
+      border-radius: 14px;
+    }
+
+    /* 画像グリッド */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    /* 写真そのもの */
+    .photo-grid img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #d1d5db;
+    }
+
   </style>
 <script>
     async function loadChecks() {
@@ -136,12 +161,10 @@
           ・ソフトドリンク：適量  
           ・氷：5つ  
 
-          <div class="img-box">
-            <img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg">
-            <!-- <div>
-              <strong>盛り付け完成例</strong><br>
-              店舗の写真に差し替えてください
-            </div> -->
+          <div class="photo-box">
+            <div class="photo-grid">
+              <img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg" alt="完成例">
+            </div>
           </div>
 
           <ol class="steps">
