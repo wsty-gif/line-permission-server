@@ -89,70 +89,78 @@
     }
 
   </style>
-<script>
-    async function loadChecks() {
-      const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;
-      const type   = window.MANUAL_TYPE;
+	<script>
+		async function loadChecks() {
+		const userId = window.MANUAL_USER_ID;
+		const store  = window.MANUAL_STORE;
 
-      if (!userId || !store || !type) {
-        console.warn("チェックロード不可: userId/store/type が不足");
-        return;
-      }
+		if (!userId || !store) {
+			console.warn("チェックロード不可: userId/store 不足");
+			return;
+		}
 
-      const res = await fetch(
-        `/${store}/api/manual-check?userId=${userId}&type=${type}`
-      );
-      // 🔽 JSON 以外は無視（HTMLが返ってきても落ちない）
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        console.warn("manual-check が JSON を返していません");
-        return;
-      }
+		const res = await fetch(
+			`/${store}/api/manual-check?userId=${userId}`
+		);
 
-      const data = await res.json();
+		// ❗ 失敗時は静かに終了
+		if (!res.ok) {
+			console.warn("manual-check 取得失敗");
+			return;
+		}
 
-      // 反映
-      document.querySelectorAll(".check-item").forEach(el => {
-        const key = el.dataset.key;
-        el.checked = data[key] === true;
-      });
-    }
+		let data = {};
+		try {
+			data = await res.json();
+		} catch (e) {
+			console.warn("manual-check JSON 解析失敗");
+			return;
+		}
+
+		// ✅ ここで確実に反映
+		document.querySelectorAll(".check-item").forEach(el => {
+			const key = el.dataset.key;
+			el.checked = data[key] === true;
+		});
+		}
 
 
-    // チェック変更イベント
-    async function toggleCheck(key) {
-      const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;   // ← これを必ず使う
-      const type   = window.MANUAL_TYPE;
+		// チェック変更イベント
+		async function toggleCheck(key) {
+		const userId = window.MANUAL_USER_ID;
+		const store  = window.MANUAL_STORE;
+		const type   = window.MANUAL_TYPE;
 
-      if (!userId || !store || !type) {
-        console.warn("toggleCheck: 必要な情報が不足しています");
-        return;
-      }
+		const checkbox = document.querySelector(
+			`.check-item[data-key="${key}"]`
+		);
 
-      const res = await fetch(`/${store}/manual-check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          type,
-          recipeId: key
-        })
-      });
+		const checked = checkbox.checked; // ← ★ 追加（true / false）
 
-      const out = await res.json();
-      console.log("CHECK UPDATED:", out);
-    }
+		const res = await fetch(`/${store}/manual-check`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+			userId,
+			type,
+			recipeId: key,
+			checked            // ← ★ 送る
+			})
+		});
 
-    window.addEventListener("DOMContentLoaded", loadChecks);
-  </script>
+		const out = await res.json();
+		console.log("CHECK UPDATED:", out);
+		}
 
-  <script>
-    function saveCheck(key) {
-      toggleCheck(key);
-    }
-  </script>
+
+		window.addEventListener("DOMContentLoaded", loadChecks);
+	</script>
+
+	<script>
+		function saveCheck(key) {
+			toggleCheck(key);
+		}
+	</script>
 </head>
 <body>
 
@@ -407,27 +415,32 @@
 </div>
 
 <script>
-	document.querySelectorAll(".section").forEach(sec => {
-	sec.querySelector(".header").addEventListener("click", (e) => {
-		const isOpen = sec.classList.contains("open");
-		sec.classList.toggle("open");
+  document.querySelectorAll(".header").forEach(header => {
+    header.addEventListener("click", (e) => {
+      e.stopPropagation(); // ← ★ これが最重要
 
-		// すでに開いている時 → 何もしない
-		if (isOpen) return;
+      const section = header.closest(".section");
+      const isOpen = section.classList.contains("open");
 
-		// 開いた瞬間に位置を補正
-		setTimeout(() => {
-		const rect = sec.getBoundingClientRect().top + window.scrollY;
-		const offset = 80; // ← 上からどれくらい余白を空けるか（sticky対策）
-		window.scrollTo({
-			top: rect - offset,
-			behavior: "smooth"
-		});
-		}, 10);
-	});
-	});
+      // 開閉トグル
+      section.classList.toggle("open");
 
+      // すでに開いていた場合はスクロールしない
+      if (isOpen) return;
+
+      // 開いたときだけ位置調整
+      setTimeout(() => {
+        const rect = section.getBoundingClientRect().top + window.scrollY;
+        const offset = 80;
+        window.scrollTo({
+          top: rect - offset,
+          behavior: "smooth"
+        });
+      }, 10);
+    });
+  });
 </script>
+
 
 </body>
 </html>
