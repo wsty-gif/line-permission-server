@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>串焼き店レシピマニュアル</title>
+  <title>ドリンクマニュアル</title>
   <style>
     body{
       font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
@@ -154,101 +154,165 @@
 <div class="wrapper">
   <h1>ドリンクマニュアル</h1>
 
-  <!-- ソフトドリンク -->
+  <!-- オープン準備（カテゴリ） -->
   <div class="section">
     <div class="header">
-      <div><div class="header-title recipe-name" data-recipe-id="ソフトドリンク">ソフトドリンク</div></div>
+      <div><div class="header-title">オープン準備</div></div>
       <div class="arrow">▶</div>
     </div>
-    <div class="body">
-      <strong>材料（1杯）</strong><br>
-      ・ソフトドリンク：適量<br>
-      ・氷：5つ
 
-      <div class="photo-box">
-        <div class="photo-grid">
-          <img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg" alt="完成例">
-        </div>
-      </div>
-
-      <ol class="steps">
-        <li>ソフトドリンクグラスに氷を<span class="highlight-count">5つ</span>入れ、グラスに添わせながら注ぐ</li>
-      </ol>
-
-      <div class="check-wrap">
-        <input type="checkbox" class="check-item" data-key="ソフトドリンク" onclick="toggleCheck('ソフトドリンク')">
-        <span class="check-text">この項目を理解しました</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- カルピス -->
-  <div class="section">
-    <div class="header">
-      <div><div class="header-title recipe-name" data-recipe-id="カルピス">カルピス</div></div>
-      <div class="arrow">▶</div>
-    </div>
-    <div class="body">
-      <strong>材料（1杯）</strong><br>
-      ・カルピス：適量<br>
-      ・水：適量<br>
-      ・氷：5つ
-
-      <div class="photo-box">
-        <div class="photo-grid">
-          <img src="/manuals/torisei_sakura/line/torisei_sakura/カルピスウォーター.jpg" alt="完成例">
-        </div>
-      </div>
-
-      <ol class="steps">
-        <li>ソフトドリンクグラスに氷を<span class="highlight-count">5つ</span>入れ、ポンプを下3回（25×3）</li>
-        <li>水を入れ、マドラーでよく混ぜる</li>
-      </ol>
-
-      <div class="check-wrap">
-        <input type="checkbox" class="check-item" data-key="カルピス" onclick="toggleCheck('カルピス')">
-        <span class="check-text">この項目を理解しました</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 焼酎（カテゴリ） -->
-  <div class="section">
-    <div class="header">
-      <div><div class="header-title">焼酎</div></div>
-      <div class="arrow">▶</div>
-    </div>
     <div class="body">
 
-      <div class="section">
-        <div class="header">
-          <div><div class="header-title recipe-name" data-recipe-id="焼酎【ロック】">焼酎【ロック】</div></div>
-          <div class="arrow">▶</div>
-        </div>
-        <div class="body">
-          <strong>材料（1杯）</strong><br>
-          ・焼酎：適量<br>
-          ・氷：適量
+    <!-- ドリンク作成（カテゴリ） -->
+    <div class="section">
+      <div class="header">
+        <div><div class="header-title">ドリンク作成</div></div>
+        <div class="arrow">▶</div>
+      </div>
 
-          <div class="photo-box">
-            <div class="photo-grid">
-              <img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg" alt="完成例">
+      <div class="body">
+
+        <!-- ソフトドリンク -->
+        <div class="section">
+          <div class="header">
+            <div>
+              <div class="header-title recipe-name" data-recipe-id="ソフトドリンク">
+                ソフトドリンク
+              </div>
+            </div>
+            <div class="arrow">▶</div>
+          </div>
+
+          <div class="body">
+            <ol class="steps">
+              <li>ソフトドリンク各種：グラスに氷を5つ入れ、各種ドリンクを注ぐ</li>
+              <li>カルピス：氷5つ → ポンプ2回（下まで） → 水を入れてマドラーで混ぜる</li>
+            </ol>
+
+            <div class="check-wrap">
+              <input type="checkbox" class="check-item" data-key="ソフトドリンク" onclick="toggleCheck('ソフトドリンク')">
+              <span class="check-text">この項目を理解しました</span>
             </div>
           </div>
+        </div>
 
-          <ol class="steps">
-            <li>グラスに氷を入れて焼酎を注ぐ</li>
-          </ol>
+        <!-- 焼酎 -->
+        <div class="section">
+          <div class="header">
+            <div>
+              <div class="header-title recipe-name" data-recipe-id="焼酎">
+                焼酎（ロック・割り）
+              </div>
+            </div>
+            <div class="arrow">▶</div>
+          </div>
 
-          <div class="check-wrap">
-            <input type="checkbox" class="check-item" data-key="焼酎【ロック】" onclick="toggleCheck('焼酎【ロック】')">
-            <span class="check-text">この項目を理解しました</span>
+          <div class="body">
+            <ol class="steps">
+              <li>ロック：ロックグラスに氷5つ → ショット1回 → マドラーで混ぜる</li>
+              <li>水割り：焼酎グラスに氷5つ → ショット1回 → 水を上1cmまで → 混ぜる</li>
+              <li>ソーダ割り：焼酎グラスに氷5つ → ショット1回 → ソーダ上1cmまで → 混ぜる</li>
+              <li>お湯割り：グラスをお湯で温めて捨てる → ショット1回 → お湯上1cmまで → 混ぜる</li>
+            </ol>
+
+            <div class="check-wrap">
+              <input type="checkbox" class="check-item" data-key="焼酎" onclick="toggleCheck('焼酎')">
+              <span class="check-text">この項目を理解しました</span>
+            </div>
           </div>
         </div>
+
+        <!-- 酒カクテル・タルハイ -->
+        <div class="section">
+          <div class="header">
+            <div>
+              <div class="header-title recipe-name" data-recipe-id="酒カクテル">
+                酒カクテル・カクテル・タルハイ
+              </div>
+            </div>
+            <div class="arrow">▶</div>
+          </div>
+
+          <div class="body">
+            <ol class="steps">
+              <li>サケジンジャー：氷5つ → ライム（25+10）→ 酒（25×2）→ ジンジャー → 軽く混ぜる</li>
+              <li>サムライロック：氷5つ → ライム（25）→ 酒（25×3）→ 混ぜる</li>
+              <li>タルハイ：氷5つ → タルハイ8分目 → シロップ25 → 混ぜる</li>
+              <li>カシス各種：氷5つ → カシス（25×2）→ 割材を上2cmまで → よく混ぜる</li>
+            </ol>
+
+            <div class="point">
+              <div class="prep-title">注意</div>
+              <ol class="prep-list">
+                <li>カシスは比重が重いため、必ずしっかり混ぜる</li>
+              </ol>
+            </div>
+
+            <div class="check-wrap">
+              <input type="checkbox" class="check-item" data-key="酒カクテル" onclick="toggleCheck('酒カクテル')">
+              <span class="check-text">この項目を理解しました</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 梅酒 -->
+        <div class="section">
+          <div class="header">
+            <div>
+              <div class="header-title recipe-name" data-recipe-id="梅酒">
+                梅酒
+              </div>
+            </div>
+            <div class="arrow">▶</div>
+          </div>
+
+          <div class="body">
+            <ol class="steps">
+              <li>ロック：氷5つ → ポンプ下4回 → 混ぜる</li>
+              <li>水割り・ソーダ割り：氷5つ → ポンプ下4回 → 割材上2cm → よく混ぜる</li>
+              <li>お湯割り：陶器小を温める → ポンプ下4回 → お湯上1cm → 混ぜる</li>
+            </ol>
+
+            <div class="check-wrap">
+              <input type="checkbox" class="check-item" data-key="梅酒" onclick="toggleCheck('梅酒')">
+              <span class="check-text">この項目を理解しました</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ビール・ハイボール -->
+        <div class="section">
+          <div class="header">
+            <div>
+              <div class="header-title recipe-name" data-recipe-id="ビール・ハイボール">
+                ビール・ハイボール
+              </div>
+            </div>
+            <div class="arrow">▶</div>
+          </div>
+
+          <div class="body">
+            <ol class="steps">
+              <li>生ビール：AsahiロゴA頂点まで注ぎ、DRYロゴ下まで泡をのせる</li>
+              <li>フリージングハイボール：氷4つ → 専用機で上1cmまで注ぐ</li>
+              <li>びん・ノンアル：栓を開け、咲蔵グラスと提供</li>
+              <li>澪ドライ：席で開栓し、冷酒グラス（吟醸）で提供</li>
+            </ol>
+
+            <div class="check-wrap">
+              <input type="checkbox" class="check-item" data-key="ビール・ハイボール" onclick="toggleCheck('ビール・ハイボール')">
+              <span class="check-text">この項目を理解しました</span>
+            </div>
+          </div>
+        </div>
+
       </div>
+    </div>
+
 
     </div>
   </div>
+
 
 </div>
 </body>
