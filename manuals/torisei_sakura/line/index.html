@@ -415,31 +415,28 @@
 </div>
 
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  // 初期状態：すべて閉じる
+  document.querySelectorAll(".section").forEach(sec => {
+    sec.classList.remove("open");
+  });
+
+  // header クリックで「その section だけ」開閉
   document.querySelectorAll(".header").forEach(header => {
     header.addEventListener("click", (e) => {
-      e.stopPropagation(); // ← ★ これが最重要
+      e.stopPropagation(); // ← これが超重要
 
       const section = header.closest(".section");
-      const isOpen = section.classList.contains("open");
+      if (!section) return;
 
-      // 開閉トグル
       section.classList.toggle("open");
-
-      // すでに開いていた場合はスクロールしない
-      if (isOpen) return;
-
-      // 開いたときだけ位置調整
-      setTimeout(() => {
-        const rect = section.getBoundingClientRect().top + window.scrollY;
-        const offset = 80;
-        window.scrollTo({
-          top: rect - offset,
-          behavior: "smooth"
-        });
-      }, 10);
     });
   });
+
+});
 </script>
+
 
 
 </body>
