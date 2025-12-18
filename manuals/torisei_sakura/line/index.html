@@ -11,177 +11,167 @@
       line-height:1.7;font-size:16px;
     }
     .wrapper{max-width:520px;margin:0 auto;padding:14px;}
-    h1{text-align:center;font-size:20px;color:#e11d48;margin-bottom:8px;}
+    h1{text-align:center;font-size:20px;color:#e11d48;margin:6px 0 10px;}
+
+    /* ===== アコーディオン（重要：直下だけ開く） ===== */
     .section{
       background:#fff;border-radius:12px;
       margin-bottom:14px;overflow:hidden;
       box-shadow:0 1px 6px rgba(0,0,0,0.1);
+      border:1px solid rgba(0,0,0,0.04);
     }
     .header{
-      padding:12px;display:flex;justify-content:space-between;
-      cursor:pointer;user-select:none;
-      background:#fff;
+      padding:12px;display:flex;justify-content:space-between;gap:10px;
+      cursor:pointer;user-select:none;background:#fff;align-items:center;
     }
     .header-title{font-size:16px;font-weight:600;}
-    .arrow{transition:0.2s;}
-    .open .arrow{transform:rotate(90deg);}
-    .body{display:none;padding:12px;background:#f9fafb;}
-    .open .body{display:block;}
-    .img-box{
-      margin-top:10px;border-radius:10px;background:#e5e7eb;
-      padding:10px;display:flex;gap:10px;
-    }
-    .img-thumb{
-      width:80px;height:80px;background:#d1d5db;
-      border-radius:8px;display:flex;
-      justify-content:center;align-items:center;
-      font-size:12px;text-align:center;padding:4px;
-    }
-    .steps{margin-top:8px;}
+    .arrow{transition:0.2s;flex:0 0 auto;}
+
+    /* ★ここがポイント：openは「そのsection直下」だけ */
+    .section > .body{display:none;padding:12px;background:#f9fafb;}
+    .section.open > .body{display:block;}
+    .section.open > .header .arrow{transform:rotate(90deg);}
+
+    /* ===== 見た目（既存デザイン寄せ） ===== */
+    .steps{margin:10px 0 0; padding-left:18px;}
     .steps li{margin-bottom:6px;font-size:14px;}
+    .highlight-count{color:#dc2626;font-weight:700;}
+
+    /* 写真 */
+    .photo-box{
+      margin:12px 0;
+      padding:10px;
+      background:#e5e7eb;
+      border-radius:14px;
+    }
+    .photo-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap:8px;
+    }
+    .photo-grid img{
+      width:100%;
+      aspect-ratio: 4 / 3;
+      height:auto;
+      display:block;
+      border-radius:10px;
+      object-fit:cover;
+      background:#d1d5db;
+    }
+
+    /* ポイント（仕込みなど） */
     .point{
       margin-top:10px;padding:10px;background:#fff7ed;
-      border-left:4px solid #fb923c;border-radius:6px;
+      border-left:4px solid #fb923c;border-radius:8px;
       font-size:14px;color:#b45309;
     }
-    .sub-title{font-size:14px;color:#6b7280;margin-bottom:4px;}
-    .highlight-count {
-      color: #dc2626;
-      font-weight: 700;
-    }
-    /* 写真エリア（nice_sweets風） */
-    .photo-box {
-      margin: 12px 0;
-      padding: 10px;
-      background: #e5e7eb;
-      border-radius: 14px;
-    }
+    .prep-title{font-weight:700;margin-bottom:6px;}
+    .prep-list{padding-left:18px;margin:0;}
+    .prep-list li{margin-bottom:6px;line-height:1.6;}
 
-    /* 画像グリッド */
-    .photo-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 8px;
+    /* チェック */
+    .check-wrap{
+      margin-top:12px;
+      padding:10px 12px;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      display:flex; align-items:center; gap:10px;
     }
-
-    /* 写真そのもの */
-    .photo-grid img {
-      width: 100%;
-      height: auto;
-      display: block;
-      border-radius: 10px;
-      object-fit: cover;
-      background: #d1d5db;
-    }
-    .prep-title {
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    .prep-list {
-      padding-left: 18px;
-      margin: 0;
-    }
-
-    .prep-list li {
-      margin-bottom: 6px;
-      line-height: 1.6;
-    }
-
+    .check-item{transform:scale(1.2);}
+    .check-text{font-size:14px;font-weight:600; cursor:pointer;}
   </style>
-	<script>
-		async function loadChecks() {
-		const userId = window.MANUAL_USER_ID;
-		const store  = window.MANUAL_STORE;
 
-		if (!userId || !store) {
-			console.warn("チェックロード不可: userId/store 不足");
-			return;
-		}
+  <script>
+    async function loadChecks() {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
 
-		const res = await fetch(
-			`/${store}/api/manual-check?userId=${userId}`
-		);
+      if (!userId || !store) return;
 
-		// ❗ 失敗時は静かに終了
-		if (!res.ok) {
-			console.warn("manual-check 取得失敗");
-			return;
-		}
+      const res = await fetch(`/${store}/api/manual-check?userId=${userId}`);
+      if (!res.ok) return;
 
-		let data = {};
-		try {
-			data = await res.json();
-		} catch (e) {
-			console.warn("manual-check JSON 解析失敗");
-			return;
-		}
+      let data = {};
+      try { data = await res.json(); } catch(e){ return; }
 
-		// ✅ ここで確実に反映
-		document.querySelectorAll(".check-item").forEach(el => {
-			const key = el.dataset.key;
-			el.checked = data[key] === true;
-		});
-		}
+      document.querySelectorAll(".check-item").forEach(el => {
+        const key = el.dataset.key;
+        el.checked = data[key] === true;
+      });
+    }
 
+    async function toggleCheck(key) {
+      const userId = window.MANUAL_USER_ID;
+      const store  = window.MANUAL_STORE;
+      const type   = window.MANUAL_TYPE;
 
-		// チェック変更イベント
-		async function toggleCheck(key) {
-		const userId = window.MANUAL_USER_ID;
-		const store  = window.MANUAL_STORE;
-		const type   = window.MANUAL_TYPE;
+      const checkbox = document.querySelector(`.check-item[data-key="${key}"]`);
+      const checked = checkbox ? checkbox.checked : false;
 
-		const checkbox = document.querySelector(
-			`.check-item[data-key="${key}"]`
-		);
+      await fetch(`/${store}/manual-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, type, recipeId: key, checked })
+      }).catch(()=>{});
+    }
 
-		const checked = checkbox.checked; // ← ★ 追加（true / false）
+    window.addEventListener("DOMContentLoaded", () => {
+      // 初期表示：すべて閉じる
+      document.querySelectorAll(".section.open").forEach(s => s.classList.remove("open"));
 
-		const res = await fetch(`/${store}/manual-check`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-			userId,
-			type,
-			recipeId: key,
-			checked            // ← ★ 送る
-			})
-		});
+      // アコーディオン：イベント委譲（ネストしても確実に動く）
+      document.addEventListener("click", (e) => {
+        const header = e.target.closest(".header");
+        if (!header) return;
 
-		const out = await res.json();
-		console.log("CHECK UPDATED:", out);
-		}
+        // チェック周りクリックは開閉させない（誤爆防止）
+        if (e.target.closest(".check-wrap")) return;
 
+        const section = header.closest(".section");
+        if (!section) return;
 
-		window.addEventListener("DOMContentLoaded", loadChecks);
-	</script>
+        section.classList.toggle("open");
+      });
 
-	<script>
-		function saveCheck(key) {
-			toggleCheck(key);
-		}
-	</script>
+      // 「この項目を理解しました」文字クリックでチェックON/OFF
+      document.addEventListener("click", (e) => {
+        const label = e.target.closest(".check-text");
+        if (!label) return;
+        const wrap = label.closest(".check-wrap");
+        const cb = wrap ? wrap.querySelector(".check-item") : null;
+        if (!cb) return;
+        cb.checked = !cb.checked;
+        toggleCheck(cb.dataset.key);
+      });
+
+      loadChecks();
+    });
+  </script>
 </head>
-<body>
 
+<body>
 <div class="wrapper">
   <h1>串焼きレシピマニュアル</h1>
 
-	<div class="section">
-		<div class="header"><div><div class="header-title">ドリンク</div></div><div class="arrow">▶</div></div>
-		<div class="body">
-      <!-- 1. ソフトドリンク -->
+  <!-- ドリンク -->
+  <div class="section">
+    <div class="header">
+      <div><div class="header-title">ドリンク</div></div>
+      <div class="arrow">▶</div>
+    </div>
+    <div class="body">
+
+      <!-- ソフトドリンク -->
       <div class="section">
         <div class="header">
-          <div>
-            <div class="header-title recipe-name" data-recipe-id="ソフトドリンク">ソフトドリンク</div>
-          </div>
+          <div><div class="header-title recipe-name" data-recipe-id="ソフトドリンク">ソフトドリンク</div></div>
           <div class="arrow">▶</div>
         </div>
         <div class="body">
           <strong>材料（1杯）</strong><br>
           ・ソフトドリンク：適量<br>
-          ・氷：5つ  
+          ・氷：5つ
 
           <div class="photo-box">
             <div class="photo-grid">
@@ -200,19 +190,17 @@
         </div>
       </div>
 
-      <!-- 2. カルピス -->
+      <!-- カルピス -->
       <div class="section">
         <div class="header">
-          <div>
-            <div class="header-title recipe-name" data-recipe-id="カルピス">カルピス</div>
-          </div>
+          <div><div class="header-title recipe-name" data-recipe-id="カルピス">カルピス</div></div>
           <div class="arrow">▶</div>
         </div>
         <div class="body">
           <strong>材料（1杯）</strong><br>
           ・カルピス：適量<br>
           ・水：適量<br>
-          ・氷：5つ  
+          ・氷：5つ
 
           <div class="photo-box">
             <div class="photo-grid">
@@ -225,121 +213,76 @@
             <li>水を入れ、マドラーでよく混ぜる</li>
           </ol>
 
-          <div class="point">
-            ✔ 長ねぎは焼き過ぎると崩れるので裏返しは1回だけ  
-            ✔ 肉は刺し過ぎずふんわり刺すと火が通りやすい
-          </div>
           <div class="check-wrap">
             <input type="checkbox" class="check-item" data-key="カルピス" onclick="toggleCheck('カルピス')">
             <span class="check-text">この項目を理解しました</span>
           </div>
         </div>
       </div>
-		</div>
 
-    <div class="section">
-      <div class="header"><div><div class="header-title">焼酎</div></div><div class="arrow">▶</div></div>
-      <div class="body">
-        <!-- 1. 焼酎 -->
-        <div class="section">
-          <div class="header">
-            <div>
-              <div class="header-title recipe-name" data-recipe-id="焼酎【ロック】">焼酎【ロック】</div>
-            </div>
-            <div class="arrow">▶</div>
-          </div>
-          <div class="body">
-            <strong>材料（1杯）</strong><br>
-            ・ソフトドリンク：適量<br>
-            ・氷：5つ  
-
-            <div class="photo-box">
-              <div class="photo-grid">
-                <img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg" alt="完成例">
-              </div>
-            </div>
-
-            <ol class="steps">
-              <li>ソフトドリンクグラスに氷を<span class="highlight-count">5つ</span>入れ、グラスに添わせながら注ぐ</li>
-            </ol>
-
-            <div class="check-wrap">
-              <input type="checkbox" class="check-item" data-key="焼酎【ロック】" onclick="toggleCheck('焼酎【ロック】')">
-              <span class="check-text">この項目を理解しました</span>
-            </div>
-          </div>
+      <!-- 焼酎（カテゴリ） -->
+      <div class="section">
+        <div class="header">
+          <div><div class="header-title">焼酎</div></div>
+          <div class="arrow">▶</div>
         </div>
+        <div class="body">
 
-        <!-- 2. カルピス -->
-        <div class="section">
-          <div class="header">
-            <div>
-              <div class="header-title recipe-name" data-recipe-id="カルピス">カルピス</div>
+          <div class="section">
+            <div class="header">
+              <div><div class="header-title recipe-name" data-recipe-id="焼酎【ロック】">焼酎【ロック】</div></div>
+              <div class="arrow">▶</div>
             </div>
-            <div class="arrow">▶</div>
-          </div>
-          <div class="body">
-            <strong>材料（1杯）</strong><br>
-            ・カルピス：適量<br>
-            ・水：適量<br>
-            ・氷：5つ  
+            <div class="body">
+              <strong>材料（1杯）</strong><br>
+              ・焼酎：適量<br>
+              ・氷：適量
 
-            <div class="photo-box">
-              <div class="photo-grid">
-                <img src="/manuals/torisei_sakura/line/torisei_sakura/カルピスウォーター.jpg" alt="完成例">
+              <div class="photo-box">
+                <div class="photo-grid">
+                  <img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg" alt="完成例">
+                </div>
+              </div>
+
+              <ol class="steps">
+                <li>グラスに氷を入れて焼酎を注ぐ</li>
+              </ol>
+
+              <div class="check-wrap">
+                <input type="checkbox" class="check-item" data-key="焼酎【ロック】" onclick="toggleCheck('焼酎【ロック】')">
+                <span class="check-text">この項目を理解しました</span>
               </div>
             </div>
-
-            <ol class="steps">
-              <li>ソフトドリンクグラスに氷を<span class="highlight-count">5つ</span>入れ、ポンプを下3回（25×3）</li>
-              <li>水を入れ、マドラーでよく混ぜる</li>
-            </ol>
-
-            <div class="point">
-              ✔ 長ねぎは焼き過ぎると崩れるので裏返しは1回だけ  
-              ✔ 肉は刺し過ぎずふんわり刺すと火が通りやすい
-            </div>
-            <div class="check-wrap">
-              <input type="checkbox" class="check-item" data-key="カルピス" onclick="toggleCheck('カルピス')">
-              <span class="check-text">この項目を理解しました</span>
-            </div>
           </div>
+
         </div>
       </div>
+
     </div>
+  </div>
 
-	</div>
-
+  <!-- フード -->
   <div class="section">
-    <!-- フード -->
     <div class="header">
-      <div>
-        <div class="header-title">フード</div>
-      </div>
+      <div><div class="header-title">フード</div></div>
       <div class="arrow">▶</div>
     </div>
 
     <div class="body">
 
-      <!-- 創作小皿カテゴリ -->
+      <!-- 創作小皿（カテゴリ） -->
       <div class="section">
         <div class="header">
-          <div>
-            <div class="header-title">創作小皿</div>
-          </div>
+          <div><div class="header-title">創作小皿</div></div>
           <div class="arrow">▶</div>
         </div>
 
         <div class="body">
 
-          <!-- 創作小皿 -->
+          <!-- 豚トロチャーシュー -->
           <div class="section">
             <div class="header">
-              <div>
-                <div class="header-title recipe-name" data-recipe-id="豚トロチャーシュー">
-                  豚トロチャーシュー
-                </div>
-              </div>
+              <div><div class="header-title recipe-name" data-recipe-id="豚トロチャーシュー">豚トロチャーシュー</div></div>
               <div class="arrow">▶</div>
             </div>
 
@@ -369,76 +312,28 @@
               <div class="point">
                 <div class="prep-title">仕込み</div>
                 <ol class="prep-list">
-                  <li>
-                    グレープフルーツジュース200cc・しょうゆ200cc・砂糖100gを合わせ、
-                    豚トロ5枚（約2kg分）を入れて<strong>1日漬け込む</strong>
-                  </li>
-                  <li>
-                    漬け汁を切り、鉄板で<strong>両面に焼き目</strong>をつける
-                  </li>
-                  <li>
-                    アルミで包み、<strong>保温機に入れる</strong>
-                  </li>
-                  <li>
-                    粗熱が取れたら<strong>冷蔵保存</strong>
-                  </li>
-                  <li>
-                    残った漬け汁は<strong>半量まで煮詰めて「かけダレ」</strong>にする
-                  </li>
-                  <li>
-                    豚トロを<strong>1枚10g</strong>にスライスする
-                  </li>
+                  <li>グレープフルーツジュース200cc・しょうゆ200cc・砂糖100gを合わせ、豚トロ5枚（約2kg分）を入れて<strong>1日漬け込む</strong></li>
+                  <li>漬け汁を切り、鉄板で<strong>両面に焼き目</strong>をつける</li>
+                  <li>アルミで包み、<strong>保温機に入れる</strong></li>
+                  <li>粗熱が取れたら<strong>冷蔵保存</strong></li>
+                  <li>残った漬け汁は<strong>半量まで煮詰めて「かけダレ」</strong>にする</li>
+                  <li>豚トロを<strong>1枚10g</strong>にスライスする</li>
                 </ol>
               </div>
 
               <div class="check-wrap">
-                <input
-                  type="checkbox"
-                  class="check-item"
-                  data-key="豚トロチャーシュー"
-                  onclick="toggleCheck('豚トロチャーシュー')"
-                >
+                <input type="checkbox" class="check-item" data-key="豚トロチャーシュー" onclick="toggleCheck('豚トロチャーシュー')">
                 <span class="check-text">この項目を理解しました</span>
               </div>
             </div>
           </div>
-          <!-- /創作小皿 -->
 
         </div>
       </div>
-      <!-- /メイン -->
 
     </div>
   </div>
 
-
 </div>
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-
-  // 初期状態：すべて閉じる
-  document.querySelectorAll(".section").forEach(section => {
-    section.classList.remove("open");
-  });
-
-  // headerクリックで「対応するbodyのみ」開閉
-  document.querySelectorAll(".section > .header").forEach(header => {
-    header.addEventListener("click", (e) => {
-      e.stopPropagation(); // 親への伝播を完全に止める
-
-      const section = header.parentElement;
-      if (!section) return;
-
-      section.classList.toggle("open");
-    });
-  });
-
-});
-</script>
-
-
-
-
 </body>
 </html>
