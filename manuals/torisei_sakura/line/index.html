@@ -49,6 +49,63 @@
       color: #dc2626;
       font-weight: 700;
     }
+    .section .body {
+      padding: 14px 16px 18px;
+    }
+    .img-box {
+      margin: 12px 0;
+    }
+    .img-thumb {
+      background: #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .img-thumb img {
+      width: 96px;
+      height: auto;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+    .img-desc {
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.5;
+    }
+    .steps {
+      margin: 10px 0 0;
+      padding-left: 1.2em;
+    }
+    .steps li {
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+    .highlight-count {
+      color: #dc2626;
+      font-weight: 700;
+    }
+    .point {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #fff7ed;
+      border-left: 4px solid #fb923c;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .check-wrap {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .check-text {
+      font-size: 14px;
+    }
+
   </style>
 <script>
     async function loadChecks() {
@@ -119,50 +176,58 @@
 
 <div class="wrapper">
   <h1>串焼きレシピマニュアル</h1>
-  <p style="text-align:center;font-size:13px;color:#6b7280;margin-bottom:18px;">
-    スマホでサッと確認できる、店舗向け公式レシピ集です。
-  </p>
 
-	<div class="section">
-		<div class="header"><div><div class="header-title">ドリンク</div></div><div class="arrow">▶</div></div>
-		<div class="body">
-      <!-- 1. ねぎま -->
-      <div class="section">
-        <div class="header">
-          <div>
-            <div class="header-title recipe-name" data-recipe-id="ソフトドリンク">ソフトドリンク</div>
-          </div>
-          <div class="arrow">▶</div>
+  <div class="section">
+    <div class="header">
+      <div>
+        <div class="header-title recipe-name" data-recipe-id="ソフトドリンク">
+          ソフトドリンク
         </div>
-        <div class="body">
-          <strong>材料（1杯）</strong><br>
-          ・ソフトドリンク：適量  
-          ・氷：5つ  
+      </div>
+      <div class="arrow">▶</div>
+    </div>
 
-          <div class="img-box">
-            <div class="img-thumb"><img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg"></div>
-            <!-- <div>
-              <strong>盛り付け完成例</strong><br>
-              店舗の写真に差し替えてください
-            </div> -->
-          </div>
+    <div class="body">
+      <strong>材料（1杯）</strong><br>
+      ・ソフトドリンク：適量<br>
+      ・氷：<span class="highlight-count">5つ</span>
 
-          <ol class="steps">
-            <li>ソフトドリンクグラスに氷を<span class="highlight-count">5つ</span>入れ、グラスに添わせながら注ぐ</li>
-          </ol>
-
-          <div class="point">
-            ✔ 長ねぎは焼き過ぎると崩れるので裏返しは1回だけ  
-            ✔ 肉は刺し過ぎずふんわり刺すと火が通りやすい
-          </div>
-          <div class="check-wrap">
-            <input type="checkbox" class="check-item" data-key="ソフトドリンク" onclick="toggleCheck('ソフトドリンク')">
-            <span class="check-text">この項目を理解しました</span>
+      <!-- 完成イメージ -->
+      <div class="img-box">
+        <div class="img-thumb">
+          <img src="/manuals/torisei_sakura/line/torisei_sakura/ウーロン茶_.jpg">
+          <div class="img-desc">
+            <strong>完成例</strong><br>
+            グラスに沿わせて静かに注ぐ
           </div>
         </div>
       </div>
-		</div>
-	</div>
+
+      <!-- 手順 -->
+      <ol class="steps">
+        <li>
+          ソフトドリンクグラスに氷を
+          <span class="highlight-count">5つ</span>
+          入れ、グラスに添わせながら注ぐ
+        </li>
+      </ol>
+
+      <!-- 注意 -->
+      <div class="point">
+        ✔ 氷が溶けにくいよう必ず先に入れる<br>
+        ✔ 勢いよく注がない
+      </div>
+
+      <!-- チェック -->
+      <div class="check-wrap">
+        <input type="checkbox" class="check-item" data-key="ソフトドリンク"
+          onclick="toggleCheck('ソフトドリンク')">
+        <span class="check-text">この項目を理解しました</span>
+      </div>
+    </div>
+  </div>
+
+
   <!-- 2. 砂ずり -->
   <div class="section">
     <div class="header">
