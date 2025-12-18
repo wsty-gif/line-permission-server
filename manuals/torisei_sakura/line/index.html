@@ -1,163 +1,92 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>フードマニュアル</title>
-  <style>
-    body{
-      font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
-      margin:0;background:#f8f9fa;color:#111;
-      line-height:1.7;font-size:16px;
-    }
-    .wrapper{max-width:520px;margin:0 auto;padding:14px;}
-    h1{text-align:center;font-size:20px;color:#e11d48;margin:6px 0 10px;}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>フードマニュアル</title>
 
-    /* ===== アコーディオン（重要：直下だけ開く） ===== */
-    .section{
-      background:#fff;border-radius:12px;
-      margin-bottom:14px;overflow:hidden;
-      box-shadow:0 1px 6px rgba(0,0,0,0.1);
-      border:1px solid rgba(0,0,0,0.04);
-    }
-    .header{
-      padding:12px;display:flex;justify-content:space-between;gap:10px;
-      cursor:pointer;user-select:none;background:#fff;align-items:center;
-    }
-    .header-title{font-size:16px;font-weight:600;}
-    .arrow{transition:0.2s;flex:0 0 auto;}
+<style>
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
+  margin:0;background:#f8f9fa;color:#111;
+  line-height:1.7;font-size:16px;
+}
+.wrapper{max-width:520px;margin:0 auto;padding:14px}
+h1{text-align:center;font-size:20px;color:#e11d48;margin:8px 0}
 
-    /* ★ここがポイント：openは「そのsection直下」だけ */
-    .section > .body{display:none;padding:12px;background:#f9fafb;}
-    .section.open > .body{display:block;}
-    .section.open > .header .arrow{transform:rotate(90deg);}
+.section{
+  background:#fff;
+  border-radius:12px;
+  margin-bottom:14px;
+  overflow:hidden;
+  box-shadow:0 1px 6px rgba(0,0,0,.1);
+}
+.header{
+  padding:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  cursor:pointer;
+}
+.header-title{font-weight:600}
+.arrow{transition:.2s}
+.section.open>.header .arrow{transform:rotate(90deg)}
 
-    /* ===== 見た目（既存デザイン寄せ） ===== */
-    .steps{margin:10px 0 0; padding-left:18px;}
-    .steps li{margin-bottom:6px;font-size:14px;}
-    .highlight-count{color:#dc2626;font-weight:700;}
+.body{
+  display:none;
+  padding:12px;
+  background:#f9fafb;
+}
+.section.open>.body{display:block}
 
-    /* 写真 */
-    .photo-box{
-      margin:12px 0;
-      padding:10px;
-      background:#e5e7eb;
-      border-radius:14px;
-    }
-    .photo-grid{
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap:8px;
-    }
-    .photo-grid img{
-      width:100%;
-      aspect-ratio: 4 / 3;
-      height:auto;
-      display:block;
-      border-radius:10px;
-      object-fit:cover;
-      background:#d1d5db;
-    }
+/* 中身 */
+.steps{padding-left:18px;margin-top:8px}
+.steps li{margin-bottom:6px;font-size:14px}
 
-    /* ポイント（仕込みなど） */
-    .point{
-      margin-top:10px;padding:10px;background:#fff7ed;
-      border-left:4px solid #fb923c;border-radius:8px;
-      font-size:14px;color:#b45309;
-    }
-    .prep-title{font-weight:700;margin-bottom:6px;}
-    .prep-list{padding-left:18px;margin:0;}
-    .prep-list li{margin-bottom:6px;line-height:1.6;}
+.point{
+  margin-top:10px;
+  padding:10px;
+  background:#fff7ed;
+  border-left:4px solid #fb923c;
+  border-radius:8px;
+  font-size:14px;
+  color:#b45309;
+}
 
-    /* チェック */
-    .check-wrap{
-      margin-top:12px;
-      padding:10px 12px;
-      background:#fff;
-      border:1px solid #e5e7eb;
-      border-radius:10px;
-      display:flex; align-items:center; gap:10px;
-    }
-    .check-item{transform:scale(1.2);}
-    .check-text{font-size:14px;font-weight:600; cursor:pointer;}
-  </style>
+.prep-title{font-weight:700;margin-bottom:6px}
+.prep-list{padding-left:18px;margin:0}
+.prep-list li{margin-bottom:6px}
 
-  <script>
-    async function loadChecks() {
-      const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;
-
-      if (!userId || !store) return;
-
-      const res = await fetch(`/${store}/api/manual-check?userId=${userId}`);
-      if (!res.ok) return;
-
-      let data = {};
-      try { data = await res.json(); } catch(e){ return; }
-
-      document.querySelectorAll(".check-item").forEach(el => {
-        const key = el.dataset.key;
-        el.checked = data[key] === true;
-      });
-    }
-
-    async function toggleCheck(key) {
-      const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;
-      const type   = window.MANUAL_TYPE;
-
-      const checkbox = document.querySelector(`.check-item[data-key="${key}"]`);
-      const checked = checkbox ? checkbox.checked : false;
-
-      await fetch(`/${store}/manual-check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, type, recipeId: key, checked })
-      }).catch(()=>{});
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      // 初期表示：すべて閉じる
-      document.querySelectorAll(".section.open").forEach(s => s.classList.remove("open"));
-
-      // アコーディオン：イベント委譲（ネストしても確実に動く）
-      document.addEventListener("click", (e) => {
-        const header = e.target.closest(".header");
-        if (!header) return;
-
-        // チェック周りクリックは開閉させない（誤爆防止）
-        if (e.target.closest(".check-wrap")) return;
-
-        const section = header.closest(".section");
-        if (!section) return;
-
-        section.classList.toggle("open");
-      });
-
-      // 「この項目を理解しました」文字クリックでチェックON/OFF
-      document.addEventListener("click", (e) => {
-        const label = e.target.closest(".check-text");
-        if (!label) return;
-        const wrap = label.closest(".check-wrap");
-        const cb = wrap ? wrap.querySelector(".check-item") : null;
-        if (!cb) return;
-        cb.checked = !cb.checked;
-        toggleCheck(cb.dataset.key);
-      });
-
-      loadChecks();
-    });
-  </script>
+.check-wrap{
+  margin-top:12px;
+  padding:10px;
+  background:#fff;
+  border-radius:10px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.check-text{font-weight:600}
+</style>
 </head>
 
 <body>
 <div class="wrapper">
-  <h1>フードマニュアル</h1>
+<h1>フードマニュアル</h1>
 
-    <!-- 創作小皿（カテゴリ） -->
+<!-- フード -->
+<div class="section">
+  <div class="header">
+    <div class="header-title">フード</div>
+    <div class="arrow">▶</div>
+  </div>
+
+  <div class="body">
+
+    <!-- 創作小皿 -->
     <div class="section">
       <div class="header">
-        <div><div class="header-title">創作小皿</div></div>
+        <div class="header-title">創作小皿</div>
         <div class="arrow">▶</div>
       </div>
 
@@ -166,55 +95,104 @@
         <!-- 豚トロチャーシュー -->
         <div class="section">
           <div class="header">
-            <div><div class="header-title recipe-name" data-recipe-id="豚トロチャーシュー">豚トロチャーシュー</div></div>
+            <div class="header-title">豚トロチャーシュー</div>
             <div class="arrow">▶</div>
           </div>
-
           <div class="body">
             <strong>材料</strong><br>
-            ・豚トロチャーシュー：70g<br>
-            ・タレ：10cc<br>
-            ・たまねぎスライス：20g<br>
-            ・からし：2g<br>
-            ・きざみねぎ<br>
-            ・糸とうがらし<br>
-
-            <div class="photo-box">
-              <div class="photo-grid">
-                <img src="/manuals/torisei_sakura/line/torisei_sakura/豚トロチャーシュー.jpg" alt="完成例">
-              </div>
-            </div>
+            ・豚トロチャーシュー 70g<br>
+            ・タレ 10cc<br>
 
             <ol class="steps">
-              <li>豚トロチャーシュースライス70ｇ（7枚）をレンジで７秒温める</li>
-              <li>1をバーナーであぶる</li>
-              <li>玉ねぎスライスを皿に盛り、2を盛り付ける</li>
-              <li>上からたれをかけて皿のふちにからしを乗せる</li>
-              <li>きざみねぎ、糸唐辛子をトッピングする</li>
+              <li>レンジで7秒温める</li>
+              <li>バーナーであぶる</li>
             </ol>
 
             <div class="point">
               <div class="prep-title">仕込み</div>
               <ol class="prep-list">
-                <li>グレープフルーツジュース200cc・しょうゆ200cc・砂糖100gを合わせ、豚トロ5枚（約2kg分）を入れて<strong>1日漬け込む</strong></li>
-                <li>漬け汁を切り、鉄板で<strong>両面に焼き目</strong>をつける</li>
-                <li>アルミで包み、<strong>保温機に入れる</strong></li>
-                <li>粗熱が取れたら<strong>冷蔵保存</strong></li>
-                <li>残った漬け汁は<strong>半量まで煮詰めて「かけダレ」</strong>にする</li>
-                <li>豚トロを<strong>1枚10g</strong>にスライスする</li>
+                <li>調味液に1日漬ける</li>
+                <li>焼き目を付け保温</li>
               </ol>
             </div>
+          </div>
+        </div>
 
-            <div class="check-wrap">
-              <input type="checkbox" class="check-item" data-key="豚トロチャーシュー" onclick="toggleCheck('豚トロチャーシュー')">
-              <span class="check-text">この項目を理解しました</span>
-            </div>
+        <!-- カマンベール -->
+        <div class="section">
+          <div class="header">
+            <div class="header-title">カマンベールの大吟醸漬け</div>
+            <div class="arrow">▶</div>
+          </div>
+          <div class="body">
+            <strong>材料</strong><br>
+            ・カマンベールチーズ漬け 5切れ<br>
+            ・ブラックペッパー 0.1g
+
+            <ol class="steps">
+              <li>吟醸酒を煮切る</li>
+              <li>冷やしてチーズを漬け込む</li>
+              <li>盛り付ける</li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- カプレーゼ -->
+        <div class="section">
+          <div class="header">
+            <div class="header-title">丸ごとトマトのカプレーゼ</div>
+            <div class="arrow">▶</div>
+          </div>
+          <div class="body">
+            <strong>材料</strong><br>
+            ・トマト1個<br>
+            ・モッツァレラ20g<br>
+            ・鶏生ハム20g
+
+            <ol class="steps">
+              <li>具材を刻む</li>
+              <li>トマトをくり抜く</li>
+              <li>詰めて盛る</li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- 磯部風 -->
+        <div class="section">
+          <div class="header">
+            <div class="header-title">クリームチーズの磯部風</div>
+            <div class="arrow">▶</div>
+          </div>
+          <div class="body">
+            <strong>材料</strong><br>
+            ・クリームチーズ 8切れ<br>
+            ・青のり 0.2g
+
+            <ol class="steps">
+              <li>割り醤油に30分漬ける</li>
+              <li>青のりと和える</li>
+            </ol>
           </div>
         </div>
 
       </div>
     </div>
 
+  </div>
 </div>
+</div>
+
+<script>
+document.addEventListener("click", e => {
+  const header = e.target.closest(".header");
+  if (!header) return;
+
+  const section = header.parentElement;
+  if (!section.classList.contains("section")) return;
+
+  section.classList.toggle("open");
+});
+</script>
+
 </body>
 </html>
