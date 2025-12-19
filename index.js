@@ -6101,26 +6101,25 @@ th { background:#f1f5f9; }
 .filter-bar {
   display: flex;
   gap: 8px;
-  margin: 12px 0 20px;
+  margin: 12px 0 20px 0;
 }
+
 .filter-btn {
   padding: 8px 14px;
-  border-radius: 9999px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
   font-size: 13px;
   cursor: pointer;
-  color: #374151;
-}
-.filter-btn:hover {
-  background: #f3f4f6;
 }
 
 .filter-btn.active {
   background: #2563eb;
-  color: #ffffff;
+  color: #fff;
   border-color: #2563eb;
-  font-weight: bold;
+}
+
+.filter-btn:hover {
+  background: #e5e7eb;
 }
 </style>
 
@@ -6158,7 +6157,11 @@ th { background:#f1f5f9; }
 <body>
 
 <div class="top-bar">
-  <a href="/${store}/admin/check-status" class="back-btn">← 一覧へ戻る</a>
+  <div class="top-bar" style="margin-bottom:20px;">
+    <a href="/${store}/admin/check-status" class="back-btn">
+      ← 一覧へ戻る
+    </a>
+  </div>
   <button class="filter-btn active" data-mode="all" onclick="filterChecks('all')">すべて表示</button>
   <button class="filter-btn" data-mode="checked" onclick="filterChecks('checked')">理解済みのみ</button>
   <button class="filter-btn" data-mode="unchecked" onclick="filterChecks('unchecked')">未理解のみ</button>
