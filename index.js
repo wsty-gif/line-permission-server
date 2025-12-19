@@ -6048,7 +6048,7 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
       if (checked) checkedCount++;
 
       return `
-        <tr>
+        <tr class="check-row" data-checked="true">
           <td>${item.label || item.recipeId}</td>
           <td style="text-align:center;">${checked ? "✔" : ""}</td>
         </tr>
@@ -6057,6 +6057,11 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
 
     return `
       <h3 style="margin-top:24px;">${m.title}</h3>
+      <div style="display:flex; gap:8px; margin:12px 0;">
+        <button onclick="filterChecks('all')" class="filter-btn">すべて</button>
+        <button onclick="filterChecks('checked')" class="filter-btn">理解している</button>
+        <button onclick="filterChecks('unchecked')" class="filter-btn">理解していない</button>
+      </div>
       <table style="width:100%; border-collapse:collapse;">
         <tr>
           <th style="text-align:left;">項目</th>
@@ -6123,7 +6128,37 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
         .back-btn:active {
           opacity: 0.8;
         }
+        .filter-btn {
+          padding:6px 12px;
+          border-radius:6px;
+          border:1px solid #d1d5db;
+          background:#f9fafb;
+          cursor:pointer;
+          font-size:13px;
+        }
+        .filter-btn:hover {
+          background:#e5e7eb;
+        }
       </style>
+      <script>
+        function filterChecks(mode) {
+          const rows = document.querySelectorAll(".check-row");
+      
+          rows.forEach(row => {
+            const checked = row.dataset.checked === "true";
+      
+            if (mode === "all") {
+              row.style.display = "";
+            } 
+            else if (mode === "checked") {
+              row.style.display = checked ? "" : "none";
+            } 
+            else if (mode === "unchecked") {
+              row.style.display = !checked ? "" : "none";
+            }
+          });
+        }
+      </script>
     </head>
     <body>
       <div class="top-bar">
