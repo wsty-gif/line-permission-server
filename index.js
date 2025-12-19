@@ -5983,9 +5983,7 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
   const { store } = req.params;
   const { userId } = req.query;
 
-  if (!userId) {
-    return res.status(400).send("userId がありません");
-  }
+  if (!userId) return res.status(400).send("userId がありません");
 
   /* =========================
    * 1. 従業員情報
@@ -5995,9 +5993,7 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
     .collection("permissions").doc(userId)
     .get();
 
-  if (!permDoc.exists) {
-    return res.status(404).send("従業員が見つかりません");
-  }
+  if (!permDoc.exists) return res.status(404).send("従業員が見つかりません");
 
   const userName = permDoc.data().name || "名前未登録";
 
@@ -6009,14 +6005,10 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
 
   for (const type of manualTypes) {
     const htmlPath = path.join(__dirname, "manuals", store, type, "index.html");
-
     if (!fs.existsSync(htmlPath)) continue;
 
     const html = fs.readFileSync(htmlPath, "utf8");
-
-    // 既存のヘルパー（HTML解析）
-    const items = extractRecipeItemsFromHTML(html); 
-    // 例: [{ recipeId: "potato", label: "ポテトフライ" }]
+    const items = extractRecipeItemsFromHTML(html);
 
     manuals.push({
       type,
@@ -6036,7 +6028,7 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
   const checks = checkDoc.exists ? checkDoc.data() : {};
 
   /* =========================
-   * 4. 表示用データ作成
+   * 4. 表示用HTML生成
    * ========================= */
   let total = 0;
   let checkedCount = 0;
@@ -6048,7 +6040,7 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
       if (checked) checkedCount++;
 
       return `
-        <tr class="check-row" data-checked="true">
+        <tr class="check-row" data-checked="${checked}">
           <td>${item.label || item.recipeId}</td>
           <td style="text-align:center;">${checked ? "✔" : ""}</td>
         </tr>
@@ -6057,11 +6049,6 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
 
     return `
       <h3 style="margin-top:24px;">${m.title}</h3>
-      <div style="display:flex; gap:8px; margin:12px 0;">
-        <button onclick="filterChecks('all')" class="filter-btn">すべて</button>
-        <button onclick="filterChecks('checked')" class="filter-btn">理解している</button>
-        <button onclick="filterChecks('unchecked')" class="filter-btn">理解していない</button>
-      </div>
       <table style="width:100%; border-collapse:collapse;">
         <tr>
           <th style="text-align:left;">項目</th>
@@ -6079,104 +6066,81 @@ app.get("/:store/admin/check-status/detail", ensureStore, async (req, res) => {
   let color = "#dc2626";
   if (percent >= 80) color = "#16a34a";
   else if (percent >= 60) color = "#ca8a04";
-  const mode = req.query.mode || "admin";
-
-  const backUrl =
-    mode === "my"
-      ? `/${store}/my-progress`
-      : `/${store}/admin/check-status`;
-
-  // ✅ 追加：mode=my のときは「一覧へ戻る」を出さない
-  const backLinkHtml =
-    mode === "my"
-      ? ""
-      : `<a href="${backUrl}" style="display:inline-block;margin:16px 0;text-decoration:none;color:#2563eb;">← 一覧へ戻る</a>`;
-
 
   /* =========================
    * 6. 出力
    * ========================= */
   res.send(`
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>理解度詳細</title>
-      <style>
-        body { font-family: sans-serif; padding:16px; background:#f9fafb; }
-        h2 { margin-bottom:4px; }
-        table { background:white; margin-bottom:16px; }
-        th, td { padding:8px; border-bottom:1px solid #eee; }
-        th { background:#f1f5f9; }
-        .top-bar {
-          display: flex;
-          justify-content: flex-start;
-          margin-bottom: 16px;
-        }
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>理解度詳細</title>
 
-        .back-btn {
-          display: inline-block;
-          padding: 10px 14px;
-          background: #2563eb;
-          color: #fff;
-          text-decoration: none;
-          border-radius: 8px;
-          font-size: 14px;
-        }
+<style>
+body { font-family:sans-serif; padding:16px; background:#f9fafb; }
+table { background:white; margin-bottom:16px; width:100%; }
+th, td { padding:8px; border-bottom:1px solid #eee; }
+th { background:#f1f5f9; }
 
-        .back-btn:active {
-          opacity: 0.8;
-        }
-        .filter-btn {
-          padding:6px 12px;
-          border-radius:6px;
-          border:1px solid #d1d5db;
-          background:#f9fafb;
-          cursor:pointer;
-          font-size:13px;
-        }
-        .filter-btn:hover {
-          background:#e5e7eb;
-        }
-      </style>
-      <script>
-        function filterChecks(mode) {
-          const rows = document.querySelectorAll(".check-row");
-      
-          rows.forEach(row => {
-            const checked = row.dataset.checked === "true";
-      
-            if (mode === "all") {
-              row.style.display = "";
-            } 
-            else if (mode === "checked") {
-              row.style.display = checked ? "" : "none";
-            } 
-            else if (mode === "unchecked") {
-              row.style.display = !checked ? "" : "none";
-            }
-          });
-        }
-      </script>
-    </head>
-    <body>
-      <div class="top-bar">
-        <a href="/${store}/admin/check-status" class="back-btn">
-          ← 一覧へ戻る
-        </a>
-      </div>
+.top-bar {
+  display:flex;
+  gap:8px;
+  margin-bottom:16px;
+}
 
-      <h2>${userName} さんの理解度</h2>
-      <p style="font-size:18px; font-weight:bold; color:${color};">
-        ${percent}%（${checkedCount}/${total}）
-      </p>
+.back-btn {
+  padding:10px 14px;
+  background:#2563eb;
+  color:white;
+  text-decoration:none;
+  border-radius:8px;
+  font-size:14px;
+}
 
-      ${blocks}
-    </body>
-    </html>
+.filter-btn {
+  padding:8px 12px;
+  border-radius:6px;
+  border:1px solid #d1d5db;
+  background:#f9fafb;
+  font-size:13px;
+}
+</style>
+
+<script>
+function filterChecks(mode) {
+  document.querySelectorAll(".check-row").forEach(row => {
+    const checked = row.dataset.checked === "true";
+    if (mode === "all") row.style.display = "";
+    if (mode === "checked") row.style.display = checked ? "" : "none";
+    if (mode === "unchecked") row.style.display = !checked ? "" : "none";
+  });
+}
+</script>
+</head>
+
+<body>
+
+<div class="top-bar">
+  <a href="/${store}/admin/check-status" class="back-btn">← 一覧へ戻る</a>
+  <button class="filter-btn" onclick="filterChecks('all')">すべて</button>
+  <button class="filter-btn" onclick="filterChecks('checked')">理解している</button>
+  <button class="filter-btn" onclick="filterChecks('unchecked')">理解していない</button>
+</div>
+
+<h2>${userName} さんの理解度</h2>
+<p style="font-size:18px; font-weight:bold; color:${color};">
+  ${percent}%（${checkedCount}/${total}）
+</p>
+
+${blocks}
+
+</body>
+</html>
   `);
 });
+
 
 
 
