@@ -6085,18 +6085,17 @@ th, td { padding:8px; border-bottom:1px solid #eee; }
 th { background:#f1f5f9; }
 
 .top-bar {
-  display:flex;
-  gap:8px;
-  margin-bottom:16px;
+  margin-bottom: 12px;
 }
 
 .back-btn {
-  padding:10px 14px;
-  background:#2563eb;
-  color:white;
-  text-decoration:none;
-  border-radius:8px;
-  font-size:14px;
+  display: inline-block;
+  padding: 10px 14px;
+  background: #2563eb;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 14px;
 }
 .filter-bar {
   display: flex;
@@ -6104,22 +6103,25 @@ th { background:#f1f5f9; }
   margin: 12px 0 20px 0;
 }
 
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
 .filter-btn {
-  padding: 8px 14px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  font-size: 13px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
   cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px; /* 四角 */
 }
 
 .filter-btn.active {
   background: #2563eb;
   color: #fff;
   border-color: #2563eb;
-}
-
-.filter-btn:hover {
-  background: #e5e7eb;
 }
 </style>
 
@@ -6157,15 +6159,23 @@ th { background:#f1f5f9; }
 <body>
 
 <div class="top-bar">
-  <div class="top-bar" style="margin-bottom:20px;">
-    <a href="/${store}/admin/check-status" class="back-btn">
-      ← 一覧へ戻る
-    </a>
-  </div>
-  <button class="filter-btn active" data-mode="all" onclick="filterChecks('all')">すべて表示</button>
-  <button class="filter-btn" data-mode="checked" onclick="filterChecks('checked')">理解済みのみ</button>
-  <button class="filter-btn" data-mode="unchecked" onclick="filterChecks('unchecked')">未理解のみ</button>
+  <a href="/${store}/admin/check-status" class="back-btn">
+    ← 一覧へ戻る
+  </a>
 </div>
+
+<div class="filter-bar">
+  <button class="filter-btn active" onclick="filterChecks('all', this)">
+    すべて表示
+  </button>
+  <button class="filter-btn" onclick="filterChecks('checked', this)">
+    理解済みのみ
+  </button>
+  <button class="filter-btn" onclick="filterChecks('unchecked', this)">
+    未理解のみ
+  </button>
+</div>
+
 
 <h2>${userName} さんの理解度</h2>
 <p style="font-size:18px; font-weight:bold; color:${color};">
