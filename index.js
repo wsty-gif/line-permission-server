@@ -6098,35 +6098,70 @@ th { background:#f1f5f9; }
   border-radius:8px;
   font-size:14px;
 }
-
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
 .filter-btn {
-  padding:8px 12px;
-  border-radius:6px;
-  border:1px solid #d1d5db;
-  background:#f9fafb;
-  font-size:13px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+  color: #374151;
+}
+.filter-btn:hover {
+  background: #f3f4f6;
+}
+
+.filter-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  font-weight: bold;
 }
 </style>
 
 <script>
-function filterChecks(mode) {
-  document.querySelectorAll(".check-row").forEach(row => {
-    const checked = row.dataset.checked === "true";
-    if (mode === "all") row.style.display = "";
-    if (mode === "checked") row.style.display = checked ? "" : "none";
-    if (mode === "unchecked") row.style.display = !checked ? "" : "none";
-  });
-}
+  function filterChecks(mode) {
+    const rows = document.querySelectorAll(".check-row");
+    const buttons = document.querySelectorAll(".filter-btn");
+
+    // --- 行の表示制御 ---
+    rows.forEach(row => {
+      const checked = row.dataset.checked === "true";
+
+      if (mode === "all") {
+        row.style.display = "";
+      } else if (mode === "checked") {
+        row.style.display = checked ? "" : "none";
+      } else if (mode === "unchecked") {
+        row.style.display = !checked ? "" : "none";
+      }
+    });
+
+    // --- ボタンの active 表示切り替え ---
+    buttons.forEach(btn => btn.classList.remove("active"));
+
+    const activeBtn = document.querySelector(
+      '.filter-btn[data-mode="' + mode + '"]'
+    );
+    if (activeBtn) activeBtn.classList.add("active");
+  }
 </script>
+
+
 </head>
 
 <body>
 
 <div class="top-bar">
   <a href="/${store}/admin/check-status" class="back-btn">← 一覧へ戻る</a>
-  <button class="filter-btn" onclick="filterChecks('all')">すべて</button>
-  <button class="filter-btn" onclick="filterChecks('checked')">理解している</button>
-  <button class="filter-btn" onclick="filterChecks('unchecked')">理解していない</button>
+  <button class="filter-btn active" data-mode="all" onclick="filterChecks('all')">すべて表示</button>
+  <button class="filter-btn" data-mode="checked" onclick="filterChecks('checked')">理解済みのみ</button>
+  <button class="filter-btn" data-mode="unchecked" onclick="filterChecks('unchecked')">未理解のみ</button>
 </div>
 
 <h2>${userName} さんの理解度</h2>
