@@ -1,401 +1,262 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>レジ業務マニュアル</title>
+  <title>フードマニュアル</title>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif;
-      margin: 0;
-      background: #f8f9fa;
-      color: #111;
-      line-height: 1.7;
-      font-size: 16px;
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
+      margin:0;background:#f8f9fa;color:#111;
+      line-height:1.7;font-size:16px;
+    }
+    .wrapper{max-width:520px;margin:0 auto;padding:14px;}
+    h1{text-align:center;font-size:20px;color:#e11d48;margin:6px 0 10px;}
+
+    /* ===== アコーディオン（重要：直下だけ開く） ===== */
+    .section{
+      background:#fff;border-radius:12px;
+      margin-bottom:14px;overflow:hidden;
+      box-shadow:0 1px 6px rgba(0,0,0,0.1);
+      border:1px solid rgba(0,0,0,0.04);
+    }
+    .header{
+      padding:12px;display:flex;justify-content:space-between;gap:10px;
+      cursor:pointer;user-select:none;background:#fff;align-items:center;
+    }
+    .header-title{font-size:16px;font-weight:600;}
+    .arrow{transition:0.2s;flex:0 0 auto;}
+
+    /* ★ここがポイント：openは「そのsection直下」だけ */
+    .section > .body{display:none;padding:12px;background:#f9fafb;}
+    .section.open > .body{display:block;}
+    .section.open > .header .arrow{transform:rotate(90deg);}
+
+    /* ===== 見た目（既存デザイン寄せ） ===== */
+    .steps{margin:10px 0 0; padding-left:18px;}
+    .steps li{margin-bottom:6px;font-size:14px;}
+    .highlight-count{color:#dc2626;font-weight:700;}
+
+    /* 写真 */
+    .photo-box{
+      margin:12px 0;
+      padding:10px;
+      background:#e5e7eb;
+      border-radius:14px;
+    }
+    .photo-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap:8px;
+    }
+    .photo-grid img{
+      width:100%;
+      aspect-ratio: 4 / 3;
+      height:auto;
+      display:block;
+      border-radius:10px;
+      object-fit:cover;
+      background:#d1d5db;
     }
 
-    .wrapper {
-      max-width: 520px;
-      margin: 0 auto;
-      padding: 14px;
+    /* ポイント（仕込みなど） */
+    .point{
+      margin-top:10px;padding:10px;background:#fff7ed;
+      border-left:4px solid #fb923c;border-radius:8px;
+      font-size:14px;color:#b45309;
     }
+    .prep-title{font-weight:700;margin-bottom:6px;}
+    .prep-list{padding-left:18px;margin:0;}
+    .prep-list li{margin-bottom:6px;line-height:1.6;}
 
-    h1 {
-      text-align: center;
-      font-size: 20px;
-      color: #2563eb;
-      margin-bottom: 8px;
+    /* チェック */
+    .check-wrap{
+      margin-top:12px;
+      padding:10px 12px;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      display:flex; align-items:center; gap:10px;
     }
-
-    .section {
-      background: #fff;
-      border-radius: 12px;
-      margin-bottom: 14px;
-      overflow: hidden;
-      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .header {
-      padding: 12px;
-      display: flex;
-      justify-content: space-between;
-      cursor: pointer;
-      user-select: none;
-      background: #fff;
-    }
-
-    .header-title {
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    .arrow {
-      transition: 0.2s;
-    }
-
-    .open .arrow {
-      transform: rotate(90deg);
-    }
-
-    .body {
-      display: none;
-      padding: 12px;
-      background: #f9fafb;
-    }
-
-    .open .body {
-      display: block;
-    }
-
-    .img-box {
-      margin-top: 10px;
-      border-radius: 10px;
-      background: #e5e7eb;
-      padding: 10px;
-      display: flex;
-      gap: 10px;
-    }
-
-    .img-thumb {
-      width: 80px;
-      height: 80px;
-      background: #d1d5db;
-      border-radius: 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 12px;
-      text-align: center;
-      padding: 4px;
-    }
-
-    .steps {
-      margin-top: 8px;
-      padding-left: 18px;
-    }
-
-    .steps li {
-      margin-bottom: 6px;
-      font-size: 14px;
-    }
-
-    .point {
-      margin-top: 10px;
-      padding: 10px;
-      background: #fff7ed;
-      border-left: 4px solid #fb923c;
-      border-radius: 6px;
-      font-size: 14px;
-      color: #b45309;
-    }
-
-    .sub-title {
-      font-size: 14px;
-      color: #6b7280;
-      margin-bottom: 4px;
-    }
+    .check-item{transform:scale(1.2);}
+    .check-text{font-size:14px;font-weight:600; cursor:pointer;}
+    .wrapper > .section {background: #eef2ff;}
+    .wrapper > .section > .body > .section {background: #ecfeff;}
+    .wrapper > .section > .body > .section > .body > .section {background: #fff7ed;}
+    .wrapper > .section > .header {background: #e0e7ff;}
+    .wrapper > .section > .body > .section > .header {background: #cffafe;}
+    .wrapper > .section > .body > .section > .body > .section > .header {background: #ffedd5;}
+    .wrapper > .section {background: #e8edff;border-radius: 14px;padding: 8px;}
+    .wrapper > .section > .body > .section {background: #dffbff;border-radius: 12px;padding: 8px;}
+    .wrapper > .section > .body > .section > .body > .section {background: #fff1dc;border-radius: 12px;padding: 10px;}
+    .section > .header,
+    .section > .body {background: transparent;}
   </style>
-<script>
+
+  <script>
     async function loadChecks() {
       const userId = window.MANUAL_USER_ID;
       const store  = window.MANUAL_STORE;
-      const type   = window.MANUAL_TYPE;
 
-      if (!userId || !store || !type) {
-        console.warn("チェックロード不可: userId/store/type が不足");
-        return;
-      }
+      if (!userId || !store) return;
 
-      const res = await fetch(
-        `/${store}/api/manual-check?userId=${userId}&type=${type}`
-      );
-      // 🔽 JSON 以外は無視（HTMLが返ってきても落ちない）
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        console.warn("manual-check が JSON を返していません");
-        return;
-      }
+      const res = await fetch(`/${store}/api/manual-check?userId=${userId}`);
+      if (!res.ok) return;
 
-      const data = await res.json();
+      let data = {};
+      try { data = await res.json(); } catch(e){ return; }
 
-      // 反映
       document.querySelectorAll(".check-item").forEach(el => {
         const key = el.dataset.key;
         el.checked = data[key] === true;
       });
     }
 
-
-    // チェック変更イベント
     async function toggleCheck(key) {
       const userId = window.MANUAL_USER_ID;
-      const store  = window.MANUAL_STORE;   // ← これを必ず使う
+      const store  = window.MANUAL_STORE;
       const type   = window.MANUAL_TYPE;
 
-      if (!userId || !store || !type) {
-        console.warn("toggleCheck: 必要な情報が不足しています");
-        return;
-      }
+      const checkbox = document.querySelector(`.check-item[data-key="${key}"]`);
+      const checked = checkbox ? checkbox.checked : false;
 
-      const res = await fetch(`/${store}/manual-check`, {
+      await fetch(`/${store}/manual-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          type,
-          recipeId: key
-        })
+        body: JSON.stringify({ userId, type, recipeId: key, checked })
+      }).catch(()=>{});
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      // 初期表示：すべて閉じる
+      document.querySelectorAll(".section.open").forEach(s => s.classList.remove("open"));
+
+      // アコーディオン：イベント委譲（ネストしても確実に動く）
+      document.addEventListener("click", (e) => {
+        const header = e.target.closest(".header");
+        if (!header) return;
+
+        // チェック周りクリックは開閉させない（誤爆防止）
+        if (e.target.closest(".check-wrap")) return;
+
+        const section = header.closest(".section");
+        if (!section) return;
+
+        section.classList.toggle("open");
       });
 
-      const out = await res.json();
-      console.log("CHECK UPDATED:", out);
-    }
+      // 「この項目を理解しました」文字クリックでチェックON/OFF
+      document.addEventListener("click", (e) => {
+        const label = e.target.closest(".check-text");
+        if (!label) return;
+        const wrap = label.closest(".check-wrap");
+        const cb = wrap ? wrap.querySelector(".check-item") : null;
+        if (!cb) return;
+        cb.checked = !cb.checked;
+        toggleCheck(cb.dataset.key);
+      });
 
-    window.addEventListener("DOMContentLoaded", loadChecks);
-  </script>
-
-  <script>
-    function saveCheck(key) {
-      toggleCheck(key);
-    }
+      loadChecks();
+    });
   </script>
 </head>
 
 <body>
+<div class="section">
+  <div class="header">
+    <div>
+      <div class="header-title recipe-name">レジ締め</div>
+    </div>
+    <div class="arrow">▶</div>
+  </div>
 
-  <div class="wrapper">
-    <h1>レジ業務マニュアル</h1>
-    <p style="text-align:center;font-size:13px;color:#6b7280;margin-bottom:18px;">
-      すぐ確認できるレジ操作マニュアル（店舗用）
-    </p>
+  <div class="body">
 
-    <!-- 1 会計の流れ -->
-    <div class="section">
-      <div class="header">
-        <div>
-        <div class="header-title recipe-name" data-recipe-id="基本の会計の流れ">基本の会計の流れ</div>
-          <div class="sub-title">最も使用頻度の高い基本オペレーション</div>
-        </div>
-        <div class="arrow">▶</div>
-      </div>
-
-      <div class="body">
-        <ol class="steps">
-          <li>お客様のテーブル番号を確認する</li>
-          <li>ハンディ or 注文票の内容とレジの表示が一致しているか確認</li>
-          <li>割引・クーポンがあるか確認（※提示済みか必ず確認）</li>
-          <li>金額をお客様へ読み上げる（例：”お会計 3,280円です”）</li>
-          <li>お会計方法（現金・カード・QR）を確認</li>
-        </ol>
-
-        <div class="point">
-          ✔ 表示金額と注文内容の不一致が最もクレームになりやすい。必ず「注文確認 → 金額提示」の順で進行。
-        </div>
-      <div class="check-wrap">
-        <input type="checkbox" class="check-item" data-key="基本の会計の流れ" onclick="toggleCheck('基本の会計の流れ')">
-        <span class="check-text">この項目を理解しました</span>
-      </div>
-      </div>
+    <div class="point">
+      ※金庫からレジ金箱と入金袋を出しておく
     </div>
 
-    <!-- 2 現金会計 -->
-    <div class="section">
-      <div class="header">
-        <div>
-          <div class="header-title recipe-name" data-recipe-id="現金会計">現金会計</div>
-          <div class="sub-title">間違いを防ぐための標準手順</div>
-        </div>
-        <div class="arrow">▶</div>
-      </div>
+    <ol class="steps">
+      <li>
+        画面 → <strong class="btn">点検ボタン</strong> → 
+        <strong class="btn">未収伝票ボタン</strong>（下） → 
+        未収伝票が無いか確認 → 
+        <strong class="btn">閉じるボタン</strong>
+      </li>
 
-      <div class="body">
-        <ol class="steps">
-          <li>金額を声に出して確認（例：「3,000円お預かりします」）</li>
-          <li>レジに入力し、お釣りの金額を目視で確認</li>
-          <li>トレーに「お釣り → レシート → 両手でお渡し」</li>
-          <li>最後に「ありがとうございました」と必ず目を見て挨拶</li>
-        </ol>
+      <li>
+        画面 → <strong class="btn">業務メニューボタン</strong> → 
+        <strong class="btn">点検処理ボタン</strong> → 
+        レジ金カウント（過不足±０になれば良い）
+      </li>
 
-        <div class="img-box">
-          <div class="img-thumb">画像を入れる</div>
-          <div>
-            <strong>お釣りの渡し方例</strong><br>
-            トレーの上で整理し、丁寧に渡す。
-          </div>
-        </div>
+      <li>
+        金額合えば <strong class="btn">全種別ボタン</strong> → 
+        <strong class="btn">日計ボタン</strong> → 
+        <strong class="btn">印刷ボタン</strong> → 
+        レシート１枚出す。（A）
+      </li>
 
-        <div class="point">
-          ✔ 札をしまう前にレジへ「金額入力 → 釣り確認」を徹底  
-          ✔ お釣りの間違いは必ず記録と報告
-        </div>
-        <div class="check-wrap">
-          <input type="checkbox" class="check-item" data-key="現金会計" onclick="toggleCheck('現金会計')">
-          <span class="check-text">この項目を理解しました</span>
-        </div>
-      </div>
-    </div>
+      <li>
+        （A）を見ながら、その伝票があるか、確認する。 → 
+        合えは <strong class="btn">閉じるボタン</strong><br>
+        <span class="note">
+          ※数値や件数の差異がある場合、原因つぶす。（大体、処理キー押しミス）
+        </span>
+      </li>
 
-    <!-- 3 カード会計 -->
-    <div class="section">
-      <div class="header">
-        <div>
-        <div class="header-title recipe-name" data-recipe-id="カード会計（クレジット）">カード会計（クレジット）</div>
-          <div class="sub-title">サイン・暗証番号の対応含む</div>
-        </div>
-        <div class="arrow">▶</div>
-      </div>
+      <li>
+        レジキーボード右上の <strong class="btn">精算ボタン</strong> → 
+        03300 → 
+        <strong class="btn">決定ボタン</strong> → 
+        <strong class="btn">精算（レジ締）ボタン</strong> → 
+        <strong class="btn">OKボタン</strong>
+      </li>
 
-      <div class="body">
-        <ol class="steps">
-          <li>お客様へカード方式を案内（タップ・挿入・スワイプ）</li>
-          <li>支払い端末に金額を入力してカード処理</li>
-          <li>暗証番号入力 or サインが必要な場合は案内</li>
-          <li>レシート控えを確認し、必要に応じてお客様へ渡す</li>
-          <li>「ありがとうございました」で完了</li>
-        </ol>
+      <li>
+        （先程の合わせた在高が反映されているので）<br>
+        <strong class="btn">日計ボタン</strong> → 
+        <strong class="btn">印刷ボタン</strong> → 
+        ４枚レシート（出てきた順にホチキス）<br>
+        <span class="note">
+          ※同時にクレジット端末にて集計（下） → 
+          クレジット（左上） → 日計 → 
+          クレジット集計を1枚出しておく
+        </span>
+      </li>
 
-        <div class="point">
-          ✔ タッチ決済の場合はカードを受け取らず、お客様自身でタップ  
-          ✔ 決済失敗は“端末のエラーコード”を必ず確認
-        </div>
-        <div class="check-wrap">
-          <input type="checkbox" class="check-item" data-key="カード会計（クレジット）" onclick="toggleCheck('カード会計（クレジット）')">
-          <span class="check-text">この項目を理解しました</span>
-        </div>
-      </div>
-    </div>
+      <li>
+        パソコン下棚に緑封筒に入金額用意し、入金袋へ
 
-    <!-- 4 QR決済 -->
-    <div class="section">
-      <div class="header">
-        <div>
-        <div class="header-title recipe-name" data-recipe-id="QRコード決済（PayPay等）">QRコード決済（PayPay等）</div>
-          <div class="sub-title">スマホ決済の標準フロー</div>
+        <div class="point" style="margin-top:8px;">
+          ※入金額について<br>
+          入金額はジャーナルの上位に載ってる<br>
+          ＜金種内訳集計＞<br>
+          現金売　○件→￥〇〇（ここの金額をレシート裏に日付・担当者氏名とともに記載する ）
         </div>
-        <div class="arrow">▶</div>
-      </div>
+      </li>
 
-      <div class="body">
-        <ol class="steps">
-          <li>QR決済の利用を確認する</li>
-          <li>レジに金額入力 → 決済画面をお客様へ提示</li>
-          <li>お客様のスマホで読み取り → 支払い実行</li>
-          <li>決済完了画面を「必ず目視で確認」</li>
-          <li>レシートを渡して終了</li>
-        </ol>
+      <li>
+        残ってるレジ金をレジ金箱にしまい、レジ画面は
+        <strong class="btn">次へボタン</strong>で自動シャットダウン
+      </li>
 
-        <div class="point">
-          ✔ 決済完了画面を見ずに処理すると“未払い”が発生するため厳禁  
-          ✔ 店舗側QRの場合、間違った金額入力に注意
-        </div>
-        <div class="check-wrap">
-          <input type="checkbox" class="check-item" data-key="QRコード決済（PayPay等）" onclick="toggleCheck('QRコード決済（PayPay等）')">
-          <span class="check-text">この項目を理解しました</span>
-        </div>
-      </div>
-    </div>
+      <li>
+        レジ小銭ゾーン裏返して、レジ金、金庫へしまう
+      </li>
 
-    <!-- 5 伝票割り -->
-    <div class="section">
-      <div class="header">
-        <div>
-        <div class="header-title recipe-name" data-recipe-id="伝票割り（複数人の割り勘）">伝票割り（複数人の割り勘）</div>
-          <div class="sub-title">最もトラブルが多い操作</div>
-        </div>
-        <div class="arrow">▶</div>
-      </div>
+      <li>
+        終了（日報へ）
+      </li>
+    </ol>
 
-      <div class="body">
-        <ol class="steps">
-          <li>お客様に「均等割り」か「個別会計」かを確認</li>
-          <li>均等割りの場合 → レジに人数を入力し自動計算</li>
-          <li>個別会計の場合 → 注文内容を確認しながら1人分ずつ会計</li>
-          <li>全体金額との誤差がないか必ず確認</li>
-        </ol>
-
-        <div class="point">
-          ✔ 個別会計は最も時間がかかるため、混雑時は“先に案内”する  
-          ✔ 最後の1人分が合わないケースが多いため、こまめに金額確認
-        </div>
-        <div class="check-wrap">
-          <input type="checkbox" class="check-item" data-key="伝票割り（複数人の割り勘）" onclick="toggleCheck('伝票割り（複数人の割り勘）')">
-          <span class="check-text">この項目を理解しました</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 6 レジ締め -->
-    <div class="section">
-      <div class="header">
-        <div>
-        <div class="header-title recipe-name" data-recipe-id="レジ締め（閉店作業）">レジ締め（閉店作業）</div>
-          <div class="sub-title">現金差異防止のための基本手順</div>
-        </div>
-        <div class="arrow">▶</div>
-      </div>
-
-      <div class="body">
-        <ol class="steps">
-          <li>現金売上の合計をレジ上で確認</li>
-          <li>レジ内の現金を点検し、差異がないか照合</li>
-          <li>カード売上・QR売上の合計金額を確認</li>
-          <li>売上レポートを印刷（または写真保存）</li>
-          <li>金庫に現金を封筒で保管 → 店長へ報告</li>
-        </ol>
-
-        <div class="point">
-          ✔ 差異がある場合は「いつ・どの会計で起きたか」を逆算  
-          ✔ 伝票の入力ミスが最も多いため、日中のチェックが重要
-        </div>
-        <div class="check-wrap">
-          <input type="checkbox" class="check-item" data-key="レジ締め（閉店作業）" onclick="toggleCheck('レジ締め（閉店作業）')">
-          <span class="check-text">この項目を理解しました</span>
-        </div>
-      </div>
+    <div class="check-wrap">
+      <input type="checkbox" class="check-item" data-key="レジ締め">
+      <span class="check-text">この項目を理解しました</span>
     </div>
 
   </div>
-
-  <script>
-    document.querySelectorAll(".section").forEach(sec => {
-      sec.querySelector(".header").addEventListener("click", () => {
-        sec.classList.toggle("open");
-
-        // アコーディオン開閉時スクロール補正
-        if (sec.classList.contains("open")) {
-          setTimeout(() => {
-            const rect = sec.getBoundingClientRect().top + window.scrollY;
-            window.scrollTo({
-              top: rect - 80,
-              behavior: "smooth"
-            });
-          }, 20);
-        }
-      });
-    });
-  </script>
+</div>
 
 </body>
-
 </html>
