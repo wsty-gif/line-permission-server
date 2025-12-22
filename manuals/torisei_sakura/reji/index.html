@@ -250,7 +250,7 @@
 
           <li>
             （A）を見ながら、その伝票があるか、確認する。 → 
-            合えは <strong class="btn">閉じるボタン</strong><br>
+            合えば <strong class="btn">閉じるボタン</strong><br>
             <span class="note">
               ※数値や件数の差異がある場合、原因つぶす。（大体、処理キー押しミス）
             </span>
@@ -302,7 +302,12 @@
         </ol>
 
         <div class="check-wrap">
-          <input type="checkbox" class="check-item" data-key="レジ締め">
+          <input
+            type="checkbox"
+            class="check-item"
+            data-key="レジ締め"
+            onclick="toggleCheck('レジ締め')"
+          >
           <span class="check-text">この項目を理解しました</span>
         </div>
 
