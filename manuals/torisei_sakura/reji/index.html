@@ -116,7 +116,7 @@
     }
 
     /* 矢印 */
-    .arrow {
+    .arrow {  
       font-size: 14px;
       transition: transform 0.25s ease;
     }
@@ -211,101 +211,103 @@
 </head>
 
 <body>
-<div class="section">
-  <div class="header">
-    <div>
-      <div class="header-title recipe-name">レジ締め</div>
-    </div>
-    <div class="arrow">▶</div>
-  </div>
-
-  <div class="body">
-
-    <div class="point">
-      ※金庫からレジ金箱と入金袋を出しておく
-    </div>
-
-    <ol class="steps">
-      <li>
-        画面 → <strong class="btn">点検ボタン</strong> → 
-        <strong class="btn">未収伝票ボタン</strong>（下） → 
-        未収伝票が無いか確認 → 
-        <strong class="btn">閉じるボタン</strong>
-      </li>
-
-      <li>
-        画面 → <strong class="btn">業務メニューボタン</strong> → 
-        <strong class="btn">点検処理ボタン</strong> → 
-        レジ金カウント（過不足±０になれば良い）
-      </li>
-
-      <li>
-        金額合えば <strong class="btn">全種別ボタン</strong> → 
-        <strong class="btn">日計ボタン</strong> → 
-        <strong class="btn">印刷ボタン</strong> → 
-        レシート１枚出す。（A）
-      </li>
-
-      <li>
-        （A）を見ながら、その伝票があるか、確認する。 → 
-        合えは <strong class="btn">閉じるボタン</strong><br>
-        <span class="note">
-          ※数値や件数の差異がある場合、原因つぶす。（大体、処理キー押しミス）
-        </span>
-      </li>
-
-      <li>
-        レジキーボード右上の <strong class="btn">精算ボタン</strong> → 
-        03300 → 
-        <strong class="btn">決定ボタン</strong> → 
-        <strong class="btn">精算（レジ締）ボタン</strong> → 
-        <strong class="btn">OKボタン</strong>
-      </li>
-
-      <li>
-        （先程の合わせた在高が反映されているので）<br>
-        <strong class="btn">日計ボタン</strong> → 
-        <strong class="btn">印刷ボタン</strong> → 
-        ４枚レシート（出てきた順にホチキス）<br>
-        <span class="note">
-          ※同時にクレジット端末にて集計（下） → 
-          クレジット（左上） → 日計 → 
-          クレジット集計を1枚出しておく
-        </span>
-      </li>
-
-      <li>
-        パソコン下棚に緑封筒に入金額用意し、入金袋へ
-
-        <div class="point" style="margin-top:8px;">
-          ※入金額について<br>
-          入金額はジャーナルの上位に載ってる<br>
-          ＜金種内訳集計＞<br>
-          現金売　○件→￥〇〇（ここの金額をレシート裏に日付・担当者氏名とともに記載する ）
+<div class="wrapper">
+  <h1>フードマニュアル</h1>
+    <div class="section">
+      <div class="header">
+        <div>
+          <div class="header-title recipe-name">レジ締め</div>
         </div>
-      </li>
+        <div class="arrow">▶</div>
+      </div>
 
-      <li>
-        残ってるレジ金をレジ金箱にしまい、レジ画面は
-        <strong class="btn">次へボタン</strong>で自動シャットダウン
-      </li>
+      <div class="body">
 
-      <li>
-        レジ小銭ゾーン裏返して、レジ金、金庫へしまう
-      </li>
+        <div class="point">
+          ※金庫からレジ金箱と入金袋を出しておく
+        </div>
 
-      <li>
-        終了（日報へ）
-      </li>
-    </ol>
+        <ol class="steps">
+          <li>
+            画面 → <strong class="btn">点検ボタン</strong> → 
+            <strong class="btn">未収伝票ボタン</strong>（下） → 
+            未収伝票が無いか確認 → 
+            <strong class="btn">閉じるボタン</strong>
+          </li>
 
-    <div class="check-wrap">
-      <input type="checkbox" class="check-item" data-key="レジ締め">
-      <span class="check-text">この項目を理解しました</span>
+          <li>
+            画面 → <strong class="btn">業務メニューボタン</strong> → 
+            <strong class="btn">点検処理ボタン</strong> → 
+            レジ金カウント（過不足±０になれば良い）
+          </li>
+
+          <li>
+            金額合えば <strong class="btn">全種別ボタン</strong> → 
+            <strong class="btn">日計ボタン</strong> → 
+            <strong class="btn">印刷ボタン</strong> → 
+            レシート１枚出す。（A）
+          </li>
+
+          <li>
+            （A）を見ながら、その伝票があるか、確認する。 → 
+            合えは <strong class="btn">閉じるボタン</strong><br>
+            <span class="note">
+              ※数値や件数の差異がある場合、原因つぶす。（大体、処理キー押しミス）
+            </span>
+          </li>
+
+          <li>
+            レジキーボード右上の <strong class="btn">精算ボタン</strong> → 
+            03300 → 
+            <strong class="btn">決定ボタン</strong> → 
+            <strong class="btn">精算（レジ締）ボタン</strong> → 
+            <strong class="btn">OKボタン</strong>
+          </li>
+
+          <li>
+            （先程の合わせた在高が反映されているので）<br>
+            <strong class="btn">日計ボタン</strong> → 
+            <strong class="btn">印刷ボタン</strong> → 
+            ４枚レシート（出てきた順にホチキス）<br>
+            <span class="note">
+              ※同時にクレジット端末にて集計（下） → 
+              クレジット（左上） → 日計 → 
+              クレジット集計を1枚出しておく
+            </span>
+          </li>
+
+          <li>
+            パソコン下棚に緑封筒に入金額用意し、入金袋へ
+
+            <div class="point" style="margin-top:8px;">
+              ※入金額について<br>
+              入金額はジャーナルの上位に載ってる<br>
+              ＜金種内訳集計＞<br>
+              現金売　○件→￥〇〇（ここの金額をレシート裏に日付・担当者氏名とともに記載する ）
+            </div>
+          </li>
+
+          <li>
+            残ってるレジ金をレジ金箱にしまい、レジ画面は
+            <strong class="btn">次へボタン</strong>で自動シャットダウン
+          </li>
+
+          <li>
+            レジ小銭ゾーン裏返して、レジ金、金庫へしまう
+          </li>
+
+          <li>
+            終了（日報へ）
+          </li>
+        </ol>
+
+        <div class="check-wrap">
+          <input type="checkbox" class="check-item" data-key="レジ締め">
+          <span class="check-text">この項目を理解しました</span>
+        </div>
+
+      </div>
     </div>
-
-  </div>
 </div>
-
 </body>
 </html>
